@@ -6,7 +6,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from etl.sources.moea_company_monthly import URLS, RECOVERY_METRICS, fill_official_gaps, parse_workbook
+from etl.sources.moea_company_monthly import URLS, RECOVERY_METRICS, counts_equal, reconcile_official_gaps, parse_workbook
 
 ROOT = Path(__file__).resolve().parents[1]
 RAW = ROOT / "data/raw/moea_company_monthly"
@@ -19,14 +19,14 @@ def main():
     for ym, suffix in (("2025-07", "xlsx"), ("2025-10", "xls")):
         observed = parse_workbook(RAW / f"{ym}.{suffix}", ym)
         joined = frame.merge(observed, on=["year_month", "industry", "metric"])
-        if len(joined) != 63 or not np.allclose(joined.companies_x, joined.companies_y):
+        if len(joined) != 63 or not counts_equal(joined.companies_x, joined.companies_y):
             raise ValueError(f"Overlapping company counts differ: {ym}")
         if not np.allclose(joined.capital_million_twd_x, joined.capital_million_twd_y, rtol=0, atol=1e-5):
             raise ValueError(f"Overlapping capital differs: {ym}")
         comparisons.append({"month": ym, "matched_rows": 63, "counts_match": True, "capital_match": True})
     controls = parse_workbook(RAW / "2014-11.xls", "2014-11", ("new", "dissolved"))
     joined = frame.merge(controls, on=["year_month", "industry", "metric"])
-    if len(joined) != 42 or not np.allclose(joined.companies_x, joined.companies_y):
+    if len(joined) != 42 or not counts_equal(joined.companies_x, joined.companies_y):
         raise ValueError("2014-11 new/dissolved controls differ")
     if not np.allclose(joined.capital_million_twd_x, joined.capital_million_twd_y, atol=1e-5, rtol=0):
         raise ValueError("2014-11 control capital differs")
@@ -35,15 +35,9 @@ def main():
     recovered = pd.concat([parse_workbook(RAW / f"{ym}.xls", ym, RECOVERY_METRICS[ym])
                            for ym in URLS], ignore_index=True)
     # Rerunning is safe: previously recovered values must still match the source.
-    joined = frame.merge(recovered, on=["year_month", "industry", "metric"], suffixes=("", "_official"))
-    present = joined[joined.companies.notna()]
-    if len(present) and (not np.allclose(present.companies, present.companies_official)
-                        or not np.allclose(present.capital_million_twd, present.capital_million_twd_official, atol=1e-5, rtol=0)):
-        raise ValueError("Refusing to overwrite contradictory observations")
-    missing_keys = frame.loc[frame.companies.isna(), ["year_month", "industry", "metric"]]
-    to_fill = recovered.merge(missing_keys, on=["year_month", "industry", "metric"])
-    if len(to_fill):
-        frame = fill_official_gaps(frame, to_fill)
+    repaired = reconcile_official_gaps(frame, recovered)
+    if not repaired.equals(frame):
+        frame = repaired
         frame.to_csv(PROCESSED, index=False, encoding="utf-8-sig")
     report = {"method": "official_observations_recovered", "is_imputed": False,
               "recovered_rows": len(recovered), "remaining_missing_in_recovered_months": int(
