@@ -16,6 +16,15 @@ PROTECTED_TRAITS = {
 HIRING_CONTEXT = re.compile(
     r"招募|招聘|徵才|雇用|僱用|聘|錄用|錄取|面試|履歷|候選人|求職者|應徵|員工|職缺|用人|找人|人事|勞工"
     r"|\b(?:hir(?:e|ing)|recruit\w*|applicant\w*|candidate\w*|interview\w*|employment|employee\w*|resume\w*|selection)\b", re.I)
+# A previous hiring instruction can govern a short restriction in the next
+# segment ("徵才廣告，限25歲以下"). Generic employee mentions alone are not an
+# instruction to select people and must not turn demographic queries into bans.
+ACTIVE_HIRING_CONTEXT = re.compile(
+    r"招募|招聘|徵才|徵人|雇用|僱用|聘用|錄取|錄用|面試|履歷|候選人|求職者|應徵者|用人"
+    r"|\b(?:hir(?:e|ing)|recruit\w*|applicant\w*|candidate\w*|interview\w*|resume\w*|selection)\b", re.I)
+CONDITION_FRAGMENT = re.compile(
+    r"^(?:限|只限|僅限|限定|條件(?:是|為)?|[0-9零〇一二兩三四五六七八九十百]+\s*歲(?:以上|以下|以內|以外))"
+)
 FAIR_HIRING_INTENT = re.compile(
     r"避免|防止|杜絕|不得歧視|不能歧視|不應歧視|反歧視|就業服務法|就服法|性別平等|就業保障|歧視.{0,16}(?:規定|法規|法律|權益|申訴)"
     r"|\b(?:avoid|prevent|fair|discrimination|employment\s+law)\b", re.I)
@@ -52,11 +61,15 @@ def inspect_hiring_prompt(query: str) -> Dict[str, Any]:
     clauses = [part.strip() for part in SEGMENT_BOUNDARY.split(text) if part.strip()]
     decision_request = False
     antecedent = False
+    hiring_context_left = 0
     for clause in clauses:
         direct_traits = any(p.search(clause) for p in PROTECTED_TRAITS.values())
         traits = direct_traits or (antecedent and bool(ANAPHORA.search(clause)))
         explicit = bool(DISCRIMINATORY_DECISION_INTENT.search(clause))
-        constrained_hiring = bool(HIRING_ACTION.search(clause)) and not STATISTICAL_INTENT.search(clause)
+        constrained_hiring = bool(
+            HIRING_ACTION.search(clause)
+            or (hiring_context_left and CONDITION_FRAGMENT.search(clause))
+        ) and not STATISTICAL_INTENT.search(clause)
         negation = NEGATED_SELECTION.search(clause)
         # A second selection action after a prohibited/avoided action is a new
         # instruction, even when the writer omits punctuation or a connector.
@@ -69,10 +82,11 @@ def inspect_hiring_prompt(query: str) -> Dict[str, Any]:
             decision_request = True
             break
         antecedent = direct_traits and bool(HIRING_CONTEXT.search(clause))
+        hiring_context_left = 2 if ACTIVE_HIRING_CONTEXT.search(clause) else max(0, hiring_context_left - 1)
     blocked = bool(matched_traits) and decision_request
     return {
         "implementation": "HiringPatternGuard",
-        "version": "hiring-pattern-v3",
+        "version": "hiring-pattern-v4",
         "decision": "REJECT" if blocked else "ALLOW",
         "policy_code": "FAIR_HIRING_PROTECTED_TRAIT",
         "matched_traits": matched_traits,
