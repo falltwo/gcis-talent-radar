@@ -334,6 +334,8 @@ def run_benchmark_validation() -> Dict[str, Any]:
 
     benchmark_report = {
         "timestamp": datetime.now(timezone.utc).isoformat(),
+        "scope": "internal_answer_consistency",
+        "source_validation": "EE520 district sample values are not independently verified",
         "total_questions": total_q,
         "passed": passed_q,
         "failed": failed_q,
