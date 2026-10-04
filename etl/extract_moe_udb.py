@@ -7,6 +7,7 @@ Calculates:
 - Triggers UCAN career mapping generation for all departments
 """
 import sys
+from datetime import datetime
 import numpy as np
 import pandas as pd
 from pathlib import Path
@@ -44,6 +45,7 @@ def clean_registration_rate(val: Any) -> float:
         return 90.0
 
 def extract_moe_udb_data() -> pd.DataFrame:
+    loaded_at = datetime.now().astimezone().isoformat(timespec="seconds")
     f_stu = RAW_DATA_DIR / "moe_udb_cache" / "學1-1.正式學籍在學學生人數-以「系(所)」統計.csv"
     f_reg = RAW_DATA_DIR / "moe_udb_cache" / "學12-1.新生(含境外生)註冊率-以「系(所)」統計.csv"
 
@@ -156,7 +158,7 @@ def extract_moe_udb_data() -> pd.DataFrame:
                 "registration_rate": round(float(h_row["reg_rate_clean"]), 2),
                 "department_share": round(float(h_row["department_share"]), 6),
                 "projected_students_117": proj_students_117,
-                "updated_at": "2026-10-01"
+                "updated_at": loaded_at
             })
 
     df_final = pd.DataFrame(records)

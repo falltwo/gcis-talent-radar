@@ -25,45 +25,67 @@ class DatabaseManager:
         schema_path = schema_file or (BASE_DIR / "database" / "schema.sql")
         with open(schema_path, "r", encoding="utf-8") as f:
             ddl = f.read()
-        with self.get_connection() as conn:
+        conn = self.get_connection()
+        try:
             conn.executescript(ddl)
             conn.commit()
+        finally:
+            conn.close()
 
     def execute(self, sql: str, params: tuple = ()) -> int:
-        with self.get_connection() as conn:
+        conn = self.get_connection()
+        try:
             cur = conn.cursor()
             cur.execute(sql, params)
             conn.commit()
             return cur.rowcount
+        finally:
+            conn.close()
 
     def executemany(self, sql: str, params_list: List[tuple]) -> int:
-        with self.get_connection() as conn:
+        conn = self.get_connection()
+        try:
             cur = conn.cursor()
             cur.executemany(sql, params_list)
             conn.commit()
             return cur.rowcount
+        finally:
+            conn.close()
 
     def fetch_all(self, sql: str, params: tuple = ()) -> List[Dict[str, Any]]:
-        with self.get_connection() as conn:
+        conn = self.get_connection()
+        try:
             cur = conn.cursor()
             cur.execute(sql, params)
             rows = cur.fetchall()
             return [dict(r) for r in rows]
+        finally:
+            conn.close()
 
     def fetch_one(self, sql: str, params: tuple = ()) -> Optional[Dict[str, Any]]:
-        with self.get_connection() as conn:
+        conn = self.get_connection()
+        try:
             cur = conn.cursor()
             cur.execute(sql, params)
             row = cur.fetchone()
             return dict(row) if row else None
+        finally:
+            conn.close()
 
     def query_df(self, sql: str, params: tuple = ()) -> pd.DataFrame:
-        with self.get_connection() as conn:
+        conn = self.get_connection()
+        try:
             return pd.read_sql_query(sql, conn, params=params)
+        finally:
+            conn.close()
 
     def write_df(self, df: pd.DataFrame, table_name: str, if_exists: str = "append", index: bool = False):
-        with self.get_connection() as conn:
+        conn = self.get_connection()
+        try:
             df.to_sql(table_name, conn, if_exists=if_exists, index=index)
+            conn.commit()
+        finally:
+            conn.close()
 
 db = DatabaseManager()
 

@@ -130,3 +130,89 @@ CREATE TABLE IF NOT EXISTS mismatch_signal_mart (
 CREATE INDEX IF NOT EXISTS idx_companies_district_industry ON companies (district, industry_id);
 CREATE INDEX IF NOT EXISTS idx_dynamics_year_ind ON industry_dynamics_mart (year, industry_id);
 CREATE INDEX IF NOT EXISTS idx_dept_lookup ON department_indicators_mart (institution_name, department_name);
+
+-- A 級官方資料：台灣就業通當期職缺快照。
+-- 這是「可觀測職缺樣本」，不是全體雇主或實際缺工人數。
+CREATE TABLE IF NOT EXISTS official_job_vacancies (
+    snapshot_date TEXT NOT NULL,
+    record_id TEXT NOT NULL,
+    district TEXT NOT NULL,
+    postal_code TEXT NOT NULL,
+    occupation_title TEXT NOT NULL,
+    occupation_major_code TEXT,
+    occupation_major_name TEXT,
+    occupation_minor_code TEXT,
+    occupation_minor_name TEXT,
+    openings INTEGER NOT NULL,
+    work_location TEXT NOT NULL,
+    salary_type TEXT,
+    salary_lower REAL,
+    salary_upper REAL,
+    company_name TEXT,
+    updated_date TEXT,
+    application_deadline TEXT,
+    source_url TEXT,
+    source_dataset_id TEXT NOT NULL DEFAULT '44062',
+    fetched_at TEXT NOT NULL,
+    PRIMARY KEY (snapshot_date, record_id)
+);
+
+CREATE TABLE IF NOT EXISTS official_job_fetch_audit (
+    snapshot_date TEXT NOT NULL,
+    district TEXT NOT NULL,
+    postal_code TEXT NOT NULL,
+    returned_count INTEGER NOT NULL,
+    retained_count INTEGER NOT NULL,
+    excluded_location_count INTEGER NOT NULL,
+    query_limit INTEGER NOT NULL,
+    limit_reached INTEGER NOT NULL,
+    fetched_at TEXT NOT NULL,
+    PRIMARY KEY (snapshot_date, district)
+);
+
+-- GCIS 公司登記新設家數：縣市 × 行業大類 × 月。
+CREATE TABLE IF NOT EXISTS gcis_new_company_monthly (
+    year_month TEXT NOT NULL,
+    county TEXT NOT NULL,
+    industry TEXT NOT NULL,
+    new_companies INTEGER NOT NULL,
+    new_capital_million_twd REAL,
+    is_model_eligible INTEGER NOT NULL DEFAULT 1,
+    source_dataset_id TEXT NOT NULL,
+    source_url TEXT NOT NULL,
+    loaded_at TEXT NOT NULL,
+    PRIMARY KEY (year_month, county, industry)
+);
+
+-- 勞保局年末原始統計：地區 × 單位類別 × 行業大類 × 就保註記。
+CREATE TABLE IF NOT EXISTS labor_insurance_baseline (
+    data_period TEXT NOT NULL,
+    region_code TEXT NOT NULL,
+    region_name TEXT NOT NULL,
+    unit_type_code TEXT NOT NULL,
+    unit_type_name TEXT NOT NULL,
+    industry_code TEXT NOT NULL,
+    industry_name TEXT NOT NULL,
+    employment_insurance_code TEXT NOT NULL,
+    employment_insurance_name TEXT NOT NULL,
+    insured_units INTEGER NOT NULL,
+    insured_people INTEGER NOT NULL,
+    average_insured_salary REAL NOT NULL,
+    source_dataset_id TEXT NOT NULL DEFAULT '100999',
+    source_url TEXT NOT NULL,
+    loaded_at TEXT NOT NULL,
+    PRIMARY KEY (
+        data_period, region_code, unit_type_code,
+        industry_code, employment_insurance_code
+    )
+);
+
+CREATE INDEX IF NOT EXISTS idx_job_snapshot_district
+    ON official_job_vacancies (snapshot_date, district);
+CREATE INDEX IF NOT EXISTS idx_gcis_new_month_industry
+    ON gcis_new_company_monthly (county, industry, year_month);
+CREATE INDEX IF NOT EXISTS idx_labor_baseline_lookup
+    ON labor_insurance_baseline (
+        region_code, industry_code, unit_type_code,
+        employment_insurance_code, data_period
+    );

@@ -25,6 +25,17 @@ def get_dept_cache():
         _DEPT_CACHE = sorted(rows, key=lambda x: len(x["department_name"]), reverse=True)
     return _DEPT_CACHE
 
+def _match_industry(query: str):
+    """Match the configured product industries without inventing a fallback."""
+    lowered = query.lower()
+    for ind_id, ind_info in TARGET_INDUSTRIES.items():
+        names = [ind_info["name"], ind_id, *ind_info["name"].split("與")]
+        if any(name and name.lower() in lowered for name in names):
+            return ind_id
+    if any(term in query for term in ["製造業", "製造", "機械", "工廠"]):
+        return "IND_MFG"
+    return None
+
 def route_intent(query: str) -> Dict[str, Any]:
     q = (query or "").strip()
     
@@ -79,7 +90,33 @@ def route_intent(query: str) -> Dict[str, Any]:
         if d in q or (len(d) >= 3 and d[:-1] in q):
             matched_district = d
             break
-            
+
+    # 4a. Approved official labor-market tools take precedence over the legacy
+    # district/company dynamics tools.
+    if any(k in q for k in ["投保薪資", "薪資基線", "勞保薪資", "平均薪資", "薪資水準"]):
+        return {
+            "intent": "WAGE_QUERY",
+            "confidence": 0.96,
+            "params": {"industry_id": _match_industry(q) or "IND_MFG"},
+        }
+
+    if any(k in q for k in ["職缺", "徵才", "招募", "需求人數", "找人", "找得到人"]):
+        return {
+            "intent": "JOB_DEMAND_QUERY",
+            "confidence": 0.96,
+            "params": {
+                "district": matched_district,
+                "industry_id": _match_industry(q),
+            },
+        }
+
+    if any(k in q for k in ["新設公司趨勢", "新設趨勢", "公司新設", "新設公司", "設立家數"]):
+        return {
+            "intent": "COMPANY_TREND_QUERY",
+            "confidence": 0.96,
+            "params": {"industry_id": _match_industry(q) or "IND_MFG"},
+        }
+
     if matched_district and any(k in q for k in ["區", "聚落", "分布", "家數", "活動", "空間", "地圖", "動能", "存量", "新設"]):
         return {
             "intent": "DISTRICT_QUERY",
@@ -89,11 +126,7 @@ def route_intent(query: str) -> Dict[str, Any]:
 
     # 5. Check for Mismatch & Warning queries
     if any(k in q for k in ["錯配", "預警", "警示", "失衡", "短缺風險", "過剩壓力", "象限", "強度"]):
-        matched_ind = None
-        for ind_id, ind_info in TARGET_INDUSTRIES.items():
-            if ind_info["name"] in q or ind_id in q or any(k in q for k in ind_info["name"].split("與")):
-                matched_ind = ind_id
-                break
+        matched_ind = _match_industry(q)
         return {
             "intent": "MISMATCH_QUERY",
             "confidence": 0.95,
@@ -102,11 +135,7 @@ def route_intent(query: str) -> Dict[str, Any]:
 
     # 6. Check for Talent Supply Queries
     if any(k in q for k in ["人才供給", "供給動能", "培育量", "供給推估", "ucan", "就業途徑", "供給成長率"]):
-        matched_ind = None
-        for ind_id, ind_info in TARGET_INDUSTRIES.items():
-            if ind_info["name"] in q or ind_id in q:
-                matched_ind = ind_id
-                break
+        matched_ind = _match_industry(q)
         return {
             "intent": "SUPPLY_QUERY",
             "confidence": 0.90,
@@ -115,11 +144,7 @@ def route_intent(query: str) -> Dict[str, Any]:
 
     # 7. Check for Industry Dynamics / Momentum Queries
     if any(k in q for k in ["新設公司率", "新設率", "新設公司", "增資率", "資本擴張率", "解散率", "歇業解散", "產業動能", "擴張動能", "資本擴張"]):
-        matched_ind = None
-        for ind_id, ind_info in TARGET_INDUSTRIES.items():
-            if ind_info["name"] in q or ind_id in q:
-                matched_ind = ind_id
-                break
+        matched_ind = _match_industry(q)
         return {
             "intent": "INDUSTRY_QUERY",
             "confidence": 0.90,

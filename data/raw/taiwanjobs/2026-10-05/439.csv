@@ -1,0 +1,7 @@
+﻿OCCU_DESC（職務名稱）,WK_TYPE（職務性質）,CJOB1_COUNT（職務大類別代碼）,CJOB_NAME1（職務大類別名稱）,CJOB2_COUNT（職務小類別代碼）,CJOB_NAME2（職務小類別名稱）,JOB_PERSON（雇用人數）,STOP_DATE（應徵截止日期）,CITYNAME（工作地點）,EXPERIENCE（工作經驗）,WKTIME（工作時間）,SALARYCD（核薪方式）,NT_L（薪資範圍下限）,NT_U（薪資範圍上限）,EDGRDESC（最低學歷要求）,URL_QUERY（職缺資料URL）,COMPNAME（公司名稱）,TRANDATE（職缺更新日期）
+現場廠務人員,全職,09,品管／製造／環衛,090220,廠務,2,額滿為止,台中市大安區,無,日班,月薪,29500,30000,不拘,https://job.taiwanjobs.gov.tw/Internet/jobwanted/JobDetail.aspx?EMPLOYER_ID=57445&HIRE_ID=14689301,臺久企業股份有限公司,20260922
+現場作業員,全職,09,品管／製造／環衛,090215,機械組裝工,10,20261026,台中市大安區,無,日班,月薪,29500,34500,不拘,https://job.taiwanjobs.gov.tw/Internet/jobwanted/JobDetail.aspx?EMPLOYER_ID=57445&HIRE_ID=14624617,臺久企業股份有限公司,20260826
+操作員,全職,10,技術／維修／操作,100390,其它機械操作員,7,20261006,台中市大安區,無,日班,月薪,34019,38441,不拘,https://job.taiwanjobs.gov.tw/Internet/jobwanted/JobDetail.aspx?EMPLOYER_ID=1057872&HIRE_ID=14700803, 大甲佳旭生技股份有限公司,20260929
+操作工,全職,10,技術／維修／操作,100390,其它機械操作員,5,20261008,台中市大安區,無,日班,月薪,31500,36540,不拘,https://job.taiwanjobs.gov.tw/Internet/jobwanted/JobDetail.aspx?EMPLOYER_ID=124674&HIRE_ID=14708471,台吉玻璃有限公司,20261001
+操作工,全職,10,技術／維修／操作,100390,其它機械操作員,6,20261009,台中市大安區,無,日班,月薪,31500,33705,不拘,https://job.taiwanjobs.gov.tw/Internet/jobwanted/JobDetail.aspx?EMPLOYER_ID=2579583&HIRE_ID=14713391,豐特國際有限公司,20261002
+行政助理,全職,01,經營／行政／總務,010206,行政助理,2,額滿為止,台中市大安區,無,日班,月薪,29500,30000,不拘,https://job.taiwanjobs.gov.tw/Internet/jobwanted/JobDetail.aspx?EMPLOYER_ID=57445&HIRE_ID=14689177,臺久企業股份有限公司,20260922

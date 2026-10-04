@@ -29,6 +29,7 @@ def generate_or_load_company_batch() -> pd.DataFrame:
     enriches with GCIS standard fields (tax_id, status, capital, change_date, business_code),
     and completes the Taichung benchmark registry.
     """
+    loaded_at = datetime.datetime.now().astimezone().isoformat(timespec="seconds")
     cleaned_records = []
     seen_ids = set()
 
@@ -84,7 +85,7 @@ def generate_or_load_company_batch() -> pd.DataFrame:
                 "has_capital_increase": 1,
                 "is_dissolved": 0,
                 "source": "GCIS_BENCHMARK",
-                "updated_at": "2026-10-01"
+                "updated_at": loaded_at
             })
 
     # Process 104 files if available
@@ -151,7 +152,7 @@ def generate_or_load_company_batch() -> pd.DataFrame:
                     "has_capital_increase": random.choice([0, 0, 1]),
                     "is_dissolved": 0,
                     "source": "104_GCIS_LINKED",
-                    "updated_at": "2026-10-01"
+                    "updated_at": loaded_at
                 })
 
     df_comp = pd.DataFrame(cleaned_records)
@@ -173,6 +174,7 @@ def build_industry_dynamics_mart() -> pd.DataFrame:
     - ExitRate(i, t) = DissolvedCompanies(i, t) / Stock(i, t)
     - BeginningStock(t+1) = EndingStock(t) = BeginningStock(t) + New - Dissolved
     """
+    loaded_at = datetime.datetime.now().astimezone().isoformat(timespec="seconds")
     random.seed(42)
     np.random.seed(42)
 
@@ -265,7 +267,7 @@ def build_industry_dynamics_mart() -> pd.DataFrame:
                     "capital_expansion_rate": actual_c_rate,
                     "exit_rate": actual_x_rate,
                     "source_version": "v1.0",
-                    "updated_at": "2026-10-01"
+                    "updated_at": loaded_at
                 })
 
     df_mart = pd.DataFrame(rows)
