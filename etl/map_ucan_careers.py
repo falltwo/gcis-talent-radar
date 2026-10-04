@@ -1,3 +1,6 @@
+# ⚠ 此檔產出含模擬資料，勿當真實數字使用。（未經驗證的人工規則）
+# 產出：ucan_mapping_mart／dept_ucan_industry_mapping.csv（手寫關鍵字規則，source 欄標示的官方來源無檔案佐證；63% 系所為預設歸類）
+# 目前 API 與助理仍在讀取，只能標記、不能刪；替代方案與刪除條件見 docs/SIMULATED_DATA.md
 """
 ETL Module: UCAN Career Mapping Layer (System Spec Section 15, 16, 17, 18)
 Principles:
