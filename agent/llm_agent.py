@@ -1,6 +1,7 @@
 """OpenRouter-backed tool-calling assistant for the existing deterministic tools."""
 import json
 import os
+import re
 from typing import Any, Dict, List
 
 import requests
@@ -10,6 +11,7 @@ from agent.audit_log import write_agent_audit
 from agent.keyword_scope_guard import keyword_scope_guard
 from agent.numeric_verifier import verify_explanation_numbers
 from agent.prompt_guard import inspect_hiring_prompt
+from agent.response_scope import unsupported_geography, vacancy_comparison
 from agent.tool_router import execute_tool
 
 DEFAULT_MODEL = "openai/gpt-6-luna"
@@ -203,6 +205,8 @@ def _citation_block(tool_results: List[Dict[str, Any]]) -> str:
     seen = set()
     for result in tool_results:
         evidence = result.get("evidence") or {}
+        if not evidence:
+            continue
         sources = evidence.get("source") or evidence.get("official_sources") or []
         if isinstance(sources, str):
             sources = [sources]
@@ -232,6 +236,16 @@ class OpenRouterAgent:
         prompt_guard = inspect_hiring_prompt(query)
         if prompt_guard["decision"] == "REJECT":
             return self._reject_before_model(query, scope_guard, prompt_guard, policy_rejection=True)
+        if re.search(r"天氣|下雨|氣溫|weather", query, re.I) and not re.search(
+            r"擴廠|產業|職缺|就業|招募|人力|工廠|缺工|hiring|workforce", query, re.I
+        ):
+            scope_guard = {**scope_guard, "decision": "REJECT", "category": "UNRECOGNIZED_SCOPE",
+                           "reason": "我提供台中產業與人才資料查詢，沒有天氣資料，無法回答天氣問題。可改問行政區職缺或產業趨勢。"}
+            return self._reject_before_model(query, scope_guard, prompt_guard, policy_rejection=False)
+        if unsupported_geography(query):
+            scope_guard = {**scope_guard, "decision": "REJECT", "category": "UNSUPPORTED_GEOGRAPHY",
+                           "reason": "目前區域職缺與產業資料僅涵蓋台中市，沒有你詢問地區的資料；不會以台中或其他行政區替代。"}
+            return self._reject_before_model(query, scope_guard, prompt_guard, policy_rejection=False)
         if scope_guard["decision"] != "ACCEPT":
             return self._reject_before_model(query, scope_guard, prompt_guard, policy_rejection=False)
 
@@ -300,15 +314,26 @@ class OpenRouterAgent:
                         "provider": "openrouter",
                         "model": model,
                     }
+                comparison = vacancy_comparison(tool_results)
+                if comparison is not None:
+                    narrative = comparison
+                unavailable = all((r.get("data") or {}).get("available") is False
+                                  for r in tool_results if isinstance(r.get("data"), dict)) and all(
+                                      isinstance(r.get("data"), dict) for r in tool_results)
+                if unavailable:
+                    narrative = "目前沒有可用資料，無法回答本次查詢；沒有資料不代表數值為零。"
                 citations = _citation_block(tool_results)
                 structured = tool_results[0].get("data", {}) if len(tool_results) == 1 else {"tool_results": tool_results}
-                verification = verify_explanation_numbers(narrative, structured, user_query=query)
+                verification = ({"status": "NOT_RUN", "accuracy_pct": None,
+                                 "audit_details": ["工具明確回報無資料；回傳固定無資料說明，未驗證模型敘述。"]}
+                                if unavailable else verify_explanation_numbers(
+                                    narrative, structured, user_query=query))
                 evidence = _combine_evidence(tool_results)
                 evidence["verification_status"] = verification["status"]
                 tool_names = list(dict.fromkeys(r["tool"] for r in tool_results))
                 # A failed numeric audit must fail closed: retain diagnostics and
                 # evidence, but never return the unverified model narrative.
-                passed_numeric_gate = verification["status"] in {"VERIFIED", "NOT_APPLICABLE"}
+                passed_numeric_gate = unavailable or verification["status"] in {"VERIFIED", "NOT_APPLICABLE"}
                 answer = (
                     narrative + citations
                     if passed_numeric_gate
@@ -318,14 +343,14 @@ class OpenRouterAgent:
                     query,
                     scope_guard=scope_guard,
                     prompt_guard=prompt_guard,
-                    outcome="ANSWERED" if passed_numeric_gate else "NUMERIC_GUARD_REJECTED",
+                    outcome="DATA_UNAVAILABLE" if unavailable else ("ANSWERED" if passed_numeric_gate else "NUMERIC_GUARD_REJECTED"),
                     model_called=True,
                     tool_calls=tool_names,
                     verification=verification,
                 )
                 return {
                     "query": query,
-                    "status": "SUCCESS" if passed_numeric_gate else "FAILED",
+                    "status": ("NO_DATA" if unavailable else "SUCCESS") if passed_numeric_gate else "FAILED",
                     "intent": _intent_for(tool_names),
                     "tool": tool_names[0] if len(tool_names) == 1 else ("multiple" if tool_names else "none"),
                     "tool_calls": tool_names,
@@ -346,6 +371,17 @@ class OpenRouterAgent:
             for call in calls:
                 fn = call.get("function") or {}
                 name = fn.get("name", "")
+                if name in {"get_regional_job_demand", "get_district_industry"}:
+                    requested = [district for district in TAICHUNG_DISTRICTS if district in query]
+                    try:
+                        selected = json.loads(fn.get("arguments", "{}"))
+                    except (TypeError, json.JSONDecodeError):
+                        selected = None  # Standard parameter validation below reports malformed JSON.
+                    if requested and isinstance(selected, dict) and selected.get("district") not in requested:
+                        rejected_scope = {**scope_guard, "decision": "REJECT", "category": "GEOGRAPHY_MISMATCH",
+                                          "reason": "資料工具選取的行政區與你的問題不符，已停止查詢，不會以其他區或全市替代。請重新指定行政區。"}
+                        return self._reject_before_model(query, rejected_scope, prompt_guard, policy_rejection=False,
+                                                         model_called=True)
                 try:
                     result = _run_tool(name, fn.get("arguments", "{}"))
                 except OpenRouterError:
@@ -385,6 +421,7 @@ class OpenRouterAgent:
         prompt_guard: Dict[str, Any],
         *,
         policy_rejection: bool,
+        model_called: bool = False,
     ) -> Dict[str, Any]:
         if policy_rejection:
             outcome = "FAIR_HIRING_POLICY_REJECTED"
@@ -394,7 +431,8 @@ class OpenRouterAgent:
             )
             intent = "FAIR_HIRING_POLICY"
         else:
-            outcome = "KEYWORD_SCOPE_REJECTED"
+            outcome = {"UNSUPPORTED_GEOGRAPHY": "NO_GEOGRAPHIC_DATA", "GEOGRAPHY_MISMATCH": "GEOGRAPHY_MISMATCH"}.get(
+                scope_guard.get("category"), "KEYWORD_SCOPE_REJECTED")
             answer = scope_guard["reason"]
             intent = "OUT_OF_SCOPE"
         verification = {"status": "NOT_RUN", "accuracy_pct": None, "audit_details": []}
@@ -403,12 +441,12 @@ class OpenRouterAgent:
             scope_guard=scope_guard,
             prompt_guard=prompt_guard,
             outcome=outcome,
-            model_called=False,
+            model_called=model_called,
             verification=verification,
         )
         return {
             "query": query,
-            "status": "REJECTED",
+            "status": "NO_DATA" if scope_guard.get("category") == "UNSUPPORTED_GEOGRAPHY" else "REJECTED",
             "intent": intent,
             "tool": "none",
             "tool_calls": [],

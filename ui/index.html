@@ -1421,7 +1421,7 @@
                 const auditBadge = document.getElementById('res-audit-id');
                 auditBadge.innerText = auditId ? `稽核 ${auditId.slice(0, 8)}` : '稽核 —';
                 auditBadge.title = auditId || '本次回應沒有稽核參照編號';
-                document.getElementById('res-status-dot').className = `w-2.5 h-2.5 rounded-full ${data.status === 'REJECTED' || data.status === 'FAILED' ? 'bg-rose-500' : 'bg-emerald-500'}`;
+                document.getElementById('res-status-dot').className = `w-2.5 h-2.5 rounded-full ${data.status === 'NO_DATA' ? 'bg-amber-500' : data.status === 'REJECTED' || data.status === 'FAILED' ? 'bg-rose-500' : 'bg-emerald-500'}`;
 
                 document.getElementById('res-intent-badge').innerText = data.intent;
                 document.getElementById('res-tool-badge').innerText = data.tool;
@@ -1433,7 +1433,8 @@
                     vBadge.innerText = `數字比對 ${data.verification.accuracy_pct}%（非來源核驗）`;
                 } else {
                     vBadge.className = "bg-amber-50 text-amber-800 border border-amber-200 text-xs px-3 py-1 rounded font-mono-num font-bold inline-flex items-center gap-1.5";
-                    vBadge.innerText = `數字比對警示 ${data.verification ? data.verification.accuracy_pct : '未執行'}%`;
+                    const accuracy = data.verification && data.verification.accuracy_pct;
+                    vBadge.innerText = accuracy === null || accuracy === undefined ? '數字比對未執行（拒答或無數值資料）' : `數字比對警示 ${accuracy}%`;
                 }
 
                 const evBox = document.getElementById('res-calculation-box');
@@ -1480,7 +1481,7 @@
                 const data = await fetchAgentResponse(q);
 
                 const modelBadge = document.getElementById('home-res-model-badge');
-                modelBadge.innerText = `${data.provider || 'openrouter'} / ${data.model || 'openai/gpt-6-luna'}：${data.status === 'REJECTED' ? '本地治理規則拒答' : '已處理問題'}`;
+                modelBadge.innerText = `${data.provider || 'openrouter'} / ${data.model || 'openai/gpt-6-luna'}：${data.status === 'NO_DATA' ? '沒有可用資料' : data.status === 'REJECTED' ? '本地治理規則拒答' : '已處理問題'}`;
                 const auditId = data.governance && data.governance.audit_id;
                 const auditBadge = document.getElementById('home-res-audit-id');
                 auditBadge.innerText = auditId ? `稽核 ${auditId.slice(0, 8)}` : '稽核 —';
