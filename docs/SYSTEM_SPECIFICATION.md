@@ -1,3 +1,5 @@
+> 治理更新（2026-10-05）：現行範圍檢查是 `agent/keyword_scope_guard.py` 的本地規則，非 AI 模型；欄位、拒答與稽核行為以 [GOVERNANCE.md](GOVERNANCE.md) 為準。下列舊管線、HTTP 403 與時序圖屬原始設計，非現行 API 契約。
+
 # 區域產業 × 高教人才供需錯配預警系統 (System Specification v1.0)
 
 > **目標賽事**：全國大專校院資訊應用服務創新競賽 (InnoServe Awards) —— 經濟部商工登記資料應用組 (GCIS-OD Track)  
@@ -87,7 +89,7 @@ flowchart TD
     end
 
     subgraph S5["5. 守門代理人管線 (Guarded AI Agent Pipeline)"]
-        A1["Scope Guard (Jev 守門: 合規範圍過濾與政策拒絕)"]
+        A1["Scope Guard (KeywordScopeGuard 守門: 合規範圍過濾與政策拒絕)"]
         A2["Intent Router (8大確定性意圖分流)"]
         A3["Tool / Query Router (確定性 DB/Mart 查詢通道)"]
         A4["Explanation Generator (依據確定性數據組織政策文本)"]
@@ -248,7 +250,7 @@ flowchart TD
 sequenceDiagram
     autonumber
     actor User as 使用者 / 決策官員
-    participant Guard as Agent 01: Scope Guard (Jev 守門)
+    participant Guard as Agent 01: Scope Guard (KeywordScopeGuard 守門)
     participant Router as Agent 02: Intent Router
     participant Tool as Agent 03: Tool / Query Router
     participant Engine as Deterministic Engines / SQLite Mart
