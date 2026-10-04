@@ -1,0 +1,261 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>臺中製造業資料雷達｜擴廠前，先看招募環境</title>
+  <style>
+    :root{color-scheme:light;--ink:#17302d;--muted:#55706b;--teal:#116e60;--line:#d7e3db;--paper:#f6f8f2;--card:#fff;--amber:#a35d18;--red:#9d3025}
+    *{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.65 system-ui,"Noto Sans TC","Noto Sans CJK TC",sans-serif}
+    a{color:var(--teal)}a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,summary:focus-visible{outline:3px solid #f2a958;outline-offset:3px}
+    .shell{max-width:1120px;margin:auto;padding:0 24px}
+    .top{background:#103a34;color:#f4faf4;padding:16px 0}.top .shell{display:flex;justify-content:space-between;gap:20px;align-items:center;flex-wrap:wrap}.top a{color:#daf0e3;text-decoration:none;font-size:14px}.top nav{display:flex;gap:18px}.top small{letter-spacing:.14em;text-transform:uppercase;font-size:12px;font-weight:700}
+    .hero{padding:52px 0 18px}.eyebrow{font-size:13px;font-weight:800;color:var(--teal);letter-spacing:.09em}.hero h1{font-size:clamp(30px,4.6vw,52px);line-height:1.18;letter-spacing:-.03em;max-width:860px;margin:10px 0;text-wrap:balance}.hero p{max-width:760px;color:var(--muted);font-size:18px;margin:0}
+    .panel{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:26px;box-shadow:0 12px 36px #0b2c2310}.panel h2,.section-head h2{margin:0 0 8px;font-size:24px}.panel p,.section-head p{margin:0;color:var(--muted)}
+    label{font-weight:700;font-size:14px;display:block;margin-bottom:7px}
+    select,input,textarea,button{font:inherit;border-radius:10px;padding:12px 14px;min-height:48px}
+    select,input,textarea{width:100%;background:#fff;border:1px solid #a9c1b5;color:var(--ink)}
+    textarea{resize:none;min-height:58px}
+    button{background:var(--teal);border:1px solid var(--teal);color:#fff;font-weight:750;cursor:pointer}button:hover{background:#0c5045}button:disabled{opacity:.6;cursor:wait}
+    .ask{display:grid;grid-template-columns:1fr auto;gap:12px;margin-top:16px;align-items:end}
+    .suggests{display:flex;flex-wrap:wrap;gap:10px;margin-top:16px}
+    .suggest{background:#eef6f0;color:var(--ink);border:1px solid #b9d5c5;font-weight:600;min-height:40px;padding:8px 14px;border-radius:999px;font-size:14px}.suggest:hover{background:#dcefe2}
+    .hint{font-size:13px;color:var(--muted);margin-top:12px}
+    .answer{margin-top:20px;border-top:1px solid var(--line);padding-top:20px}
+    .answer .q{font-weight:750;margin-bottom:8px}
+    .badges{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+    .badge{font-size:12px;font-weight:750;padding:3px 10px;border-radius:999px;border:1px solid}
+    .badge.ok{color:#0c5045;background:#e3f3e9;border-color:#9fd0b5}.badge.warn{color:#7a3b12;background:#fbefe2;border-color:#e6bf94}.badge.bad{color:var(--red);background:#fbe9e6;border-color:#e9b3aa}.badge.info{color:#33504b;background:#eef2ef;border-color:#c8d6cf}
+    .answer .body{font-size:17px}.answer .body p{margin:0 0 10px}
+    .answer .refs{margin-top:12px;padding:12px 16px;background:#f3f7f2;border-radius:10px;font-size:14px;color:#3f5752}.answer .refs strong{display:block;margin-bottom:4px;color:var(--ink)}.answer .refs ul{margin:0;padding-left:20px}
+    details.trace{margin-top:16px;border:1px solid var(--line);border-radius:12px;background:#fafcf8}
+    details.trace summary{cursor:pointer;padding:12px 16px;font-weight:750;color:var(--teal)}
+    .trace-body{padding:0 18px 16px;font-size:15px;color:var(--ink)}
+    .trace-body h4{margin:14px 0 4px;font-size:14px;color:var(--teal)}
+    .trace-body ul,.trace-body ol{margin:4px 0;padding-left:20px;color:#2e4642}
+    .trace-body dl{display:grid;grid-template-columns:max-content 1fr;gap:4px 14px;margin:4px 0}.trace-body dt{color:var(--muted)}.trace-body dd{margin:0;color:var(--ink)}.trace-body code{font-size:13px;color:var(--muted)}
+    .status{min-height:26px;padding:12px 0;color:var(--muted)}.status.error{color:var(--red)}
+    .form{display:grid;grid-template-columns:1fr 1fr auto;gap:16px;margin-top:20px;align-items:end}
+    .summary{background:#e7f0e9;border-left:4px solid var(--teal);padding:19px 22px;border-radius:0 12px 12px 0;margin:8px 0 30px}.summary h2{font-size:18px;margin:0 0 5px}.summary p{margin:0}
+    .section-head{margin:56px 0 18px}
+    .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
+    .metric{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:24px;min-width:0}.metric .scope{font-weight:750;color:var(--teal);font-size:13px}.metric h3{font-size:19px;margin:8px 0}.metric .value{font-size:clamp(34px,4vw,50px);line-height:1.2;font-weight:800;letter-spacing:-.03em;font-variant-numeric:tabular-nums}.metric .details{color:var(--muted);margin:12px 0 0}.metric .meta{font-size:13px;color:var(--muted);margin-top:18px;border-top:1px solid var(--line);padding-top:12px}.metric .source{font-size:13px;margin-top:8px}.metric ul{margin:10px 0 0;padding-left:20px;color:var(--muted);font-size:13px}.metric li{margin:3px 0}.metric .unavailable{font-size:18px;font-weight:700;color:var(--amber)}
+    .note{margin:30px 0 50px;padding:22px;border:1px dashed #aabfb1;border-radius:14px;background:#f0f5ed}.note h2{font-size:19px;margin:0 0 6px}.note p{margin:0;color:var(--muted)}
+    .foot{border-top:1px solid var(--line);padding:22px 0 35px;color:var(--muted);font-size:13px}
+    @media(max-width:720px){.form,.grid,.ask{grid-template-columns:1fr}.hero{padding-top:34px}.panel,.metric{padding:20px}}
+  </style>
+</head>
+<body>
+  <header class="top"><div class="shell"><div><small>GCIS × TAICHUNG</small><div>臺中製造業資料雷達</div></div>
+    <nav aria-label="頁面導覽"><a href="#ask-title">問資料</a><a href="#expansion">擴廠情境</a></nav></div></header>
+  <main class="shell">
+    <section class="hero"><span class="eyebrow">擴廠前的人才資料檢查</span>
+      <h1>想在臺中擴廠？先問問周邊的招募環境。</h1>
+      <p>用一句話問職缺、新設公司或投保薪資。每個回答都附官方資料來源、資料期別，數字會先和查到的資料核對過，對不上就不顯示。</p></section>
+
+    <section class="panel" aria-labelledby="ask-title">
+      <h2 id="ask-title">直接問</h2>
+      <p>目前涵蓋臺中市 29 個行政區的製造業資料。</p>
+      <form id="ask-form" class="ask">
+        <div><label for="ask-input">你的問題</label><textarea id="ask-input" name="query" rows="2" maxlength="300" required placeholder="例如：大雅區製造業現在的職缺有多少？"></textarea></div>
+        <button id="ask-submit" type="submit">送出問題</button>
+      </form>
+      <div class="suggests" aria-label="建議問題">
+        <button type="button" class="suggest">大雅區製造業現在的職缺有多少？</button>
+        <button type="button" class="suggest">西屯區製造業現在的職缺有多少？</button>
+        <button type="button" class="suggest">台中市製造業最近一個月新設了幾家公司？</button>
+        <button type="button" class="suggest">台中製造業的平均投保薪資是多少？</button>
+        <button type="button" class="suggest">台北市信義區的職缺有多少？</button>
+      </div>
+      <div class="hint">回答由 AI 根據查詢工具的結果撰寫；職缺需求人數不等於缺工人數，投保薪資不等於實領薪資。</div>
+      <div id="ask-status" class="status" role="status" aria-live="polite"></div>
+      <div id="answer" class="answer" hidden>
+        <div class="q" id="answer-q"></div>
+        <div class="badges" id="answer-badges"></div>
+        <div class="body" id="answer-body"></div>
+        <details class="trace" id="trace"><summary>檢視推理歷程：這次查了什麼、怎麼核對</summary><div class="trace-body" id="trace-body"></div></details>
+      </div>
+    </section>
+
+    <section id="expansion" aria-labelledby="exp-title">
+      <div class="section-head"><h2 id="exp-title">擴廠情境：四個不同口徑的官方數字</h2><p>選廠區、填預計招募人數，對照工廠快照、公開職缺、全市新設公司與投保薪資。這是招募環境的線索，不是替你的公司算招募成功率。</p></div>
+      <div class="panel">
+        <form id="query-form" class="form">
+          <div><label for="district">廠區所在行政區</label><select id="district" name="district" required>
+            <option>中區</option><option>東區</option><option>南區</option><option>西區</option><option>北區</option><option>西屯區</option><option>南屯區</option><option>北屯區</option><option>豐原區</option><option>東勢區</option><option>大甲區</option><option>清水區</option><option>沙鹿區</option><option>梧棲區</option><option>后里區</option><option>神岡區</option><option>潭子區</option><option selected>大雅區</option><option>新社區</option><option>石岡區</option><option>外埔區</option><option>大安區</option><option>烏日區</option><option>大肚區</option><option>龍井區</option><option>霧峰區</option><option>太平區</option><option>大里區</option><option>和平區</option>
+          </select></div>
+          <div><label for="planned_hires">預計招募人數（你的規劃）</label><input id="planned_hires" name="planned_hires" type="number" min="1" max="100000" step="1" required value="10"></div>
+          <button id="submit" type="submit">查看資料線索</button>
+        </form><div class="hint">輸入人數只是你的情境，不會被當作官方統計，也不會改寫下方的觀測數字。</div>
+      </div>
+      <div id="status" class="status" role="status" aria-live="polite">正在讀取已匯入的官方資料…</div>
+      <div id="results" hidden>
+        <section class="summary" aria-labelledby="summary-title"><h2 id="summary-title">先看能確認的，再看不能推論的</h2><p id="summary-text"></p></section>
+        <p id="scenario-text" style="color:var(--muted);margin:0 0 14px"></p>
+        <div class="grid">
+          <article class="metric" id="factory-card"><span class="scope">大雅區｜臺中市工廠登記快照</span><h3>製造業工廠家數</h3><div class="value" id="factory-value"></div><p class="details" id="factory-details"></p><div class="meta" id="factory-meta"></div><div class="source"><a href="https://data.gov.tw/dataset/174209" target="_blank" rel="noopener noreferrer">資料來源：臺中市政府經濟發展局 ↗</a></div><ul id="factory-limits"></ul></article>
+          <article class="metric" id="jobs-card"><span class="scope">大雅區｜台灣就業通公開職缺</span><h3>當期職缺刊登筆數</h3><div class="value" id="jobs-value"></div><p class="details" id="jobs-details"></p><div class="meta" id="jobs-meta"></div><div class="source"><a href="https://data.gov.tw/dataset/44062" target="_blank" rel="noopener noreferrer">資料來源：台灣就業通 ↗</a></div><ul id="jobs-limits"></ul></article>
+          <article class="metric" id="company-card"><span class="scope">臺中市全市｜GCIS 行業大類</span><h3>製造業新設公司家數</h3><div class="value" id="company-value"></div><p class="details">這是全市當月的新設公司，不能下推為單一行政區的新設家數。</p><div class="meta" id="company-meta"></div><div class="source"><a href="https://data.gcis.nat.gov.tw/od/detail?oid=01E5CFC6-9F09-4CB5-BE81-22B451E4B1BD" target="_blank" rel="noopener noreferrer">資料來源：經濟部 GCIS ↗</a></div><ul id="company-limits"></ul></article>
+          <article class="metric" id="wage-card"><span class="scope">臺中市全市｜勞保局年末統計</span><h3>製造業平均投保薪資</h3><div class="value" id="wage-value"></div><p class="details">不是實領薪資、職缺開薪或中位數。</p><div class="meta" id="wage-meta"></div><div class="source"><a href="https://data.gov.tw/dataset/100999" target="_blank" rel="noopener noreferrer">資料來源：勞動部勞工保險局 ↗</a></div><ul id="wage-limits"></ul></article>
+        </div>
+        <section class="note"><h2>下一步該怎麼用？</h2><p>把這些數據當成招募環境的起點：先確認要找的職務、薪資條件與實際候選人來源，再決定擴廠時程。公開職缺的「需求人數」不能叫做缺工人數；工廠家數也不能轉成你公司的招募成功率。</p></section>
+      </div>
+    </section>
+  </main>
+  <footer class="foot"><div class="shell">各資料集更新週期、地域粒度不同；本站顯示本地匯入的官方快照，非即時查詢官方網站。舊版原型（含模擬資料）保留於 <a href="/legacy">/legacy</a>，不屬於本次展示內容。</div></footer>
+  <script>
+  (() => {
+    const $ = id => document.getElementById(id);
+    const number = value => new Intl.NumberFormat('zh-TW').format(value);
+    const text = (id, value) => { $(id).textContent = value; };
+    const el = (tag, content, cls) => { const n = document.createElement(tag); if (content != null) n.textContent = content; if (cls) n.className = cls; return n; };
+
+    /* ---------- 問答 ---------- */
+    // 只處理 **粗體** 與「- 」清單；其餘一律當純文字，避免把模型輸出當 HTML 執行
+    function inline(node, raw) {
+      String(raw || '').split(/(\*\*[^*]+\*\*)/g).forEach(part => {
+        if (/^\*\*[^*]+\*\*$/.test(part)) node.append(el('strong', part.slice(2, -2)));
+        else if (part) node.append(document.createTextNode(part));
+      });
+      return node;
+    }
+    const tidy = s => s.replace(/。；/g, '；');
+    function renderAnswerText(box, raw) {
+      box.replaceChildren();
+      const [main, refs] = String(raw || '').split(/\n*資料出處與限制：\n*/);
+      let list = null;
+      main.split(/\n+/).forEach(line => {
+        if (/^\s*[-•]\s+/.test(line)) { if (!list) { list = el('ul'); box.append(list); } list.append(inline(el('li'), tidy(line.replace(/^\s*[-•]\s+/, '')))); }
+        else if (line.trim()) { list = null; box.append(inline(el('p'), line)); }
+      });
+      if (refs && refs.trim()) {
+        // 完整來源與限制已在「檢視推理歷程」逐條列出，正文只留一行提示，避免同一段限制出現兩次
+        box.append(el('p', '完整資料來源與限制：展開下方「檢視推理歷程」。', 'refs'));
+      }
+    }
+    const TOOL_LABEL = {
+      get_regional_job_demand: '台灣就業通公開職缺（依行政區）',
+      get_gcis_new_company_trend: 'GCIS 公司新設登記月趨勢',
+      get_wage_baseline: '勞保局平均投保薪資',
+      get_district_industry: '行政區產業資料'
+    };
+    function badge(label, kind) { return el('span', label, `badge ${kind}`); }
+    function list(tag, items) { const l = el(tag); (items || []).forEach(i => l.append(el('li', i))); return l; }
+    function section(title, node) { const f = document.createDocumentFragment(); f.append(el('h4', title), node); return f; }
+
+    function renderTrace(d) {
+      const box = $('trace-body'); box.replaceChildren();
+      const ev = d.evidence || {}; const v = d.verification || {}; const g = d.governance || {};
+      const steps = [];
+      if (g.scope_guard) steps.push(`範圍檢查：${g.scope_guard.decision === 'ACCEPT' ? '在產品範圍內' : '不在產品範圍內'}${g.scope_guard.reason ? `（${g.scope_guard.reason}）` : ''}`);
+      if (g.prompt_guard) steps.push(`公平招募檢查：${g.prompt_guard.decision === 'ALLOW' ? '未偵測到歧視性條件' : '偵測到受保護特徵，拒絕協助'}`);
+      steps.push((d.tool_calls || []).length ? `查詢資料：${d.tool_calls.map(t => TOOL_LABEL[t] || t).join('、')}` : '沒有查詢資料（問題超出資料範圍或被攔下）');
+      if (v.status) steps.push(v.status === 'VERIFIED'
+        ? `數字核對：回答中的 ${v.total_extracted} 個數字／日期，${v.matched_count} 個與工具資料相符`
+        : `數字核對：${v.status}${v.audit_details ? '（' + v.audit_details.join('；') + '）' : ''}`);
+      box.append(section('處理步驟', list('ol', steps)));
+      if (ev.indicator || ev.source) {
+        const dl = el('dl');
+        [['指標', ev.indicator], ['地區', ev.geography], ['資料期別', ev.data_period], ['來源', (ev.source || []).join('、')], ['使用資料表', (ev.processed_tables || []).join('、')]]
+          .filter(([, val]) => val).forEach(([k, val]) => { dl.append(el('dt', k), el('dd', val)); });
+        box.append(section('資料出處', dl));
+        if ((ev.source_urls || []).length) {
+          const ul = el('ul');
+          ev.source_urls.forEach(u => { const li = el('li'); const a = el('a', u); a.href = u; a.target = '_blank'; a.rel = 'noopener noreferrer'; li.append(a); ul.append(li); });
+          box.append(section('官方資料集連結', ul));
+        }
+      }
+      if ((ev.calculation || []).length) box.append(section('怎麼算的', list('ul', ev.calculation)));
+      if ((ev.limitations || []).length) box.append(section('限制', list('ul', ev.limitations)));
+      if (d.model) box.append(section('模型', el('p', `${d.provider || ''} ${d.model}`.trim())));
+      if (g.audit_id) box.append(section('稽核編號', el('p', g.audit_id)));
+    }
+
+    function renderAnswer(q, d) {
+      text('answer-q', `問：${q}`);
+      const badges = $('answer-badges'); badges.replaceChildren();
+      const v = d.verification || {};
+      if (d.status === 'SUCCESS' && v.status === 'VERIFIED') badges.append(badge('數字已核對', 'ok'));
+      else if (d.status === 'NO_DATA') badges.append(badge('資料範圍外', 'info'));
+      else if (d.status === 'SUCCESS') badges.append(badge(`核對：${v.status || '未執行'}`, 'warn'));
+      else if (d.status === 'FAILED') badges.append(badge('未作答：缺少資料佐證', 'warn'));
+      else badges.append(badge(`狀態：${d.status || '未知'}`, /BLOCK|REJECT|REFUS/i.test(d.status || '') ? 'bad' : 'warn'));
+      const ev = d.evidence || {};
+      if (ev.data_period) badges.append(badge(`資料期別 ${ev.data_period}`, 'info'));
+      renderAnswerText($('answer-body'), d.answer);
+      renderTrace(d);
+      $('trace').open = false;
+      $('answer').hidden = false;
+    }
+
+    async function ask(q) {
+      q = (q || '').trim(); if (!q) return;
+      const btn = $('ask-submit'); btn.disabled = true;
+      document.querySelectorAll('.suggest').forEach(b => { b.disabled = true; });
+      $('ask-status').classList.remove('error'); text('ask-status', '查詢資料並核對數字中…');
+      try {
+        const res = await fetch('/api/agent/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ query: q }) });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(typeof data.detail === 'string' ? data.detail : `查詢失敗（HTTP ${res.status}）`);
+        renderAnswer(q, data); text('ask-status', '');
+      } catch (err) {
+        $('ask-status').classList.add('error'); text('ask-status', `${err.message}。`);
+      } finally {
+        btn.disabled = false; document.querySelectorAll('.suggest').forEach(b => { b.disabled = false; });
+      }
+    }
+    $('ask-form').addEventListener('submit', e => { e.preventDefault(); ask($('ask-input').value); });
+    $('ask-input').addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); $('ask-form').requestSubmit(); } });
+    document.querySelectorAll('.suggest').forEach(b => b.addEventListener('click', () => { $('ask-input').value = b.textContent; ask(b.textContent); }));
+
+    /* ---------- 擴廠情境 ---------- */
+    function limits(id, values) { const box = $(id); box.replaceChildren(); (values || []).slice(0, 3).forEach(v => box.append(el('li', v))); }
+    function unavailable(valueId, metaId, item) { $(valueId).classList.add('unavailable'); text(valueId, '目前沒有可用資料'); text(metaId, item.reason || '此資料集未能查得有效快照，不以 0 代替。'); }
+    function present(data) {
+      const { factory_snapshot: f, job_demand: j, company_trend: c, wage_baseline: w } = data;
+      text('scenario-text', `臺中市${data.scenario.district}・製造業・預計招募 ${number(data.scenario.planned_hires)} 人（使用者情境）`);
+      text('summary-text', data.interpretation);
+      document.querySelector('#factory-card .scope').textContent = `${data.scenario.district}｜臺中市工廠登記快照`;
+      document.querySelector('#jobs-card .scope').textContent = `${data.scenario.district}｜台灣就業通公開職缺`;
+      ['factory-value', 'jobs-value', 'company-value', 'wage-value'].forEach(id => $(id).classList.remove('unavailable'));
+      if (f.available) {
+        text('factory-value', `${number(f.factory_count)} 家`);
+        text('factory-details', `依 ${number(f.category_count)} 個產業類別列加總；其中 ${f.top_industries[0]?.industry || '—'} ${number(f.top_industries[0]?.factories || 0)} 家。`);
+        text('factory-meta', `資料期別：${f.period}・行政區：${f.district}`); limits('factory-limits', f.limitations);
+      } else { unavailable('factory-value', 'factory-meta', f); text('factory-details', ''); limits('factory-limits', []); }
+      if (j.available) {
+        text('jobs-value', `${number(j.vacancy_postings)} 筆`);
+        text('jobs-details', `刊登的需求人數加總 ${number(j.requested_workers)} 人、${number(j.distinct_companies)} 家公司。這不是缺工人數。`);
+        text('jobs-meta', `快照：${j.snapshot_date}・職務文字關鍵詞篩選・涵蓋狀態：${j.coverage_status === 'QUERY_LIMIT_REACHED' ? '官方查詢達上限' : '本次查詢未達上限'}`);
+        limits('jobs-limits', j.evidence?.limitations);
+      } else { unavailable('jobs-value', 'jobs-meta', j); text('jobs-details', ''); limits('jobs-limits', []); }
+      if (c.available) {
+        text('company-value', `${number(c.latest_new_companies)} 家`);
+        text('company-meta', `資料期別：${c.latest_month}・地域：臺中市全市・完整年增率：${c.complete_window_change_pct == null ? '缺月，不計算' : c.complete_window_change_pct + '%'}`);
+        limits('company-limits', c.evidence?.limitations);
+      } else { unavailable('company-value', 'company-meta', c); limits('company-limits', []); }
+      if (w.available) {
+        text('wage-value', `NT$ ${number(w.average_insured_salary)}`);
+        text('wage-meta', `資料期別：民國 ${w.data_period.slice(0, 3)} 年 ${w.data_period.slice(3)} 月・地域：臺中市全市`);
+        limits('wage-limits', w.evidence?.limitations);
+      } else { unavailable('wage-value', 'wage-meta', w); limits('wage-limits', []); }
+      $('results').hidden = false; $('status').classList.remove('error');
+      text('status', data.status === 'ready' ? '已讀取四項已匯入的官方資料。' : '部分資料目前不可用；缺少的欄位已明確標示，沒有補成 0。');
+    }
+    async function load() {
+      const button = $('submit'); button.disabled = true; text('status', '正在讀取已匯入的官方資料…'); $('status').classList.remove('error');
+      const params = new URLSearchParams({ district: $('district').value, planned_hires: $('planned_hires').value });
+      try {
+        const response = await fetch(`/api/demo/expansion?${params}`);
+        if (!response.ok) throw new Error(`查詢失敗（HTTP ${response.status}）`);
+        present(await response.json());
+      } catch (error) {
+        $('status').classList.add('error'); text('status', `${error.message}，請確認輸入或稍後重試。`); $('results').hidden = true;
+      } finally { button.disabled = false; }
+    }
+    $('query-form').addEventListener('submit', e => { e.preventDefault(); if (e.target.reportValidity()) load(); });
+    load();
+  })();
+  </script>
+</body>
+</html>
