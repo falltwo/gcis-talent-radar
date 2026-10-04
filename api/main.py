@@ -50,11 +50,35 @@ class ChatRequest(BaseModel):
 class VerifyRequest(BaseModel):
     query: str
 
+
+DATASET_REFRESH_QUERIES = {
+    "companies": "SELECT MAX(updated_at) AS refreshed_at FROM companies",
+    "industry_dynamics_mart": "SELECT MAX(updated_at) AS refreshed_at FROM industry_dynamics_mart",
+    "department_indicators_mart": "SELECT MAX(updated_at) AS refreshed_at FROM department_indicators_mart",
+    "industry_momentum_mart": "SELECT MAX(updated_at) AS refreshed_at FROM industry_momentum_mart",
+    "talent_supply_mart": "SELECT MAX(updated_at) AS refreshed_at FROM talent_supply_mart",
+    "mismatch_signal_mart": "SELECT MAX(updated_at) AS refreshed_at FROM mismatch_signal_mart",
+    "official_job_vacancies": "SELECT MAX(fetched_at) AS refreshed_at FROM official_job_vacancies",
+    "gcis_new_company_monthly": "SELECT MAX(loaded_at) AS refreshed_at FROM gcis_new_company_monthly",
+    "labor_insurance_baseline": "SELECT MAX(loaded_at) AS refreshed_at FROM labor_insurance_baseline",
+}
+
+
+def get_dataset_refresh_times() -> Dict[str, Optional[str]]:
+    """Return recorded source/mart timestamps without inventing missing dates."""
+    refresh_times: Dict[str, Optional[str]] = {}
+    for dataset, sql in DATASET_REFRESH_QUERIES.items():
+        row = db.fetch_one(sql)
+        refresh_times[dataset] = row.get("refreshed_at") if row else None
+    return refresh_times
+
 # ----------------- API Endpoints -----------------
 
 @app.get("/api/overview")
 def get_overview() -> Dict[str, Any]:
     """Page 1: Overview Dashboard Metrics"""
+    dataset_refresh_times = get_dataset_refresh_times()
+    recorded_refresh_times = [value for value in dataset_refresh_times.values() if value]
     comp_count = db.fetch_all("SELECT COUNT(*) as c FROM companies")[0]["c"]
     dept_count = db.fetch_all("SELECT COUNT(DISTINCT department_name) as c FROM department_indicators_mart WHERE academic_year = 113")[0]["c"]
     school_count = db.fetch_all("SELECT COUNT(DISTINCT institution_name) as c FROM department_indicators_mart WHERE academic_year = 113")[0]["c"]
@@ -76,7 +100,9 @@ def get_overview() -> Dict[str, Any]:
         "monitored_departments_count": int(dept_count),
         "partner_universities_count": int(school_count),
         "data_period": "產業登記：109-113年 ｜ 高教推估：109-117學年度",
-        "last_updated": "2026-10-01",
+        "last_updated": max(recorded_refresh_times) if recorded_refresh_times else None,
+        "last_updated_scope": "latest recorded source fetch or mart build timestamp",
+        "dataset_refresh_times": dataset_refresh_times,
         "high_warning_count": len(high_warnings),
         "medium_warning_count": len(med_warnings),
         "mismatch_signals": mismatch_rows

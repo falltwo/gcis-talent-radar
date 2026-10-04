@@ -1,6 +1,8 @@
 import unittest
+from pathlib import Path
 
 from database.db_manager import db
+from engine.evidence_engine import build_evidence_object
 from engine.official_labor_market import (
     get_gcis_new_company_trend,
     get_regional_job_demand,
@@ -59,6 +61,66 @@ class OfficialDataToolTests(unittest.TestCase):
             )
         )
         self.assertNotIn("104_GCIS_LINKED", schema)
+
+    def test_evidence_uses_recorded_timestamp_without_today_fallback(self):
+        evidence = build_evidence_object(
+            intent="TEST",
+            indicator_name="timestamp contract",
+            calculation_steps=[],
+            source_tables=["test_table"],
+            official_sources=["test source"],
+        )
+        self.assertIsNone(evidence["last_updated"])
+        self.assertEqual(evidence["timestamp_status"], "NOT_RECORDED")
+
+        recorded = "2026-10-05T00:00:00+08:00"
+        evidence = build_evidence_object(
+            intent="TEST",
+            indicator_name="timestamp contract",
+            calculation_steps=[],
+            source_tables=["test_table"],
+            official_sources=["test source"],
+            fetched_at=recorded,
+        )
+        self.assertEqual(evidence["last_updated"], recorded)
+        self.assertEqual(evidence["timestamp_status"], "SOURCE_TIMESTAMP")
+
+    def test_official_tools_report_database_refresh_timestamps(self):
+        job = get_regional_job_demand("大雅區", "IND_MFG")
+        expected_job = db.fetch_one(
+            "SELECT MAX(fetched_at) AS refreshed_at FROM official_job_fetch_audit"
+        )["refreshed_at"]
+        self.assertEqual(job["evidence"]["last_updated"], expected_job)
+
+        company = get_gcis_new_company_trend("IND_MFG", months=6)
+        expected_company = db.fetch_one(
+            "SELECT MAX(loaded_at) AS refreshed_at FROM gcis_new_company_monthly"
+        )["refreshed_at"]
+        self.assertEqual(company["evidence"]["last_updated"], expected_company)
+
+        wage = get_wage_baseline("IND_MFG")
+        expected_wage = db.fetch_one(
+            "SELECT MAX(loaded_at) AS refreshed_at FROM labor_insurance_baseline"
+        )["refreshed_at"]
+        self.assertEqual(wage["evidence"]["last_updated"], expected_wage)
+
+    def test_executable_code_has_no_hard_coded_refresh_date(self):
+        root = Path(__file__).resolve().parent.parent
+        forbidden = "2026" + "-10-01"
+        source_roots = (
+            root / "api",
+            root / "agent",
+            root / "engine",
+            root / "etl",
+            root / "tests",
+        )
+        offenders = [
+            str(path.relative_to(root))
+            for source_root in source_roots
+            for path in source_root.rglob("*.py")
+            if forbidden in path.read_text(encoding="utf-8")
+        ]
+        self.assertEqual(offenders, [])
 
 
 if __name__ == "__main__":

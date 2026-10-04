@@ -4,7 +4,6 @@ Builds structured evidence objects guaranteeing complete audit trails:
 Result -> Indicator -> Calculation -> Processed Table -> Source Data
 """
 import sys
-from datetime import date
 from pathlib import Path
 from typing import Dict, List, Any, Optional
 
@@ -35,7 +34,10 @@ def build_evidence_object(
         "calculation": calculation_steps,
         "processed_tables": source_tables,
         "source": official_sources,
-        "last_updated": fetched_at or date.today().isoformat(),
+        # Never substitute the current date for an unknown source timestamp.
+        # A missing value is explicit and auditable; a guessed value is not.
+        "last_updated": fetched_at,
+        "timestamp_status": "SOURCE_TIMESTAMP" if fetched_at else "NOT_RECORDED",
         "verification_status": verification_status
     }
     if source_urls:
