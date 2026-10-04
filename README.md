@@ -1,4 +1,4 @@
-> **InnoServe 2026 改造版**：產品定位見 [docs/01-產品定位.md](docs/01-產品定位.md)，資料集清單見 [docs/02-資料集.md](docs/02-資料集.md)。以下為原始專案說明，待改寫。
+> **InnoServe 2026 改造版**：產品定位見 [docs/01-產品定位.md](docs/01-產品定位.md)，資料集清單見 [docs/02-資料集.md](docs/02-資料集.md)，**第三階段資料交接先看 [docs/03-資料集審查.md](docs/03-資料集審查.md)**。以下為原始專案說明，部分舊資料和 AI 敘述未經改造版驗證，不能當成已完成功能。
 
 # 區域產業 × 高教人才供需錯配預警系統 (System Specification v1.0)
 ## Regional Industry–Talent Structural Mismatch Early-Warning System
