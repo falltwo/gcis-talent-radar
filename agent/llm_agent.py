@@ -326,7 +326,8 @@ class OpenRouterAgent:
                 structured = tool_results[0].get("data", {}) if len(tool_results) == 1 else {"tool_results": tool_results}
                 verification = ({"status": "NOT_RUN", "accuracy_pct": None,
                                  "audit_details": ["工具明確回報無資料；回傳固定無資料說明，未驗證模型敘述。"]}
-                                if unavailable else verify_explanation_numbers(narrative, structured))
+                                if unavailable else verify_explanation_numbers(
+                                    narrative, structured, user_query=query))
                 evidence = _combine_evidence(tool_results)
                 evidence["verification_status"] = verification["status"]
                 tool_names = list(dict.fromkeys(r["tool"] for r in tool_results))
