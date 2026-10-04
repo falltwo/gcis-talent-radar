@@ -7,6 +7,7 @@ Single Company Verification Tool:
 """
 import sys
 import re
+from datetime import datetime
 import requests
 import urllib3
 from pathlib import Path
@@ -29,6 +30,7 @@ def verify_company_live(query: str) -> Dict[str, Any]:
     Verifies a single company by tax ID or name.
     Strictly deterministic (P1).
     """
+    checked_at = datetime.now().astimezone().isoformat(timespec="seconds")
     q = (query or "").strip()
     norm_id = normalize_company_id(q)
 
@@ -46,7 +48,9 @@ def verify_company_live(query: str) -> Dict[str, Any]:
                 "address": local_row["address"],
                 "industry_id": local_row["industry_id"],
                 "source": "GCIS_LOCAL_BENCHMARK",
-                "verified_via": "LOCAL_DB"
+                "verified_via": "LOCAL_DB",
+                "source_updated_at": local_row.get("updated_at"),
+                "checked_at": checked_at,
             }
     else:
         norm_name, _ = normalize_company_name(q)
@@ -65,7 +69,9 @@ def verify_company_live(query: str) -> Dict[str, Any]:
                 "address": local_row["address"],
                 "industry_id": local_row["industry_id"],
                 "source": "GCIS_LOCAL_BENCHMARK",
-                "verified_via": "LOCAL_DB"
+                "verified_via": "LOCAL_DB",
+                "source_updated_at": local_row.get("updated_at"),
+                "checked_at": checked_at,
             }
 
     # 2. Query Live GCIS API
@@ -90,7 +96,8 @@ def verify_company_live(query: str) -> Dict[str, Any]:
                     "district": "西屯區" if "西屯" in str(best.get("Company_Location")) else "台中市",
                     "address": best.get("Company_Location", ""),
                     "source": "GCIS_LIVE_API_OFFICIAL",
-                    "verified_via": "LIVE_API"
+                    "verified_via": "LIVE_API",
+                    "fetched_at": checked_at,
                 }
     except Exception as e:
         # Fallback if API timeout or SSL network block
@@ -100,7 +107,8 @@ def verify_company_live(query: str) -> Dict[str, Any]:
         "verified": False,
         "query": query,
         "message": f"商工登記查無此公司（查詢輸入：{query}）",
-        "source": "GCIS_VERIFICATION_ENGINE"
+        "source": "GCIS_VERIFICATION_ENGINE",
+        "checked_at": checked_at,
     }
 
 if __name__ == "__main__":

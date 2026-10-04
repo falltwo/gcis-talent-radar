@@ -22,6 +22,7 @@ SYSTEM_PROMPT = """你是台中製造業與人才資料助理。使用繁體中�
 - 人口推估表來自 repo 內寫定的資料列，沒有由這次查詢重新驗證原始來源。
 - 系所／人才供給資料取自 repo 內 CSV 與計算表；除非工具佐證明確指出，不得聲稱已驗證最新官方資料。
 - 公司查核只有 verified_via=LIVE_API 時才可以稱為即時官方 API 查核成功。LOCAL_DB 樣本不得說成即時或官方驗證；如果來源標記為104_GCIS_LINKED或GCIS_BENCHMARK，必須說資料未核實。
+- 官方資料優先使用 get_regional_job_demand（當期職缺快照）、get_gcis_new_company_trend（全市公司新設趨勢）、get_wage_baseline（全市投保薪資）。遵守 evidence.limitations：職缺不等於缺工、新設不等於存量或招募需求、投保薪資不等於實領薪資；不可把全市或行業大類資料下推到行政區或細產業。
 - 目前沒有工具提供按行政區與職類的歷史職缺、實際錄取結果或企業招募成敗。因此不能預測某家公司未來能招到幾人，也不能給出該公司的缺工機率。可說明目前能查到的資料及限制。
 - 問及性別、年齡等歧視性招募條件時，拒絕提供歧視建議，改說明公平招募原則。
 
@@ -49,6 +50,18 @@ INDUSTRIES = ["", *TARGET_INDUSTRIES.keys()]
 DISTRICTS = sorted(TAICHUNG_DISTRICTS)
 YEARS = sorted(set(HISTORICAL_YEARS))
 TOOLS = [
+    _function_tool("get_regional_job_demand", "查詢台灣就業通台中當期可觀測職缺與需求人數，可按行政區、職務文字篩選。不是完整缺工統計或歷史預測。", {
+        "district": {"type": "string", "enum": ["", *DISTRICTS], "description": "臺中行政區；全市傳空字串。"},
+        "industry_id": {"type": "string", "enum": INDUSTRIES, "description": "產業對應的職務關鍵詞篩選，非雇主正式行業；全部傳空字串。"},
+        "occupation_keyword": {"type": "string", "description": "職務或職類關鍵詞；不篩選傳空字串。"},
+    }),
+    _function_tool("get_gcis_new_company_trend", "查詢 GCIS 台中全市按行業大類的新設公司月趨勢；不是行政區公司存量或缺工人數。", {
+        "industry_id": {"type": "string", "enum": list(TARGET_INDUSTRIES), "description": "指定目標產業；製造業為 IND_MFG，細產業僅提供官方大類代理。"},
+        "months": {"type": "integer", "minimum": 1, "maximum": 180, "description": "回傳最近幾筆月資料，通常 36；缺月不補零。"},
+    }),
+    _function_tool("get_wage_baseline", "查詢台中全市行業大類最新年末勞保投保人數、單位數及平均投保薪資；不是實領薪資或職缺開薪。", {
+        "industry_id": {"type": "string", "enum": list(TARGET_INDUSTRIES), "description": "指定目標產業；製造業為 IND_MFG，細產業僅提供官方大類基線。"},
+    }),
     _function_tool("get_industry_momentum", "查詢產業新設與資本動能；目前來源表含模擬資料。未指定產業時查全部七類。", {
         "industry_id": {"type": "string", "enum": INDUSTRIES, "description": "目標產業代碼；全部產業傳空字串。"},
     }),
@@ -73,6 +86,9 @@ TOOLS = [
 ]
 
 ROUTES = {
+    "get_regional_job_demand": ("JOB_DEMAND_QUERY", lambda a: a),
+    "get_gcis_new_company_trend": ("COMPANY_TREND_QUERY", lambda a: a),
+    "get_wage_baseline": ("WAGE_QUERY", lambda a: a),
     "get_industry_momentum": ("INDUSTRY_QUERY", lambda a: {"industry_id": a["industry_id"]}),
     "get_mismatch_signals": ("MISMATCH_QUERY", lambda a: {"industry_id": a["industry_id"]}),
     "get_talent_supply": ("SUPPLY_QUERY", lambda a: {"industry_id": a["industry_id"]}),
@@ -126,7 +142,7 @@ def _post_chat(messages: List[Dict[str, Any]]) -> Dict[str, Any]:
 
 
 def _limitations(name: str, result: Dict[str, Any]) -> List[str]:
-    limits = []
+    limits = list((result.get("evidence") or {}).get("limitations") or [])
     if name in {"get_industry_momentum", "get_mismatch_signals", "get_district_industry"}:
         limits.append("本 repo 的產業動能資料表含模擬值；不是官方實測趨勢。")
     if name == "get_demographic_projection":
@@ -167,6 +183,10 @@ def _run_tool(name: str, raw_arguments: str) -> Dict[str, Any]:
                 raise OpenRouterError("模型工具數字參數格式錯誤。")
             if "enum" in property_schema and value not in property_schema["enum"]:
                 raise OpenRouterError("模型工具參數不在允許的選項內。")
+            if ("minimum" in property_schema and value < property_schema["minimum"]) or (
+                "maximum" in property_schema and value > property_schema["maximum"]
+            ):
+                raise OpenRouterError("模型工具數字參數超過允許範圍。")
     if name == "get_department_projection" and not (args["institution_name"] or args["department_name"]):
         return {"tool": name, "data": [], "evidence": {}, "limitations": ["請提供學校名稱或系所名稱。"]}
 
@@ -187,6 +207,7 @@ def _citation_block(tool_results: List[Dict[str, Any]]) -> str:
         places = [evidence.get("geography"), evidence.get("data_period")]
         limitations = result.get("limitations") or []
         description = "；".join(str(v) for v in places if v)
+        sources = list(sources) + list(evidence.get("source_urls") or [])
         for source in sources or tables or [result.get("tool", "資料表")]:
             line = f"- {source}"
             if description:
@@ -306,15 +327,7 @@ class OpenRouterAgent:
 def _intent_for(names: List[str]) -> str:
     if len(names) != 1:
         return "MULTI_TOOL_QUERY" if names else "GENERAL_RESPONSE"
-    return {
-        "get_industry_momentum": "INDUSTRY_QUERY",
-        "get_mismatch_signals": "MISMATCH_QUERY",
-        "get_talent_supply": "SUPPLY_QUERY",
-        "get_district_industry": "DISTRICT_QUERY",
-        "get_demographic_projection": "DEMOGRAPHIC_QUERY",
-        "get_department_projection": "DEPARTMENT_QUERY",
-        "verify_company": "COMPANY_VERIFY",
-    }[names[0]]
+    return ROUTES[names[0]][0]
 
 
 def _combine_evidence(results: List[Dict[str, Any]]) -> Dict[str, Any]:
@@ -322,18 +335,23 @@ def _combine_evidence(results: List[Dict[str, Any]]) -> Dict[str, Any]:
         evidence = dict(results[0].get("evidence") or {})
         evidence["quality_limitations"] = results[0].get("limitations", [])
         return evidence
-    sources, calculations, tables, warnings = [], [], [], []
+    sources, calculations, tables, warnings, urls, dataset_ids = [], [], [], [], [], []
     for result in results:
         evidence = result.get("evidence") or {}
         sources.extend(evidence.get("source") or evidence.get("official_sources") or [])
         calculations.extend(evidence.get("calculation") or evidence.get("calculation_steps") or [])
         tables.extend(evidence.get("processed_tables") or evidence.get("source_tables") or [])
         warnings.extend(result.get("limitations") or [])
+        urls.extend(evidence.get("source_urls") or [])
+        dataset_ids.extend(evidence.get("dataset_ids") or [])
     return {
         "source": list(dict.fromkeys(sources)),
         "calculation": list(dict.fromkeys(calculations)),
         "processed_tables": list(dict.fromkeys(tables)),
         "quality_limitations": list(dict.fromkeys(warnings)),
+        "source_urls": list(dict.fromkeys(urls)),
+        "dataset_ids": list(dict.fromkeys(dataset_ids)),
+        "tool_evidence": [{"tool": r["tool"], "evidence": r.get("evidence") or {}} for r in results],
     }
 
 

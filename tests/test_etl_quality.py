@@ -14,6 +14,7 @@ Generates ETL Quality Report (JSON and Markdown).
 """
 import sys
 import json
+from datetime import datetime
 from pathlib import Path
 from typing import Dict, Any, List
 
@@ -25,7 +26,7 @@ from database.db_manager import db
 def run_data_quality_audit() -> Dict[str, Any]:
     print("Running Section 31 ETL Data Quality Tests...")
     report = {
-        "timestamp": "2026-10-03T19:30:00",
+        "timestamp": datetime.now().astimezone().isoformat(timespec="seconds"),
         "total_checks": 8,
         "passed_checks": 0,
         "failed_checks": 0,
@@ -139,7 +140,7 @@ def run_data_quality_audit() -> Dict[str, Any]:
     out_md = REPORT_DIR / "ETL_Quality_Report.md"
     lines = [
         "# ETL Data Quality Audit Report (System Spec Section 31)",
-        f"**Audit Time**: {report['timestamp']}  ",
+        f"**Audit Time**: {report['timestamp']}",
         f"**Result**: {'🟢 ALL PASS' if report['all_passed'] else '🔴 FAILED'} ({passes}/{len(report['details'])} Passed)\n",
         "| Check ID | Verification Item | Status | Details |",
         "|:---:|:---|:---:|:---|"

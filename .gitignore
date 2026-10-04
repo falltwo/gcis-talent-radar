@@ -59,3 +59,6 @@ TradeDNA*
 spec-presentation.html
 agent/skills/
 data/skills/
+
+# 真實資料 ETL：稅籍精簡檔約 200 萬列，可由 etl.sources.gcis_registry.fetch_tax_registry() 重新產生
+data/raw/tax_registry/
