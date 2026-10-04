@@ -81,15 +81,13 @@ python -m forecast.run_real --series jobmarket --horizon 12 --step 3 --chronos
 python -m forecast.run --csv data/processed/某序列.csv --id tc_mfg_new --name "臺中製造業新設家數" --freq M --horizon 36 --step 3 --source "經濟部商工登記 公司設立登記清冊（月份）"
 ```
 
-CSV 需要 `period`、`value` 兩欄，期別要連續；缺期必須先在 ETL 補齊或標記，引擎會直接拒收不連續的序列。
+CSV 需要 `period`、`value` 兩欄，期別要連續；缺期須先回到原始來源查證，不能自行補 0，引擎會拒收不連續的序列。
 
 加上 `--chronos` 可以把 Chronos 一起比較，但需要先安裝 `chronos-forecasting` 和 `torch`。第一次執行會從 Hugging Face 下載模型（chronos-bolt-small 約 190 MB）。
 
-## 預定要預測的序列（資料到位後接上）
+## 尚未接入回測的序列
 
 | 序列 | 頻率 | 長度 | 預測期 | 來源（見 DATA_CATALOG） |
 |---|---|---|---|---|
-| 臺中製造業（中類）新設、解散公司家數 | 月 | 2013/02 起，約 160 期 | 36 個月 | D1 + D3 |
-| 臺中市新登記求才人數、按職業求供倍數 | 季 | 109Q1 起，約 26 期（111 年有範圍斷點） | 8 季 | A1 |
 | 臺中各區 × 中類工廠家數 | 月 | 2024-08 起，約 18 期 | 太短，只做描述不做預測 | C1 |
 | 臺中製造業勞保投保人數 | 年 | 107–114 年，8 期 | 太短，只當控制總數 | B1 |
