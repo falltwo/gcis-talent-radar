@@ -302,7 +302,7 @@ class OpenRouterAgent:
                     }
                 citations = _citation_block(tool_results)
                 structured = tool_results[0].get("data", {}) if len(tool_results) == 1 else {"tool_results": tool_results}
-                verification = verify_explanation_numbers(narrative, structured)
+                verification = verify_explanation_numbers(narrative, structured, user_query=query)
                 evidence = _combine_evidence(tool_results)
                 evidence["verification_status"] = verification["status"]
                 tool_names = list(dict.fromkeys(r["tool"] for r in tool_results))

@@ -62,6 +62,13 @@ _USER_PREFIX_RE = re.compile(
     r"(?:預計|計[畫劃]|想|要|希望)(?:招募|招|招聘|聘用)的?"
     r")(?:為|是|[:：])?\s*(?:招募|招)?\s*$"
 )
+_USER_QUERY_PLAN_RE = re.compile(
+    r"(?:我們公司|本公司|我們(?!公司)|我(?!們)|假設|如果我們|如果我|若我們|若我)"
+    r"(?!\s*(?:想知道|想問|想查|想了解|想找|想搜尋|要知道|要問|要查|要了解|要找|要搜尋|需要知道|需要查))"
+    r"[^，。；！？?\d]{0,16}"
+    r"(?:預計|計[畫劃]|規劃|打算|希望|準備|要|需要|需求|招募|招聘|聘用|預算|目標|想(?=招募|招|聘用))"
+    r"[^，。；！？?\d]{0,12}$"
+)
 
 
 class _Number(NamedTuple):
@@ -197,6 +204,18 @@ def _is_user_condition(text, number):
     )
 
 
+def _stated_user_condition(query, number, query_numbers):
+    """A matching numeral alone does not prove that the user stated a plan."""
+    if query is None:
+        return False
+    return any(
+        number.value == item.value
+        and number.unit.replace("萬", "") == item.unit.replace("萬", "")
+        and _USER_QUERY_PLAN_RE.search(_clause_prefix(query, item.start)) is not None
+        for item in query_numbers
+    )
+
+
 def _matches_rounding(text, number, fields):
     if number.unit not in {"元", "萬元"}:
         return False
@@ -239,15 +258,15 @@ def verify_explanation_numbers(
     fields = list(_fields(structured_data, excluded=_METRIC_EXCLUDED))
     query_nums = list(_number_tokens(user_query, _metadata_tokens(user_query))) if user_query is not None else None
     conditions, matched, unmatched = [], 0, []
+    unverified_conditions = []
     for number in numbers:
-        if _is_user_condition(explanation_text, number) and (
-            query_nums is None or any(
-                number.value == query.value
-                and number.unit.replace("萬", "") == query.unit.replace("萬", "")
-                for query in query_nums
-            )
-        ):
-            conditions.append(float(number.value))
+        if _is_user_condition(explanation_text, number):
+            if _stated_user_condition(user_query, number, query_nums or []):
+                conditions.append(float(number.value))
+            else:
+                # A tool with the same value cannot prove what the user planned.
+                unverified_conditions.append(float(number.value))
+                unmatched.append(float(number.value))
             continue
         if any(abs(float(number.value) - truth) <= tolerance for truth in truth_nums) or _matches_rounding(explanation_text, number, fields):
             matched += 1
@@ -270,8 +289,9 @@ def verify_explanation_numbers(
     matched += metadata_matched
     details = []
     if conditions:
-        provenance = "已比對原始提問數值" if user_query is not None else "未核對原始提問"
-        details.append(f"{len(conditions)} 個明示的使用者條件另列為假設（{provenance}），不計入工具觀測值符合率。")
+        details.append(f"{len(conditions)} 個明示的使用者條件已比對原始提問，另列為假設，不計入工具觀測值符合率。")
+    if unverified_conditions:
+        details.append(f"{len(unverified_conditions)} 個聲稱來自使用者的條件未在原始提問中確認，不能用工具數值代替來源。")
 
     if not structured_data or not (truth_nums or dates or identifiers or urls):
         status, accuracy, matched = "FAILED", 0.0 if total else None, 0
