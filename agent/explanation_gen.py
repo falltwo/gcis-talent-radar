@@ -90,7 +90,7 @@ def generate_explanation(intent: str, structured_data: Dict[str, Any]) -> str:
         else:
             for item in data.get("industries", []):
                 lines.append(f"• {item['industry_name']}：營運中工廠 {item['factory_count']:,} 家")
-        lines.append("資料來源：經濟部工廠校正及營運調查。")
+        lines.append("資料來源：經濟部工廠校正及營運調查查詢頁；目前三列為待獨立核對的轉錄樣本。")
         lines.append("本結果只涵蓋已匯入行業；工廠家數不等於公司總數、徵才需求或缺工人數。")
         return "\n".join(lines)
 

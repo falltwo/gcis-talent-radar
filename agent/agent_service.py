@@ -88,8 +88,8 @@ class EarlyWarningAgentService:
         # Step 5: Agent 05 Numeric Verification Engine
         verification = verify_explanation_numbers(explanation, structured_data)
 
-        # Update evidence with verification status
-        evidence["verification_status"] = verification["status"]
+        # Numeric agreement of the generated answer does not verify the source.
+        evidence["numeric_verification_status"] = verification["status"]
 
         return {
             "query": q,
