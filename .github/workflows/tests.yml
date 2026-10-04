@@ -1,0 +1,26 @@
+name: Complete test suite
+
+
+on:
+  pull_request:
+  push:
+    branches: [main, after-etl]
+
+
+permissions:
+  contents: read
+
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install test dependencies
+        run: python -m pip install pytest pandas numpy requests xlrd openpyxl statsmodels fastapi uvicorn
+      - name: Run all tests, including GCIS recovery regressions
+        run: python -m pytest tests -q
+

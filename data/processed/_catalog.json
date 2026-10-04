@@ -127,16 +127,68 @@
       "GCIS 公司登記現有家數及實收資本額－按行業別及縣市別（oid=ACA82CEE-1C9D-47F8-9E5F-1DE39D5EEAF9）"
     ],
     "notes": [
-      "new 來源缺月：['2025-08', '2025-09']",
-      "dissolved 來源缺月：['2025-08', '2025-09']",
-      "existing 來源缺月：['2014-11', '2025-08', '2025-09']",
-      "來源檔損毀（縣市名稱為亂碼，當作缺月）：['existing 2014-11']",
+      "官方經濟部公司登記月報補回：['2014-11', '2025-08', '2025-09']（official_monthly_recovered，非推估）",
       "2012-06 以前只有孤立年底月份（isolated_before_series），建模排除",
       "行業名稱已去除全形分號與空白（例：公共行政及國防；強制性社會安全 → 公共行政及國防強制性社會安全）",
       "製造業異常候選：[{'metric': 'dissolved', 'year_month': '2019-05', 'companies': 135.0}, {'metric': 'dissolved', 'year_month': '2019-06', 'companies': 134.0}, {'metric': 'new', 'year_month': '2022-03', 'companies': 233.0}]",
-      "資本額單位：新台幣百萬元"
+      "資本額單位：新台幣百萬元",
+      "new 目前缺月：無",
+      "dissolved 目前缺月：無",
+      "existing 目前缺月：無",
+      "2014-11 現有家數、2025-08/09：經濟部官方月報觀測值補回，非統計插補；詳見 official_recovery"
     ],
-    "built_at": "2026-10-05T00:20:37"
+    "built_at": "2026-10-05T02:28:51",
+    "official_recovery": {
+      "method": "official_observations_recovered",
+      "is_imputed": false,
+      "recovered_rows": 147,
+      "remaining_missing_in_recovered_months": 0,
+      "cross_checks": [
+        {
+          "month": "2025-07",
+          "matched_rows": 63,
+          "counts_match": true,
+          "capital_match": true
+        },
+        {
+          "month": "2025-10",
+          "matched_rows": 63,
+          "counts_match": true,
+          "capital_match": true
+        },
+        {
+          "month": "2014-11",
+          "matched_rows": 42,
+          "metrics": [
+            "new",
+            "dissolved"
+          ],
+          "counts_match": true,
+          "capital_match": true
+        }
+      ],
+      "sources": [
+        {
+          "month": "2014-11",
+          "url": "https://mnscdn.moea.gov.tw/MNS/DOS/content/wHandMenuFile.ashx?file_id=866",
+          "file": "data/raw/moea_company_monthly/2014-11.xls",
+          "sha256": "c8112f2f27df4f714c1db947a83628dc26b00bd7d68b2adadef08193469463de"
+        },
+        {
+          "month": "2025-08",
+          "url": "https://mnscdn.moea.gov.tw/MNS/DOS/content/wHandMenuFile.ashx?file_id=37479",
+          "file": "data/raw/moea_company_monthly/2025-08.xls",
+          "sha256": "9bb483889500f93f969cc216f42507d04519bab1e19bb9eb3ff7066b88b4dd84"
+        },
+        {
+          "month": "2025-09",
+          "url": "https://mnscdn.moea.gov.tw/MNS/DOS/content/wHandMenuFile.ashx?file_id=37652",
+          "file": "data/raw/moea_company_monthly/2025-09.xls",
+          "sha256": "1693936d5275a19b16fffdcad0b8b82ab978d21e5cf3f41ddff371247cffda86"
+        }
+      ],
+      "industry_aliases_note": "官方月報的營建工程業、出版影音及資通訊業、教育業使用既有資料集名稱作別名對照；不宣稱完整跨期分類不變。"
+    }
   },
   "tc_labor_insurance_annual": {
     "file": "tc_labor_insurance_annual.csv",

@@ -117,6 +117,16 @@ def transform():
                                         "quality_flag": "missing_at_source"}))
     if filled:
         df = pd.concat([df, *filled], ignore_index=True)
+    # 官方月報可作為 GCIS 下載目錄漏月的備援；不做統計插補。
+    from etl.sources.moea_company_monthly import URLS, RECOVERY_METRICS, parse_workbook, reconcile_official_gaps
+    recovered_months = []
+    for ym in URLS:
+        workbook = RAW_DATA_DIR / "moea_company_monthly" / f"{ym}.xls"
+        if workbook.exists():
+            had_gaps = ((df.year_month == ym) & df.companies.isna()).any()
+            df = reconcile_official_gaps(df, parse_workbook(workbook, ym, RECOVERY_METRICS[ym]))
+            if had_gaps:
+                recovered_months.append(ym)
     for metric in DATASETS:
         miss = sorted(df.loc[(df.metric == metric) & (df.quality_flag == "missing_at_source"), "year_month"].unique())
         gaps_note.append(f"{metric} 來源缺月：{miss or '無'}")
@@ -131,6 +141,7 @@ def transform():
 
     out_mfg = df[(df.industry == "製造業") & (df.quality_flag == "outlier_candidate")]
     notes = gaps_note + [
+        f"官方經濟部公司登記月報補回：{recovered_months}（official_monthly_recovered，非推估）",
         f"來源檔損毀（縣市名稱為亂碼，當作缺月）：{CORRUPTED or '無'}",
         "2012-06 以前只有孤立年底月份（isolated_before_series），建模排除",
         "行業名稱已去除全形分號與空白（例：公共行政及國防；強制性社會安全 → 公共行政及國防強制性社會安全）",

@@ -29,10 +29,12 @@ def test_no_pii_and_unique_keys(name):
         assert not df.duplicated(KEYS[name]).any()
 
 
-def test_gcis_missing_months_stay_missing():
+def test_gcis_missing_months_recovered_from_official_source():
     df = load("tc_company_by_industry_monthly")
     mfg = df[(df.industry == "製造業") & (df.metric == "new")].set_index("year_month")
-    assert pd.isna(mfg.loc["2025-08", "companies"]) and pd.isna(mfg.loc["2025-09", "companies"])
+    assert mfg.loc["2025-08", "companies"] == 91
+    assert mfg.loc["2025-09", "companies"] == 75
+    assert (mfg.loc[["2025-08", "2025-09"], "quality_flag"] == "official_monthly_recovered").all()
     assert mfg.loc["2026-08", "companies"] == 75          # 組員交接文件記載值
     assert (mfg.loc["2010-12", "quality_flag"]) == "isolated_before_series"
 
