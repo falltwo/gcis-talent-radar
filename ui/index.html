@@ -1480,7 +1480,7 @@
                 const data = await fetchAgentResponse(q);
 
                 const modelBadge = document.getElementById('home-res-model-badge');
-                modelBadge.innerText = `${data.provider || 'openrouter'} / ${data.model || 'openai/gpt-6-luna'}：${data.status === 'REJECTED' ? '治理閘門拒答' : '已處理問題'}`;
+                modelBadge.innerText = `${data.provider || 'openrouter'} / ${data.model || 'openai/gpt-6-luna'}：${data.status === 'REJECTED' ? '本地治理規則拒答' : '已處理問題'}`;
                 const auditId = data.governance && data.governance.audit_id;
                 const auditBadge = document.getElementById('home-res-audit-id');
                 auditBadge.innerText = auditId ? `稽核 ${auditId.slice(0, 8)}` : '稽核 —';

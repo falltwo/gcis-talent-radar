@@ -1,3 +1,5 @@
+> 治理更新（2026-10-05）：現行範圍檢查是 `agent/keyword_scope_guard.py` 的本地規則，非 AI 模型；欄位、拒答與稽核行為以 [GOVERNANCE.md](GOVERNANCE.md) 為準。下列舊管線、HTTP 403 與時序圖屬原始設計，非現行 API 契約。
+
 # 檔案與資料庫架構規格書 (File & Database Specification v1.0)
 
 > **專案名稱**：區域產業 × 高教人才供需錯配預警系統  
@@ -34,7 +36,7 @@
 │   ├── mismatch_engine.py         # 供需錯配四象限向量強度計算與等級評定
 │   └── evidence_engine.py         # 五級確定性佐證回溯鏈生成器
 ├── agent/                         # 守門型 AI 決策代理人管線
-│   ├── scope_guard.py             # Agent 01: Scope Guard (Jev 守門: 合規範圍檢查)
+│   ├── scope_guard.py             # Agent 01: Scope Guard (KeywordScopeGuard 守門: 合規範圍檢查)
 │   ├── intent_router.py           # Agent 02: Intent Router (8大確定性意圖分流)
 │   ├── tool_router.py             # Agent 03: Tool Router (確定性資料檢索通道)
 │   ├── explanation_generator.py   # Agent 04: Explanation Generator (無幻覺政策文本生成)
@@ -167,7 +169,7 @@
 ### 2.5 守門型 AI 決策代理人管線 (Agent Pipeline)
 
 #### `agent/scope_guard.py`
-- **職責**：Agent 01 - Scope Guard（Jev 守門器）。
+- **職責**：Agent 01 - Scope Guard（KeywordScopeGuard 守門器）。
 - **核心規則**：
   - 檢測問題是否落在台中市產業與高教範疇。
   - 依據 P5 原則拒絕回答「預測未來股價」、「保證就業率」、「非台中行政區」之提問。
@@ -361,7 +363,7 @@
 - **URL**：`GET /api/evidence?industry_id={IND_ID}`
 - **說明**：傳入產業代碼，取得該產業完整的 5 級確定性佐證鏈（公式、中間值、培育系所名單、關聯商工登記樣本）。
 
-### 7. AI 決策代理人智慧問答 (Jev 守門)
+### 7. AI 決策代理人智慧問答 (KeywordScopeGuard 守門)
 - **URL**：`POST /api/agent/query`
 - **Request Body**：
   ```json

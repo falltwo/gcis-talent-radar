@@ -18,7 +18,7 @@ class AuditLogError(RuntimeError):
 def write_agent_audit(
     query: str,
     *,
-    jev: Dict[str, Any],
+    scope_guard: Dict[str, Any],
     prompt_guard: Dict[str, Any],
     outcome: str,
     model_called: bool,
@@ -29,17 +29,19 @@ def write_agent_audit(
     normalized_query = (query or "").strip()
     request_id = str(uuid.uuid4())
     event = {
+        "schema_version": 2,
         "timestamp_utc": datetime.now(timezone.utc).isoformat(),
         "request_id": request_id,
         "query_sha256": hashlib.sha256(normalized_query.encode("utf-8")).hexdigest(),
         "query_char_count": len(normalized_query),
         "configured_model": os.environ.get("OPENROUTER_MODEL", "openai/gpt-6-luna"),
-        "jev": {
-            "decision": jev.get("decision"),
-            "category": jev.get("category"),
-            "confidence": jev.get("confidence"),
-            "model": jev.get("model"),
-            "reason": jev.get("reason"),
+        "scope_guard": {
+            "decision": scope_guard.get("decision"),
+            "category": scope_guard.get("category"),
+            "implementation": scope_guard.get("implementation"),
+            "version": scope_guard.get("version"),
+            "rule_score": scope_guard.get("rule_score"),
+            "reason": scope_guard.get("reason"),
         },
         "prompt_guard": {
             "decision": prompt_guard.get("decision"),

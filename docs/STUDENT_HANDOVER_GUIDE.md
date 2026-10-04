@@ -1,3 +1,5 @@
+> 治理更新（2026-10-05）：現行範圍檢查是 `agent/keyword_scope_guard.py` 的本地規則，非 AI 模型；欄位、拒答與稽核行為以 [GOVERNANCE.md](GOVERNANCE.md) 為準。下列舊管線、HTTP 403 與時序圖屬原始設計，非現行 API 契約。
+
 # 學生交接手冊與競賽衝刺指南 (Student Handover & Competition Sprint Guide)
 
 > **致接手團隊**：  
@@ -20,7 +22,7 @@
 - **少子化精算生源推估**：以**內政部出生統計**為錨點，結合教育部 UDB 歷年系所獨立競爭力，提前 4 年精算 117 年各目標產業人才供給池。
 - **Section 18 跨域系所多權重稀釋**：解決「企管系/資管系重複浮報」難題，採用 Primary (1.0) / Secondary (0.5) 嚴格正規化。
 - **100% 確定性數理引擎 (Deterministic First)**：所有指標、標準化 Z 分數、錯配向量強度均由 Python 精算並存入 SQLite，提供 5 級回溯佐證鏈。
-- **AI 代理人五道守門與反向數值核驗**：Jev 守門（Scope Guard）阻斷越界問題；Numeric Verifier 反向字面比對，文本數字若有一處不符立即阻斷，加蓋綠色 `[數值核驗通過]` 標章。
+- **AI 代理人五道守門與反向數值核驗**：KeywordScopeGuard 守門（Scope Guard）阻斷越界問題；Numeric Verifier 反向字面比對，文本數字若有一處不符立即阻斷，加蓋綠色 `[數值核驗通過]` 標章。
 
 ---
 
@@ -156,7 +158,7 @@ python3 pipeline/run_full_pipeline.py
 > 「我們嚴格貫徹 **P1 (Deterministic First) 與 P2 (LLM Does Not Calculate)** 原則：  
 > 1. 本系統的所有統計指標、Z 分數與四象限向量，**完全由 Python 數理引擎計算後存入 SQLite 資料庫**，LLM 絕對不碰任何計算。  
 > 2. 我們建立了 **Agent 01–05 五道確定性護欄管線**：  
->    - **Jev 守門 (Scope Guard)**：先過濾問題合規性，非台中市或未定預測一律拒絕。  
+>    - **KeywordScopeGuard（本地規則）**：判斷產品主題；擴廠與就業法規可進入後續處理，資料不足時仍須說明限制。
 >    - **數值核驗器 (Numeric Verifier)**：文本生成後，正則表達式會比對文本中出現的每一個數字是否與資料庫 100% 一致。核驗通過才會蓋上綠色徽章，若有偽造直接阻斷。  
 > 3. 我們更通過了 **65 題黃金標準評測集 (Golden Benchmarks) 100% 正確率檢驗**，絕不容許任何數據造假。」
 
@@ -183,7 +185,7 @@ python3 pipeline/run_full_pipeline.py
 | **Chart.js 切換頁籤圖表寬度變 0** | 在 `display: none` 下初始化 Canvas | 系統已在 `ui/index.html` 的 `switchTab` 中加入先顯示頁籤再以 `setTimeout` 渲染圖表的機制；切勿隨意刪除該微延遲 |
 | **資料庫出現 `database is locked`** | SQLite 遭遇同時寫入鎖定 | 請確認只有一個 `pipeline` 腳本在執行；查詢操作一律使用 `WAL` 模式或透過 `db_manager.py` 進行單元操作 |
 | **瀏覽器看到舊版畫面** | 瀏覽器快取了舊版靜態 HTML/JS | 按鍵盤 `Ctrl + Shift + R` (Windows) 或 `Cmd + Shift + R` (Mac) 強制清除快取重新載入 |
-| **API 回傳 403 REJECT** | 使用者輸入了違規提問 (如問未來股票、非台中市問題) | 這是系統內建的 Jev 守門安全防護，屬於預期合規行為，請改問系統範疇內之產業或高教問題 |
+| **API 回傳 403 REJECT** | 使用者輸入了違規提問 (如問未來股票、非台中市問題) | 這是系統內建的 KeywordScopeGuard 守門安全防護，屬於預期合規行為，請改問系統範疇內之產業或高教問題 |
 
 ---
 

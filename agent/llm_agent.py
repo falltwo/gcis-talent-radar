@@ -7,7 +7,7 @@ import requests
 
 from config import HISTORICAL_YEARS, TAICHUNG_DISTRICTS, TARGET_INDUSTRIES
 from agent.audit_log import write_agent_audit
-from agent.jev_model import jev_model
+from agent.keyword_scope_guard import keyword_scope_guard
 from agent.numeric_verifier import verify_explanation_numbers
 from agent.prompt_guard import inspect_hiring_prompt
 from agent.tool_router import execute_tool
@@ -228,13 +228,16 @@ def _citation_block(tool_results: List[Dict[str, Any]]) -> str:
 class OpenRouterAgent:
     def process_query(self, user_query: str) -> Dict[str, Any]:
         query = (user_query or "").strip()
-        jev = jev_model.evaluate(query)
+        scope_guard = keyword_scope_guard.evaluate(query)
         prompt_guard = inspect_hiring_prompt(query)
         if prompt_guard["decision"] == "REJECT":
-            return self._reject_before_model(query, jev, prompt_guard, policy_rejection=True)
-        if jev["decision"] != "ACCEPT":
-            return self._reject_before_model(query, jev, prompt_guard, policy_rejection=False)
+            return self._reject_before_model(query, scope_guard, prompt_guard, policy_rejection=True)
+        if scope_guard["decision"] != "ACCEPT":
+            return self._reject_before_model(query, scope_guard, prompt_guard, policy_rejection=False)
 
+        # Verify audit availability before sending any prompt to the provider.
+        write_agent_audit(query, scope_guard=scope_guard, prompt_guard=prompt_guard,
+                          outcome="REQUEST_ACCEPTED", model_called=False)
         model = os.environ.get("OPENROUTER_MODEL", DEFAULT_MODEL)
         messages: List[Dict[str, Any]] = [
             {"role": "system", "content": SYSTEM_PROMPT},
@@ -249,7 +252,7 @@ class OpenRouterAgent:
             except OpenRouterError:
                 write_agent_audit(
                     query,
-                    jev=jev,
+                    scope_guard=scope_guard,
                     prompt_guard=prompt_guard,
                     outcome="PROVIDER_ERROR",
                     model_called=True,
@@ -258,14 +261,14 @@ class OpenRouterAgent:
                 raise
             choices = payload.get("choices") or []
             if not choices or not isinstance(choices[0].get("message"), dict):
-                self._audit_failure(query, jev, prompt_guard, "INVALID_MODEL_RESPONSE", tool_results)
+                self._audit_failure(query, scope_guard, prompt_guard, "INVALID_MODEL_RESPONSE", tool_results)
                 raise OpenRouterError("OpenRouter 回應中沒有 assistant message。")
             message = choices[0]["message"]
             calls = message.get("tool_calls") or []
             if not calls:
                 narrative = (message.get("content") or "").strip()
                 if not narrative:
-                    self._audit_failure(query, jev, prompt_guard, "EMPTY_MODEL_RESPONSE", tool_results)
+                    self._audit_failure(query, scope_guard, prompt_guard, "EMPTY_MODEL_RESPONSE", tool_results)
                     raise OpenRouterError("模型沒有提供文字回答或工具呼叫。")
                 if not tool_results:
                     verification = {
@@ -277,7 +280,7 @@ class OpenRouterAgent:
                     }
                     audit_id = write_agent_audit(
                         query,
-                        jev=jev,
+                        scope_guard=scope_guard,
                         prompt_guard=prompt_guard,
                         outcome="NO_TOOL_CALL",
                         model_called=True,
@@ -289,11 +292,11 @@ class OpenRouterAgent:
                         "intent": "GENERAL_RESPONSE",
                         "tool": "none",
                         "tool_calls": [],
-                        "answer": "這次回答沒有查詢任何資料工具，因此不顯示模型生成的內容。請改問可由系統資料回答的問題。",
+                        "answer": "這次回答沒有查詢任何資料工具，因此不顯示模型生成的內容。目前沒有可引用的工具證據，無法提供企業招募人數、缺工機率或法律結論；請補充行政區、產業或想查詢的官方資料。",
                         "structured_data": {},
                         "evidence": {},
                         "verification": verification,
-                        "governance": {"jev": jev, "prompt_guard": prompt_guard, "audit_id": audit_id},
+                        "governance": {"scope_guard": scope_guard, "prompt_guard": prompt_guard, "audit_id": audit_id},
                         "provider": "openrouter",
                         "model": model,
                     }
@@ -313,7 +316,7 @@ class OpenRouterAgent:
                 )
                 audit_id = write_agent_audit(
                     query,
-                    jev=jev,
+                    scope_guard=scope_guard,
                     prompt_guard=prompt_guard,
                     outcome="ANSWERED" if passed_numeric_gate else "NUMERIC_GUARD_REJECTED",
                     model_called=True,
@@ -330,14 +333,14 @@ class OpenRouterAgent:
                     "structured_data": structured,
                     "evidence": evidence,
                     "verification": verification,
-                    "governance": {"jev": jev, "prompt_guard": prompt_guard, "audit_id": audit_id},
+                    "governance": {"scope_guard": scope_guard, "prompt_guard": prompt_guard, "audit_id": audit_id},
                     "provider": "openrouter",
                     "model": model,
                 }
 
             calls_used += len(calls)
             if calls_used > MAX_TOOL_CALLS:
-                self._audit_failure(query, jev, prompt_guard, "TOOL_CALL_LIMIT", tool_results)
+                self._audit_failure(query, scope_guard, prompt_guard, "TOOL_CALL_LIMIT", tool_results)
                 raise OpenRouterError("查詢需要超過允許的工具次數，已停止。")
             messages.append(message)
             for call in calls:
@@ -346,7 +349,7 @@ class OpenRouterAgent:
                 try:
                     result = _run_tool(name, fn.get("arguments", "{}"))
                 except OpenRouterError:
-                    self._audit_failure(query, jev, prompt_guard, "TOOL_CALL_REJECTED", tool_results)
+                    self._audit_failure(query, scope_guard, prompt_guard, "TOOL_CALL_REJECTED", tool_results)
                     raise
                 tool_results.append(result)
                 messages.append({
@@ -355,20 +358,20 @@ class OpenRouterAgent:
                     "content": json.dumps(result, ensure_ascii=False, default=str),
                 })
 
-        self._audit_failure(query, jev, prompt_guard, "TOOL_ROUND_LIMIT", tool_results)
+        self._audit_failure(query, scope_guard, prompt_guard, "TOOL_ROUND_LIMIT", tool_results)
         raise OpenRouterError("模型在允許的回合內未完成回答。")
 
     @staticmethod
     def _audit_failure(
         query: str,
-        jev: Dict[str, Any],
+        scope_guard: Dict[str, Any],
         prompt_guard: Dict[str, Any],
         outcome: str,
         tool_results: List[Dict[str, Any]],
     ) -> None:
         write_agent_audit(
             query,
-            jev=jev,
+            scope_guard=scope_guard,
             prompt_guard=prompt_guard,
             outcome=outcome,
             model_called=True,
@@ -378,7 +381,7 @@ class OpenRouterAgent:
     @staticmethod
     def _reject_before_model(
         query: str,
-        jev: Dict[str, Any],
+        scope_guard: Dict[str, Any],
         prompt_guard: Dict[str, Any],
         *,
         policy_rejection: bool,
@@ -391,13 +394,13 @@ class OpenRouterAgent:
             )
             intent = "FAIR_HIRING_POLICY"
         else:
-            outcome = "JEV_SCOPE_REJECTED"
-            answer = jev["reason"]
+            outcome = "KEYWORD_SCOPE_REJECTED"
+            answer = scope_guard["reason"]
             intent = "OUT_OF_SCOPE"
         verification = {"status": "NOT_RUN", "accuracy_pct": None, "audit_details": []}
         audit_id = write_agent_audit(
             query,
-            jev=jev,
+            scope_guard=scope_guard,
             prompt_guard=prompt_guard,
             outcome=outcome,
             model_called=False,
@@ -413,7 +416,7 @@ class OpenRouterAgent:
             "structured_data": {},
             "evidence": {},
             "verification": verification,
-            "governance": {"jev": jev, "prompt_guard": prompt_guard, "audit_id": audit_id},
+            "governance": {"scope_guard": scope_guard, "prompt_guard": prompt_guard, "audit_id": audit_id},
             "provider": "openrouter",
             "model": os.environ.get("OPENROUTER_MODEL", DEFAULT_MODEL),
         }

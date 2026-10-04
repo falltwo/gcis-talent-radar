@@ -308,7 +308,7 @@ def get_mismatch_view() -> Dict[str, Any]:
 
 @app.post("/api/agent/chat")
 def agent_chat(req: ChatRequest) -> Dict[str, Any]:
-    """Jev and fair-hiring guards, OpenRouter tool-calling, and audit logging."""
+    """Keyword scope and fair-hiring guards, OpenRouter tool-calling, and audit logging."""
     try:
         return agent_service.process_query(req.query)
     except (OpenRouterError, AuditLogError) as exc:

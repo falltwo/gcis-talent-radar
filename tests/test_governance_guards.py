@@ -54,7 +54,7 @@ class GovernancePipelineTests(unittest.TestCase):
             self.assertNotIn(query, json.dumps(event, ensure_ascii=False))
             self.assertEqual(len(event["query_sha256"]), 64)
 
-    def test_jev_rejects_out_of_scope_before_model_and_logs_decision(self):
+    def test_keyword_scope_rejects_out_of_scope_before_model_and_logs_decision(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             log_path = os.path.join(temp_dir, "audit.jsonl")
             with patch.dict(os.environ, {"AGENT_AUDIT_LOG_PATH": log_path}), patch(
@@ -64,10 +64,10 @@ class GovernancePipelineTests(unittest.TestCase):
 
             model_call.assert_not_called()
             self.assertEqual(response["status"], "REJECTED")
-            self.assertEqual(response["governance"]["jev"]["decision"], "REJECT")
+            self.assertEqual(response["governance"]["scope_guard"]["decision"], "REJECT")
             with open(log_path, encoding="utf-8") as stream:
                 event = json.loads(stream.readline())
-            self.assertEqual(event["outcome"], "JEV_SCOPE_REJECTED")
+            self.assertEqual(event["outcome"], "KEYWORD_SCOPE_REJECTED")
             self.assertFalse(event["model_called"])
 
     def test_policy_rejection_fails_closed_if_audit_log_cannot_be_written(self):
