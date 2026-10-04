@@ -8,13 +8,13 @@ import json
 from pathlib import Path
 
 from forecast.models import Chronos, Drift, Naive, SeasonalNaive
-from forecast.real_data import load_gcis_mfg_new_pre_gap, load_jobmarket_openings
+from forecast.real_data import load_gcis_mfg_new, load_gcis_mfg_new_pre_gap, load_jobmarket_openings
 from forecast.report import run_forecast
 
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description="真實資料：統計基線回測與區間預測")
-    parser.add_argument("--series", choices=["jobmarket", "gcis-pre-gap"], required=True)
+    parser.add_argument("--series", choices=["jobmarket", "gcis", "gcis-pre-gap"], required=True)
     parser.add_argument("--horizon", type=int, default=12)
     parser.add_argument("--step", type=int, default=3)
     parser.add_argument("--chronos", action="store_true", help="加入 Chronos-Bolt；需安裝模型依賴")
@@ -25,7 +25,9 @@ def main(argv=None):
     if args.horizon < 1 or args.step < 1:
         parser.error("horizon and step must be positive")
 
-    series = load_jobmarket_openings() if args.series == "jobmarket" else load_gcis_mfg_new_pre_gap()
+    loaders = {"jobmarket": load_jobmarket_openings, "gcis": load_gcis_mfg_new,
+               "gcis-pre-gap": load_gcis_mfg_new_pre_gap}
+    series = loaders[args.series]()
     factories, skipped = [Naive, SeasonalNaive, Drift], {}
     if args.chronos:
         available, reason = Chronos.available()
@@ -36,7 +38,9 @@ def main(argv=None):
     result = run_forecast(series, args.horizon, factories=factories, skipped=skipped,
                           step=args.step, out_dir=args.out)
     if args.series == "gcis-pre-gap":
-        result["warnings"].append("GCIS 2025-08、09 缺月；本序列只到 2025-07，輸出為歷史起點的回顧性預測，不是當前預測。")
+        result["warnings"].append("本次指定缺口前歷史段，只到 2025-07；要使用已補回的官方完整資料，請用 --series gcis。")
+    elif args.series == "gcis":
+        result["warnings"].append("2025-08/09 使用官方月報觀測值；跨期行業名稱已做別名對照，長期趨勢仍須留意分類調整。資料截止日以 series.last_period 為準。")
     else:
         result["warnings"].append("資料只涵蓋公立就業服務系統，且截至 2026-06；輸出以該月為起點，不能解讀為當前所有月份的未來預測，更不能解讀為全市所有雇主或特定區域、行業的職缺。")
     path = args.out / f"{series.series_id}_forecast.json"

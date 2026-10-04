@@ -1,7 +1,6 @@
-"""Load the two defensible monthly series from PR #5's processed data.
+"""Load validated observed monthly series, including official recovered GCIS months.
 
-Missing GCIS months are never imputed. The GCIS loader deliberately ends at
-2025-07; the short post-gap segment is insufficient for seasonal backtesting.
+The pre-gap loader is retained for reproducing the earlier historical run.
 """
 from pathlib import Path
 
@@ -43,3 +42,14 @@ def load_gcis_mfg_new_pre_gap(path=None):
     return _monthly_series(frame, "year_month", "companies", "tc_mfg_new",
                            "臺中市製造業新設公司家數（缺月前的歷史段）",
                            "經濟部 GCIS 縣市×行業大類月統計；2025-08/09 缺月未補值")
+
+
+def load_gcis_mfg_new(path=None):
+    """Continuous observed monthly series, including official recovered months."""
+    path = Path(path or PROCESSED / "tc_company_by_industry_monthly.csv")
+    frame = pd.read_csv(path)
+    frame = frame[(frame["industry"] == "製造業") & (frame["metric"] == "new")
+                  & (frame["year_month"] >= "2012-06")]
+    return _monthly_series(frame, "year_month", "companies", "tc_mfg_new",
+                           "臺中市製造業新設公司家數",
+                           "GCIS 月統計；2025-08/09 由經濟部官方公司登記月報補回，非插補")
