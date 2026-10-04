@@ -4,7 +4,7 @@ import json
 
 import pytest
 
-from agent.llm_agent import OpenRouterAgent
+from agent.llm_agent import OpenRouterAgent, OpenRouterError
 from agent.response_scope import unsupported_geography, vacancy_comparison
 
 
@@ -65,6 +65,23 @@ def test_no_data_is_not_zero_and_capped_counts_are_samples():
 def test_taichung_districts_and_company_lookup_are_not_blocked():
     assert not unsupported_geography('台中市大雅區職缺')
     assert not unsupported_geography('查核台北機械公司統編')
+
+
+@pytest.mark.parametrize("query", ["西屯區的台北富邦職缺數？", "新竹物流在台中的職缺數？"])
+def test_company_place_words_reach_normal_provider_path(query, monkeypatch):
+    monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
+    with pytest.raises(OpenRouterError, match="OPENROUTER_API_KEY"):
+        OpenRouterAgent().process_query(query)
+
+
+@pytest.mark.parametrize("query", ["台北市製造業職缺多少？", "彰化縣和台中比較職缺"])
+def test_explicit_outside_regions_still_stop_before_provider(query):
+    with patch("agent.llm_agent._post_chat") as model, patch("agent.llm_agent.execute_tool") as tool:
+        result = OpenRouterAgent().process_query(query)
+    assert result["status"] == "NO_DATA"
+    assert result["governance"]["scope_guard"]["category"] == "UNSUPPORTED_GEOGRAPHY"
+    model.assert_not_called()
+    tool.assert_not_called()
 
 
 def test_comparison_pipeline_replaces_ambiguous_model_answer():
