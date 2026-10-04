@@ -1,3 +1,5 @@
+> **InnoServe 2026 改造版**：產品定位見 [docs/01-產品定位.md](docs/01-產品定位.md)，資料集清單見 [docs/02-資料集.md](docs/02-資料集.md)。以下為原始專案說明，待改寫。
+
 # 區域產業 × 高教人才供需錯配預警系統 (System Specification v1.0)
 ## Regional Industry–Talent Structural Mismatch Early-Warning System
 ### 2026 InnoServe 資訊應用服務創新競賽【經濟部商工登記資料應用組 (GCIS-OD)】
