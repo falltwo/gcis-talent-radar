@@ -1,0 +1,234 @@
+{
+  "series": {
+    "id": "tc_jobmarket_openings",
+    "name": "臺中市公立就業服務系統新登記求才人數",
+    "unit": "人",
+    "freq": "M",
+    "first_period": "2022-01",
+    "last_period": "2026-06",
+    "n_obs": 54,
+    "sources": [
+      "臺中市就業市場分析季報，月度表；2022 年起同一蒐集範圍"
+    ],
+    "is_estimate": false
+  },
+  "backtest": {
+    "method": "rolling-origin（expanding window）",
+    "horizon": 12,
+    "min_train": 36,
+    "step": 3,
+    "n_origins": 6,
+    "leaderboard": [
+      {
+        "rank": 1,
+        "model": "snaive",
+        "n_forecasts": 54,
+        "n_failed_origins": 0,
+        "MAE": 917.537,
+        "RMSE": 1169.0252,
+        "MASE": 0.5552,
+        "sMAPE_pct": 11.0109,
+        "coverage_80": 0.9815,
+        "width_80": 5407.6611,
+        "coverage_95": 1.0,
+        "width_95": 8270.304,
+        "WQL": 0.0734,
+        "WQL_skill_vs_snaive": 0.0
+      },
+      {
+        "rank": 2,
+        "model": "chronos",
+        "n_forecasts": 54,
+        "n_failed_origins": 0,
+        "MAE": 1541.2252,
+        "RMSE": 1832.0424,
+        "MASE": 0.9407,
+        "sMAPE_pct": 18.2253,
+        "coverage_80": 0.8704,
+        "width_80": 5569.2428,
+        "coverage_95": null,
+        "width_95": null,
+        "WQL": 0.1044,
+        "WQL_skill_vs_snaive": -0.4225
+      },
+      {
+        "rank": 3,
+        "model": "naive",
+        "n_forecasts": 54,
+        "n_failed_origins": 0,
+        "MAE": 3529.0556,
+        "RMSE": 4120.818,
+        "MASE": 2.1504,
+        "sMAPE_pct": 41.1183,
+        "coverage_80": 0.7778,
+        "width_80": 12094.0896,
+        "coverage_95": 0.963,
+        "width_95": 17350.5149,
+        "WQL": 0.2334,
+        "WQL_skill_vs_snaive": -2.1799
+      },
+      {
+        "rank": 4,
+        "model": "drift",
+        "n_forecasts": 54,
+        "n_failed_origins": 0,
+        "MAE": 3994.5309,
+        "RMSE": 4619.7758,
+        "MASE": 2.4316,
+        "sMAPE_pct": 44.7816,
+        "coverage_80": 0.7963,
+        "width_80": 12904.9937,
+        "coverage_95": 0.963,
+        "width_95": 18554.0089,
+        "WQL": 0.2583,
+        "WQL_skill_vs_snaive": -2.5192
+      }
+    ],
+    "skipped_models": {}
+  },
+  "selected_model": {
+    "name": "snaive",
+    "description": "季節 Naive（延續去年同期）",
+    "reason": "回測 WQL 最低（區間品質最好），平手時比 MASE"
+  },
+  "forecast": [
+    {
+      "period": "2026-07",
+      "range_80": [
+        6655,
+        11451
+      ],
+      "range_95": [
+        5385,
+        12721
+      ]
+    },
+    {
+      "period": "2026-08",
+      "range_80": [
+        7891,
+        12687
+      ],
+      "range_95": [
+        6621,
+        13957
+      ]
+    },
+    {
+      "period": "2026-09",
+      "range_80": [
+        6914,
+        11710
+      ],
+      "range_95": [
+        5644,
+        12980
+      ]
+    },
+    {
+      "period": "2026-10",
+      "range_80": [
+        7372,
+        12168
+      ],
+      "range_95": [
+        6102,
+        13438
+      ]
+    },
+    {
+      "period": "2026-11",
+      "range_80": [
+        3638,
+        8434
+      ],
+      "range_95": [
+        2368,
+        9704
+      ]
+    },
+    {
+      "period": "2026-12",
+      "range_80": [
+        1841,
+        6637
+      ],
+      "range_95": [
+        571,
+        7907
+      ]
+    },
+    {
+      "period": "2027-01",
+      "range_80": [
+        5996,
+        10792
+      ],
+      "range_95": [
+        4726,
+        12062
+      ]
+    },
+    {
+      "period": "2027-02",
+      "range_80": [
+        5211,
+        10007
+      ],
+      "range_95": [
+        3941,
+        11277
+      ]
+    },
+    {
+      "period": "2027-03",
+      "range_80": [
+        10294,
+        15090
+      ],
+      "range_95": [
+        9024,
+        16360
+      ]
+    },
+    {
+      "period": "2027-04",
+      "range_80": [
+        8174,
+        12970
+      ],
+      "range_95": [
+        6904,
+        14240
+      ]
+    },
+    {
+      "period": "2027-05",
+      "range_80": [
+        5458,
+        10254
+      ],
+      "range_95": [
+        4188,
+        11524
+      ]
+    },
+    {
+      "period": "2027-06",
+      "range_80": [
+        8857,
+        13653
+      ],
+      "range_95": [
+        7587,
+        14923
+      ]
+    }
+  ],
+  "warnings": [
+    "回測 80% 區間實際涵蓋率 98%，區間偏寬，資訊量有限。",
+    "回測只有 6 個起點，誤差數字的不確定性高。",
+    "資料只涵蓋公立就業服務系統，且截至 2026-06；輸出以該月為起點，不能解讀為當前所有月份的未來預測，更不能解讀為全市所有雇主或特定區域、行業的職缺。"
+  ],
+  "disclaimer": "本預測為依歷史資料推算的可能範圍，不是保證值。80%／95% 是名目區間；實際涵蓋率請看回測 coverage_80／coverage_95，可能與名目值不同。"
+}

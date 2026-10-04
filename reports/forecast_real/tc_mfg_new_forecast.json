@@ -1,0 +1,196 @@
+{
+  "series": {
+    "id": "tc_mfg_new",
+    "name": "臺中市製造業新設公司家數（缺月前的歷史段）",
+    "unit": "家",
+    "freq": "M",
+    "first_period": "2012-06",
+    "last_period": "2025-07",
+    "n_obs": 158,
+    "sources": [
+      "經濟部 GCIS 縣市×行業大類月統計；2025-08/09 缺月未補值"
+    ],
+    "is_estimate": false
+  },
+  "backtest": {
+    "method": "rolling-origin（expanding window）",
+    "horizon": 12,
+    "min_train": 36,
+    "step": 3,
+    "n_origins": 41,
+    "leaderboard": [
+      {
+        "rank": 1,
+        "model": "chronos",
+        "n_forecasts": 470,
+        "n_failed_origins": 0,
+        "MAE": 24.1758,
+        "RMSE": 31.9455,
+        "MASE": 1.031,
+        "sMAPE_pct": 21.2463,
+        "coverage_80": 0.8064,
+        "width_80": 76.5045,
+        "coverage_95": null,
+        "width_95": null,
+        "WQL": 0.1407,
+        "WQL_skill_vs_snaive": 0.2076
+      },
+      {
+        "rank": 2,
+        "model": "snaive",
+        "n_forecasts": 470,
+        "n_failed_origins": 0,
+        "MAE": 29.0766,
+        "RMSE": 39.9399,
+        "MASE": 1.2396,
+        "sMAPE_pct": 24.9317,
+        "coverage_80": 0.7617,
+        "width_80": 90.8788,
+        "coverage_95": 0.9106,
+        "width_95": 138.5048,
+        "WQL": 0.1776,
+        "WQL_skill_vs_snaive": 0.0
+      },
+      {
+        "rank": 3,
+        "model": "naive",
+        "n_forecasts": 470,
+        "n_failed_origins": 0,
+        "MAE": 30.7723,
+        "RMSE": 39.3263,
+        "MASE": 1.307,
+        "sMAPE_pct": 27.6908,
+        "coverage_80": 0.9298,
+        "width_80": 159.6501,
+        "coverage_95": 0.9809,
+        "width_95": 223.5598,
+        "WQL": 0.1933,
+        "WQL_skill_vs_snaive": -0.0884
+      },
+      {
+        "rank": 4,
+        "model": "drift",
+        "n_forecasts": 470,
+        "n_failed_origins": 0,
+        "MAE": 32.4324,
+        "RMSE": 41.6134,
+        "MASE": 1.3828,
+        "sMAPE_pct": 29.1424,
+        "coverage_80": 0.9298,
+        "width_80": 165.1063,
+        "coverage_95": 0.9809,
+        "width_95": 230.2763,
+        "WQL": 0.2015,
+        "WQL_skill_vs_snaive": -0.1345
+      }
+    ],
+    "skipped_models": {}
+  },
+  "selected_model": {
+    "name": "chronos",
+    "description": "Chronos（amazon/chronos-bolt-tiny，zero-shot）",
+    "reason": "回測 WQL 最低（區間品質最好），平手時比 MASE"
+  },
+  "forecast": [
+    {
+      "period": "2025-08",
+      "range_80": [
+        80,
+        131
+      ],
+      "range_95": null
+    },
+    {
+      "period": "2025-09",
+      "range_80": [
+        73,
+        129
+      ],
+      "range_95": null
+    },
+    {
+      "period": "2025-10",
+      "range_80": [
+        70,
+        129
+      ],
+      "range_95": null
+    },
+    {
+      "period": "2025-11",
+      "range_80": [
+        72,
+        136
+      ],
+      "range_95": null
+    },
+    {
+      "period": "2025-12",
+      "range_80": [
+        71,
+        138
+      ],
+      "range_95": null
+    },
+    {
+      "period": "2026-01",
+      "range_80": [
+        67,
+        134
+      ],
+      "range_95": null
+    },
+    {
+      "period": "2026-02",
+      "range_80": [
+        66,
+        136
+      ],
+      "range_95": null
+    },
+    {
+      "period": "2026-03",
+      "range_80": [
+        80,
+        156
+      ],
+      "range_95": null
+    },
+    {
+      "period": "2026-04",
+      "range_80": [
+        84,
+        161
+      ],
+      "range_95": null
+    },
+    {
+      "period": "2026-05",
+      "range_80": [
+        82,
+        155
+      ],
+      "range_95": null
+    },
+    {
+      "period": "2026-06",
+      "range_80": [
+        79,
+        151
+      ],
+      "range_95": null
+    },
+    {
+      "period": "2026-07",
+      "range_80": [
+        80,
+        151
+      ],
+      "range_95": null
+    }
+  ],
+  "warnings": [
+    "GCIS 2025-08、09 缺月；本序列只到 2025-07，輸出為歷史起點的回顧性預測，不是當前預測。"
+  ],
+  "disclaimer": "本預測為依歷史資料推算的可能範圍，不是保證值。80%／95% 是名目區間；實際涵蓋率請看回測 coverage_80／coverage_95，可能與名目值不同。"
+}
