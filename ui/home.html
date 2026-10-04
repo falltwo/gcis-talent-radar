@@ -51,7 +51,7 @@
   <main class="shell">
     <section class="hero"><span class="eyebrow">擴廠前的人才資料檢查</span>
       <h1>想在臺中擴廠？先問問周邊的招募環境。</h1>
-      <p>用一句話問職缺、新設公司或投保薪資。每個回答都附官方資料來源、資料期別，數字會先和查到的資料核對過，對不上就不顯示。</p></section>
+      <p>用一句話問職缺、新設公司或投保薪資。查得到資料的回答，都會附官方資料來源與資料期別；數字會先和查到的資料核對過，對不上就不顯示。</p></section>
 
     <section class="panel" aria-labelledby="ask-title">
       <h2 id="ask-title">直接問</h2>
@@ -63,22 +63,21 @@
       <div class="suggests" aria-label="建議問題">
         <button type="button" class="suggest">大雅區製造業現在的職缺有多少？</button>
         <button type="button" class="suggest">西屯區製造業現在的職缺有多少？</button>
-        <button type="button" class="suggest">台中市製造業最近一個月新設了幾家公司？</button>
-        <button type="button" class="suggest">台中製造業的平均投保薪資是多少？</button>
-        <button type="button" class="suggest">台北市信義區的職缺有多少？</button>
+        <button type="button" class="suggest">臺中市製造業最近一個月新設了幾家公司？</button>
+        <button type="button" class="suggest">臺北市信義區的職缺有多少？</button>
       </div>
-      <div class="hint">回答由 AI 根據查詢工具的結果撰寫；職缺需求人數不等於缺工人數，投保薪資不等於實領薪資。</div>
+      <div class="hint">回答由 AI 根據查到的官方資料撰寫；職缺需求人數不等於缺工人數，投保薪資不等於實領薪資。</div>
       <div id="ask-status" class="status" role="status" aria-live="polite"></div>
       <div id="answer" class="answer" hidden>
         <div class="q" id="answer-q"></div>
         <div class="badges" id="answer-badges"></div>
         <div class="body" id="answer-body"></div>
-        <details class="trace" id="trace"><summary>檢視推理歷程：這次查了什麼、怎麼核對</summary><div class="trace-body" id="trace-body"></div></details>
+        <details class="trace" id="trace"><summary>查證紀錄：這次查了哪些資料、怎麼核對</summary><div class="trace-body" id="trace-body"></div></details>
       </div>
     </section>
 
     <section id="expansion" aria-labelledby="exp-title">
-      <div class="section-head"><h2 id="exp-title">擴廠情境：四個不同口徑的官方數字</h2><p>選廠區、填預計招募人數，對照工廠快照、公開職缺、全市新設公司與投保薪資。這是招募環境的線索，不是替你的公司算招募成功率。</p></div>
+      <div class="section-head"><h2 id="exp-title">擴廠情境：四個統計範圍不同的官方數字</h2><p>選廠區、填預計招募人數，對照工廠快照、公開職缺、全市新設公司與投保薪資。這是招募環境的線索，不是替你的公司算招募成功率。</p></div>
       <div class="panel">
         <form id="query-form" class="form">
           <div><label for="district">廠區所在行政區</label><select id="district" name="district" required>
@@ -95,7 +94,7 @@
         <div class="grid">
           <article class="metric" id="factory-card"><span class="scope">大雅區｜臺中市工廠登記快照</span><h3>製造業工廠家數</h3><div class="value" id="factory-value"></div><p class="details" id="factory-details"></p><div class="meta" id="factory-meta"></div><div class="source"><a href="https://data.gov.tw/dataset/174209" target="_blank" rel="noopener noreferrer">資料來源：臺中市政府經濟發展局 ↗</a></div><ul id="factory-limits"></ul></article>
           <article class="metric" id="jobs-card"><span class="scope">大雅區｜台灣就業通公開職缺</span><h3>當期職缺刊登筆數</h3><div class="value" id="jobs-value"></div><p class="details" id="jobs-details"></p><div class="meta" id="jobs-meta"></div><div class="source"><a href="https://data.gov.tw/dataset/44062" target="_blank" rel="noopener noreferrer">資料來源：台灣就業通 ↗</a></div><ul id="jobs-limits"></ul></article>
-          <article class="metric" id="company-card"><span class="scope">臺中市全市｜GCIS 行業大類</span><h3>製造業新設公司家數</h3><div class="value" id="company-value"></div><p class="details">這是全市當月的新設公司，不能下推為單一行政區的新設家數。</p><div class="meta" id="company-meta"></div><div class="source"><a href="https://data.gcis.nat.gov.tw/od/detail?oid=01E5CFC6-9F09-4CB5-BE81-22B451E4B1BD" target="_blank" rel="noopener noreferrer">資料來源：經濟部 GCIS ↗</a></div><ul id="company-limits"></ul></article>
+          <article class="metric" id="company-card"><span class="scope">臺中市全市｜GCIS 行業大類</span><h3>製造業新設公司家數</h3><div class="value" id="company-value"></div><p class="details">這是全市當月的新設公司數，不能拆算成單一行政區的數字。</p><div class="meta" id="company-meta"></div><div class="source"><a href="https://data.gcis.nat.gov.tw/od/detail?oid=01E5CFC6-9F09-4CB5-BE81-22B451E4B1BD" target="_blank" rel="noopener noreferrer">資料來源：經濟部 GCIS ↗</a></div><ul id="company-limits"></ul></article>
           <article class="metric" id="wage-card"><span class="scope">臺中市全市｜勞保局年末統計</span><h3>製造業平均投保薪資</h3><div class="value" id="wage-value"></div><p class="details">不是實領薪資、職缺開薪或中位數。</p><div class="meta" id="wage-meta"></div><div class="source"><a href="https://data.gov.tw/dataset/100999" target="_blank" rel="noopener noreferrer">資料來源：勞動部勞工保險局 ↗</a></div><ul id="wage-limits"></ul></article>
         </div>
         <section class="note"><h2>下一步該怎麼用？</h2><p>把這些數據當成招募環境的起點：先確認要找的職務、薪資條件與實際候選人來源，再決定擴廠時程。公開職缺的「需求人數」不能叫做缺工人數；工廠家數也不能轉成你公司的招募成功率。</p></section>
@@ -130,7 +129,7 @@
       });
       if (refs && refs.trim()) {
         // 完整來源與限制已在「檢視推理歷程」逐條列出，正文只留一行提示，避免同一段限制出現兩次
-        box.append(el('p', '完整資料來源與限制：展開下方「檢視推理歷程」。', 'refs'));
+        box.append(el('p', '完整資料來源與限制：展開下方「查證紀錄」。', 'refs'));
       }
     }
     const TOOL_LABEL = {
@@ -147,7 +146,7 @@
       const box = $('trace-body'); box.replaceChildren();
       const ev = d.evidence || {}; const v = d.verification || {}; const g = d.governance || {};
       const steps = [];
-      if (g.scope_guard) steps.push(`範圍檢查：${g.scope_guard.decision === 'ACCEPT' ? '在產品範圍內' : '不在產品範圍內'}${g.scope_guard.reason ? `（${g.scope_guard.reason}）` : ''}`);
+      if (g.scope_guard) steps.push(`範圍檢查：${g.scope_guard.decision === 'ACCEPT' ? '在可回答的範圍內' : '不在可回答的範圍內'}`);
       if (g.prompt_guard) steps.push(`公平招募檢查：${g.prompt_guard.decision === 'ALLOW' ? '未偵測到歧視性條件' : '偵測到受保護特徵，拒絕協助'}`);
       steps.push((d.tool_calls || []).length ? `查詢資料：${d.tool_calls.map(t => TOOL_LABEL[t] || t).join('、')}` : '沒有查詢資料（問題超出資料範圍或被攔下）');
       if (v.status) steps.push(v.status === 'VERIFIED'
@@ -156,7 +155,7 @@
       box.append(section('處理步驟', list('ol', steps)));
       if (ev.indicator || ev.source) {
         const dl = el('dl');
-        [['指標', ev.indicator], ['地區', ev.geography], ['資料期別', ev.data_period], ['來源', (ev.source || []).join('、')], ['使用資料表', (ev.processed_tables || []).join('、')]]
+        [['指標', ev.indicator], ['地區', ev.geography], ['資料期別', ev.data_period], ['來源', (ev.source || []).join('、')]]
           .filter(([, val]) => val).forEach(([k, val]) => { dl.append(el('dt', k), el('dd', val)); });
         box.append(section('資料出處', dl));
         if ((ev.source_urls || []).length) {
@@ -167,7 +166,7 @@
       }
       if ((ev.calculation || []).length) box.append(section('怎麼算的', list('ul', ev.calculation)));
       if ((ev.limitations || []).length) box.append(section('限制', list('ul', ev.limitations)));
-      if (d.model) box.append(section('模型', el('p', `${d.provider || ''} ${d.model}`.trim())));
+      if (d.model) box.append(section('撰寫回答的模型', el('p', d.provider ? `${d.model}（經 ${d.provider === 'openrouter' ? 'OpenRouter' : d.provider}）` : d.model)));
       if (g.audit_id) box.append(section('稽核編號', el('p', g.audit_id)));
     }
 
@@ -236,11 +235,11 @@
       } else { unavailable('company-value', 'company-meta', c); limits('company-limits', []); }
       if (w.available) {
         text('wage-value', `NT$ ${number(w.average_insured_salary)}`);
-        text('wage-meta', `資料期別：民國 ${w.data_period.slice(0, 3)} 年 ${w.data_period.slice(3)} 月・地域：臺中市全市`);
+        text('wage-meta', `資料期別：${Number(w.data_period.slice(0, 3)) + 1911} 年 ${Number(w.data_period.slice(3))} 月（民國 ${w.data_period.slice(0, 3)} 年）・地域：臺中市全市`);
         limits('wage-limits', w.evidence?.limitations);
       } else { unavailable('wage-value', 'wage-meta', w); limits('wage-limits', []); }
       $('results').hidden = false; $('status').classList.remove('error');
-      text('status', data.status === 'ready' ? '已讀取四項已匯入的官方資料。' : '部分資料目前不可用；缺少的欄位已明確標示，沒有補成 0。');
+      text('status', data.status === 'ready' ? '以下是已匯入的官方資料快照。' : '部分資料目前不可用；缺少的欄位已明確標示，沒有補成 0。');
     }
     async function load() {
       const button = $('submit'); button.disabled = true; text('status', '正在讀取已匯入的官方資料…'); $('status').classList.remove('error');
