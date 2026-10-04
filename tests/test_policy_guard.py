@@ -124,6 +124,7 @@ def test_second_guard_catches_rule_miss_in_hiring_context(audit_path, monkeypatc
     rule_result = inspect_hiring_prompt(query)
     assert rule_result["decision"] == "ALLOW"
     assert rule_result["hiring_context"] is True
+    assert rule_result["active_hiring_context"] is True
     assert rule_result["matched_traits"] == []
 
     guard_result = {
@@ -149,6 +150,12 @@ def test_second_guard_catches_rule_miss_in_hiring_context(audit_path, monkeypatc
 
 def test_neutral_employee_demographic_query_reaches_guard_and_is_not_rejected(audit_path):
     query = "台中製造業員工年齡分布如何？"
+    from agent.prompt_guard import inspect_hiring_prompt
+
+    rule_result = inspect_hiring_prompt(query)
+    assert rule_result["decision"] == "ALLOW"
+    assert rule_result["matched_traits"]
+    assert rule_result["active_hiring_context"] is False
     guard_result = {
         "called": True,
         "status": "OK",
