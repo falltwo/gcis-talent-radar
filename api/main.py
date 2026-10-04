@@ -19,6 +19,7 @@ from config import (
     HISTORICAL_YEARS, BASE_ACADEMIC_YEAR, TARGET_PROJECTION_YEAR
 )
 from database.db_manager import db
+from agent.audit_log import AuditLogError
 from agent.agent_service import OpenRouterError, agent_service
 from engine.gcis_live_verifier import verify_company_live
 from tests.test_etl_quality import run_data_quality_audit
@@ -260,10 +261,10 @@ def get_mismatch_view() -> Dict[str, Any]:
 
 @app.post("/api/agent/chat")
 def agent_chat(req: ChatRequest) -> Dict[str, Any]:
-    """Page 6: OpenRouter tool-calling assistant with numeric verification."""
+    """Jev and fair-hiring guards, OpenRouter tool-calling, and audit logging."""
     try:
         return agent_service.process_query(req.query)
-    except OpenRouterError as exc:
+    except (OpenRouterError, AuditLogError) as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
 
 @app.post("/api/agent/verify-company")

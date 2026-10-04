@@ -54,6 +54,7 @@ tmp/
 .env
 .env.*
 !.env.example
+reports/agent_audit.jsonl
 .claude/
 TradeDNA*
 spec-presentation.html
