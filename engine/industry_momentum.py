@@ -1,3 +1,6 @@
+# ⚠ 此檔產出含模擬資料，勿當真實數字使用。（模擬資料計算結果）
+# 產出：industry_momentum_mart（輸入 industry_dynamics_mart 為模擬資料）
+# 目前 API 與助理仍在讀取，只能標記、不能刪；替代方案與刪除條件見 docs/SIMULATED_DATA.md
 """
 Deterministic Engine: Industry Momentum Engine (System Spec Section 10 & 11)
 Calculates:

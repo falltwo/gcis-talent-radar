@@ -1,3 +1,6 @@
+# ⚠ 此檔產出含模擬資料，勿當真實數字使用。（推估資料計算結果）
+# 產出：talent_supply_mart／industry_supply_mart.csv（輸入含推估補值與未經驗證的系所對照規則）
+# 目前 API 與助理仍在讀取，只能標記、不能刪；替代方案與刪除條件見 docs/SIMULATED_DATA.md
 """
 Deterministic Engine: Talent Supply Projection Engine (System Spec Section 12, 17, 18, 19)
 Calculates:

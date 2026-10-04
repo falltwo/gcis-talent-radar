@@ -1,3 +1,6 @@
+# ⚠ 此檔產出含模擬資料，勿當真實數字使用。（模擬資料）
+# 產出：companies／companies_taichung_cleaned.csv（統編由公司名稱雜湊合成，資本額與增資為隨機）、industry_dynamics_mart（依寫死參數加隨機雜訊模擬）
+# 目前 API 與助理仍在讀取，只能標記、不能刪；替代方案與刪除條件見 docs/SIMULATED_DATA.md
 """
 ETL Module: GCIS Batch Pipeline & Industry Dynamics Mart (System Spec Section 6, 7, 8, 9)
 Builds:
