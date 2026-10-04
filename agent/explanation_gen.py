@@ -16,6 +16,61 @@ def generate_explanation(intent: str, structured_data: Dict[str, Any]) -> str:
     data = structured_data.get("data")
     evidence = structured_data.get("evidence", {})
 
+    if intent == "JOB_DEMAND_QUERY":
+        if not data.get("available"):
+            return f"台灣就業通官方資料目前不可用：{data.get('reason')}。"
+        scope = data.get("geography")
+        industry = data.get("industry_name") or "全部職類"
+        capped = data.get("limit_reached_districts") or []
+        coverage = (
+            f"其中 {', '.join(capped)} 的查詢已達官方 1,000 筆上限，因此是下限值。"
+            if capped else "所有納入行政區皆未達官方單次 1,000 筆上限。"
+        )
+        return (
+            f"【{scope}區域職缺現況｜台灣就業通】\n"
+            f"• 快照日期：{data.get('snapshot_year')} 年 {data.get('snapshot_month')} 月 {data.get('snapshot_day')} 日\n"
+            f"• 查詢範圍：{industry}\n"
+            f"• 可觀測職缺刊登：{data.get('vacancy_postings', 0):,} 筆\n"
+            f"• 刊登需求人數合計：{data.get('requested_workers', 0):,} 人\n"
+            f"• 不同公司名稱：{data.get('distinct_companies', 0):,} 家\n\n"
+            f"{coverage}\n"
+            "提醒：這是政府平台當期公開職缺樣本，不是實際缺工人數或全體雇主母體。"
+        )
+
+    if intent == "COMPANY_TREND_QUERY":
+        if not data.get("available"):
+            return f"GCIS 官方月資料目前不可用：{data.get('reason')}。"
+        change = data.get("complete_window_change_pct")
+        change_text = (
+            f"完整 12 個月窗口年變動：{change}%"
+            if change is not None
+            else "因官方序列存在缺月，不計算完整 12 個月窗口年變動率"
+        )
+        return (
+            "【臺中市公司新設趨勢｜GCIS】\n"
+            f"• 官方行業大類：{data.get('official_industry')}\n"
+            f"• 資料期間：{data.get('period_start_year')} 年 {data.get('period_start_month')} 月至 {data.get('period_end_year')} 年 {data.get('period_end_month')} 月\n"
+            f"• 最新月份：{data.get('latest_year')} 年 {data.get('latest_month_number')} 月，新設 {data.get('latest_new_companies', 0):,} 家\n"
+            f"• 最近 12 筆有效觀測合計：{data.get('observed_last_12_total', 0):,} 家\n"
+            f"• {change_text}\n"
+            f"• 粒度說明：{data.get('mapping_note')}\n\n"
+            "本數字是當月新設公司，不是企業存量、職缺或行政區缺工數。"
+        )
+
+    if intent == "WAGE_QUERY":
+        if not data.get("available"):
+            return f"勞保官方統計目前不可用：{data.get('reason')}。"
+        return (
+            "【臺中市薪資基線｜勞工保險局】\n"
+            f"• 資料年月：民國 {data.get('roc_year')} 年 {data.get('month')} 月\n"
+            f"• 目標範圍：{data.get('industry_name')}\n"
+            f"• 月平均投保薪資：{data.get('average_insured_salary', 0):,.2f} 元\n"
+            f"• 月底投保人數：{data.get('insured_people', 0):,} 人\n"
+            f"• 月底投保單位數：{data.get('insured_units', 0):,} 個\n"
+            f"• 粒度說明：{data.get('mapping_note')}\n\n"
+            "重要：投保薪資是勞保申報級距的統計平均，不等於實領薪資、職缺開薪或薪資中位數。"
+        )
+
     if intent == "COMPANY_VERIFY":
         if isinstance(data, dict) and data.get("verified"):
             cap = data.get("capital", 0)

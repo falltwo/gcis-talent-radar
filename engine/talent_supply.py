@@ -7,6 +7,7 @@ Calculates:
 - SupplyMomentum(i) = Standardize(SupplyGrowth(i))
 """
 import sys
+from datetime import datetime
 import numpy as np
 import pandas as pd
 from pathlib import Path
@@ -25,6 +26,8 @@ def calculate_industry_talent_supply() -> pd.DataFrame:
     Computes industry talent supply by aggregating department projections
     weighted through UCAN Career Mapping (Section 17 & 18).
     """
+    built_at = datetime.now().astimezone().isoformat(timespec="seconds")
+
     # Join department_indicators_mart (year 113) with ucan_mapping_mart
     sql = f"""
         SELECT 
@@ -82,7 +85,7 @@ def calculate_industry_talent_supply() -> pd.DataFrame:
     if g_std == 0: g_std = 1.0
 
     res_df["supply_momentum"] = round((res_df["supply_growth"] - g_mean) / g_std, 4)
-    res_df["updated_at"] = "2026-10-01"
+    res_df["updated_at"] = built_at
 
     # Persist to database and CSV
     out_csv = MARTS_DATA_DIR / "industry_supply_mart.csv"

@@ -16,6 +16,11 @@ from engine.talent_supply import get_talent_supply, get_department_projection
 from engine.mismatch_engine import get_mismatch_signal
 from engine.gcis_live_verifier import verify_company_live
 from engine.evidence_engine import build_evidence_object
+from engine.official_labor_market import (
+    get_gcis_new_company_trend,
+    get_regional_job_demand,
+    get_wage_baseline,
+)
 
 def get_district_industry(district: str = "西屯區", year: int = 113) -> Dict[str, Any]:
     """
@@ -27,7 +32,7 @@ def get_district_industry(district: str = "西屯區", year: int = 113) -> Dict[
             year, district, industry_id,
             opening_count, dissolution_count, capital_increase_count,
             beginning_stock, ending_stock,
-            entry_rate, capital_expansion_rate, exit_rate
+            entry_rate, capital_expansion_rate, exit_rate, updated_at
         FROM industry_dynamics_mart
         WHERE district = ? AND year = ?
         ORDER BY ending_stock DESC
@@ -37,6 +42,7 @@ def get_district_industry(district: str = "西屯區", year: int = 113) -> Dict[
     total_stock = sum(r["ending_stock"] for r in rows)
     total_openings = sum(r["opening_count"] for r in rows)
     total_cap_inc = sum(r["capital_increase_count"] for r in rows)
+    refreshed_at = max((r.get("updated_at") for r in rows if r.get("updated_at")), default=None)
     
     return {
         "district": district,
@@ -54,7 +60,8 @@ def get_district_industry(district: str = "西屯區", year: int = 113) -> Dict[
             ],
             source_tables=["industry_dynamics_mart"],
             official_sources=["經濟部商工行政資料開放平臺公司登記批次資料"],
-            geography=f"台中市{district}"
+            geography=f"台中市{district}",
+            fetched_at=refreshed_at,
         )
     }
 
@@ -91,6 +98,37 @@ def execute_tool(intent: str, params: Dict[str, Any]) -> Dict[str, Any]:
     """
     Deterministic Tool Router entry point.
     """
+    if intent == "JOB_DEMAND_QUERY":
+        res = get_regional_job_demand(
+            district=params.get("district"),
+            industry_id=params.get("industry_id"),
+            occupation_keyword=params.get("occupation_keyword"),
+        )
+        return {
+            "tool": "get_regional_job_demand",
+            "data": res,
+            "evidence": res.get("evidence", {"verification_status": "DATA_UNAVAILABLE"}),
+        }
+
+    if intent == "COMPANY_TREND_QUERY":
+        res = get_gcis_new_company_trend(
+            industry_id=params.get("industry_id") or "IND_MFG",
+            months=params.get("months", 36),
+        )
+        return {
+            "tool": "get_gcis_new_company_trend",
+            "data": res,
+            "evidence": res.get("evidence", {"verification_status": "DATA_UNAVAILABLE"}),
+        }
+
+    if intent == "WAGE_QUERY":
+        res = get_wage_baseline(params.get("industry_id") or "IND_MFG")
+        return {
+            "tool": "get_wage_baseline",
+            "data": res,
+            "evidence": res.get("evidence", {"verification_status": "DATA_UNAVAILABLE"}),
+        }
+
     if intent == "COMPANY_VERIFY":
         q = params.get("tax_id") or params.get("query_term", "")
         res = verify_company_live(q)
@@ -100,7 +138,12 @@ def execute_tool(intent: str, params: Dict[str, Any]) -> Dict[str, Any]:
             calculation_steps=["透過經濟部商工行政資料平臺API與本地核准設立基準檔直接比對"],
             source_tables=["companies"],
             official_sources=["經濟部商工行政資料開放平臺 API (Company_Status / Business_Accounting_NO)"],
-            verification_status="VERIFIED" if res.get("verified") else "FAILED"
+            verification_status="VERIFIED" if res.get("verified") else "FAILED",
+            fetched_at=(
+                res.get("fetched_at")
+                or res.get("source_updated_at")
+                or res.get("checked_at")
+            ),
         )
         return {"tool": "verify_company", "data": res, "evidence": evidence}
 
@@ -121,7 +164,8 @@ def execute_tool(intent: str, params: Dict[str, Any]) -> Dict[str, Any]:
                 "ExitRate 僅供風險參考，不計入擴張動能"
             ],
             source_tables=["industry_momentum_mart", "industry_dynamics_mart"],
-            official_sources=["經濟部商工行政資料開放平臺（GCIS）公司登記歷史母體"]
+            official_sources=["經濟部商工行政資料開放平臺（GCIS）公司登記歷史母體"],
+            fetched_at=max((row.get("updated_at") for row in rows if row.get("updated_at")), default=None),
         )
         return {"tool": "get_industry_momentum", "data": rows, "evidence": evidence}
 
@@ -137,7 +181,8 @@ def execute_tool(intent: str, params: Dict[str, Any]) -> Dict[str, Any]:
                 "SupplyMomentum = Standardize(SupplyGrowth)"
             ],
             source_tables=["talent_supply_mart", "ucan_mapping_mart", "department_indicators_mart"],
-            official_sources=["教育部 UDB 校務資訊公開平臺", "教育部 UCAN 職涯架構對照表"]
+            official_sources=["教育部 UDB 校務資訊公開平臺", "教育部 UCAN 職涯架構對照表"],
+            fetched_at=max((row.get("updated_at") for row in rows if row.get("updated_at")), default=None),
         )
         return {"tool": "get_industry_supply", "data": rows, "evidence": evidence}
 
@@ -172,7 +217,8 @@ def execute_tool(intent: str, params: Dict[str, Any]) -> Dict[str, Any]:
                 "禁止假設所有系所同比例下降 (Section 13)"
             ],
             source_tables=["department_indicators_mart"],
-            official_sources=["教育部大專校院校務資訊公開平台（UDB）學生數與註冊率報表"]
+            official_sources=["教育部大專校院校務資訊公開平台（UDB）學生數與註冊率報表"],
+            fetched_at=max((row.get("updated_at") for row in rows if row.get("updated_at")), default=None),
         )
         return {"tool": "get_department_projection", "data": rows, "evidence": evidence}
 

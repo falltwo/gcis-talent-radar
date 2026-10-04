@@ -7,6 +7,7 @@ Calculates:
 - 11. DemandMomentum(i) = 0.5 * Z_entry(i) + 0.5 * Z_capital(i)
 """
 import sys
+from datetime import datetime
 import numpy as np
 import pandas as pd
 from pathlib import Path
@@ -25,6 +26,8 @@ def calculate_industry_momentum(target_year: int = 113) -> pd.DataFrame:
     Computes industry momentum metrics for Taichung City across all 7 target industries.
     All calculations are 100% deterministic (P1).
     """
+    built_at = datetime.now().astimezone().isoformat(timespec="seconds")
+
     # Fetch aggregated city-wide metrics per year and industry from industry_dynamics_mart
     sql = """
         SELECT 
@@ -105,7 +108,7 @@ def calculate_industry_momentum(target_year: int = 113) -> pd.DataFrame:
     w_entry = DEMAND_MOMENTUM_WEIGHTS["entry"]
     w_cap = DEMAND_MOMENTUM_WEIGHTS["capital"]
     res_df["demand_momentum"] = round(w_entry * res_df["z_entry"] + w_cap * res_df["z_capital"], 4)
-    res_df["updated_at"] = "2026-10-01"
+    res_df["updated_at"] = built_at
 
     # Persist to database and CSV mart
     out_csv = MARTS_DATA_DIR / "industry_momentum_mart.csv"

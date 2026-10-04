@@ -5,6 +5,12 @@ Runs on http://127.0.0.1:8888
 """
 import uvicorn
 import socket
+import sys
+
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8")
+if hasattr(sys.stderr, "reconfigure"):
+    sys.stderr.reconfigure(encoding="utf-8")
 
 def find_available_port(preferred_port=8888):
     for port in [preferred_port, 8088, 8008, 9000]:

@@ -9,6 +9,7 @@ Level:
 """
 import sys
 import json
+from datetime import datetime
 import numpy as np
 import pandas as pd
 from pathlib import Path
@@ -27,6 +28,7 @@ def calculate_mismatch_signals() -> pd.DataFrame:
     Computes Mismatch(i) = DemandMomentum(i) - SupplyMomentum(i)
     for all 7 target industries.
     """
+    built_at = datetime.now().astimezone().isoformat(timespec="seconds")
     mom_rows = db.fetch_all("SELECT * FROM industry_momentum_mart")
     sup_rows = db.fetch_all("SELECT * FROM talent_supply_mart")
 
@@ -105,7 +107,8 @@ def calculate_mismatch_signals() -> pd.DataFrame:
                 f"Mismatch = DemandMomentum({dem_mom}) - SupplyMomentum({sup_mom}) = {mismatch}",
                 f"MismatchIntensity = |{mismatch}| = {intensity} ({warning_level} Warning)"
             ],
-            "last_updated": "2026-10-01",
+            "last_updated": built_at,
+            "timestamp_status": "MART_BUILD_TIMESTAMP",
             "verification_status": "VERIFIED"
         }
 
@@ -119,7 +122,7 @@ def calculate_mismatch_signals() -> pd.DataFrame:
             "mismatch_intensity": intensity,
             "warning_level": warning_level,
             "evidence_json": json.dumps(evidence, ensure_ascii=False),
-            "updated_at": "2026-10-01"
+            "updated_at": built_at
         })
 
     res_df = pd.DataFrame(results)
