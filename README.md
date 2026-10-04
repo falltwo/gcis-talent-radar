@@ -85,6 +85,7 @@ AI 問答由 FastAPI 後端呼叫 OpenRouter。請先在後端執行環境設定
 cp .env.example .env
 # 將 OPENROUTER_API_KEY 設在本機 .env 檔中
 export OPENROUTER_MODEL="openai/gpt-6-luna"
+# GUARD_MODEL 預設為 openai/gpt-oss-safeguard-20b；未設定 API key 時略過第二關
 python3 server.py
 ```
 
@@ -93,6 +94,8 @@ python3 server.py
 打開瀏覽器訪問：**`http://127.0.0.1:8888`**。
 
 `OPENROUTER_MODEL` 可依 OpenRouter 帳戶可用的模型代碼調整。前端呼叫同源 `/api/agent/chat`，API key 僅由後端讀取。若只部署 Netlify 靜態前端，AI 問答不會自動可用；需另行部署 FastAPI，並配置前端 API 網址／反向代理與後端環境變數。目前靜態頁仍使用相對路徑 `/api/agent/chat`，尚未提供 Netlify Functions 或跨站 API 設定。
+
+`GUARD_MODEL` 預設為 `openai/gpt-oss-safeguard-20b`，用於招募公平性的第二道判斷，與主回答模型共用 `OPENROUTER_API_KEY`。本地規則放行後，招募情境中有受保護特徵，或本身屬於招募決策語境時會呼叫第二關；這可涵蓋第一關未辨認出特徵的新說法。純年齡統計且沒有招募情境時不呼叫；一般職缺資料查詢也不呼叫。逾時、錯誤或輸出格式錯誤時依本地規則 fail-open。
 
 模型可直接呼叫三個官方資料工具：
 
@@ -106,19 +109,19 @@ python3 server.py
 
 這個整合只替換問答的意圖理解、工具選擇及文字生成；底層資料表尚未全部換成審查文件列出的公開資料，產業動能和錯配結果含模擬資料。不能據此宣稱能預測個別公司招募成功率或可招到人數。數字比對只檢查回答數字是否能在工具資料找到，不代表語意、單位或來源已驗證。
 
-問答入口會先經過 關鍵字範圍判斷（KeywordScopeGuard）與招募公平 Prompt Guard。涉及依性別、年齡、國籍、身心狀況、宗教等個人特徵篩選或決定錄用的問題會在呼叫模型前拒答；明確詢問如何避免歧視或了解就業保障規範的提問可通過 Prompt Guard。拒答、模型回答與數字核驗結果會追加到 `reports/agent_audit.jsonl`。日誌只保留問題 SHA-256、字元數、政策命中、工具與核驗狀態，不寫入原始問題；可用 `AGENT_AUDIT_LOG_PATH` 指定其他檔案位置。若稽核檔無法寫入，請求會停止並回傳服務錯誤。
+問答入口會先經過招募公平規則與範圍規則；兩者放行後，招募決策語境即使沒有被第一關標記出受保護特徵，也會進入 safeguard 第二關。拒答、模型回答與核驗結果會追加到 `reports/agent_audit.jsonl`。日誌只保留問題 SHA-256、字元數、規則結果、工具及核驗狀態；schema v3 另記 safeguard 呼叫狀態、判斷、類別和耗時，不記原始問題或模型理由。可用 `AGENT_AUDIT_LOG_PATH` 指定檔案位置。若稽核檔無法寫入，請求會停止並回傳服務錯誤。
 
-### 治理實作與欄位遷移（PR #6）
+### 治理實作與欄位遷移（PR #6 與 safeguard 第二關）
 
-範圍判斷與 Prompt Guard 都是本地關鍵字／正規表示式規則，沒有串接 TypeSafe 或其他治理模型。`rule_score` 是規則加權分數，不是正確率；不再回傳虛構的 `confidence`，延遲使用實際計時。規則可能誤判或漏判，測試通過僅代表已列案例通過，不代表完整語意理解、法律合規認證或 prompt injection 防護。
+範圍判斷與第一道 Prompt Guard 是本地關鍵字／正規表示式規則，沒有串接 TypeSafe。符合條件的招募問題另由 OpenRouter 上的 safeguard 模型分類；其有限題組結果與限制見 [治理說明](docs/GOVERNANCE.md)。`rule_score` 是規則加權分數，不是正確率；不回傳虛構的 `confidence`。規則和模型都可能誤判或漏判，測試通過僅代表已列案例通過，不代表完整語意理解、法律合規認證或 prompt injection 防護。
 
 - 模組／類別：舊 `agent.jev_model.JevDecisionModel` 移至 `agent.keyword_scope_guard.KeywordScopeGuard`，實例為 `keyword_scope_guard`；不保留舊 import 別名。
 - 回應：舊 `governance.jev` 改成 `governance.scope_guard`。`model`／`confidence` 改為 `implementation`／`version`／`rule_score`；頂層 `model` 仍代表 OpenRouter 回答模型。
-- 稽核：新事件含 `schema_version: 2`，`jev` 改為 `scope_guard`，拒絕原因碼改為 `KEYWORD_SCOPE_REJECTED`。既有 JSONL 保持原樣；讀取舊檔時以缺少 `schema_version` 辨識舊格式，再將 `jev` 映射到舊版規則結果，勿解讀為模型判斷。
+- 稽核：PR #6 事件使用 `schema_version: 2`，加入 safeguard 後的新事件使用 `schema_version: 3`。`jev` 改為 `scope_guard`，拒絕原因碼改為 `KEYWORD_SCOPE_REJECTED`。既有 JSONL 保持原樣；讀取舊檔時依 `schema_version` 識別格式，勿解讀為模型判斷。
 - 允許問題會先記錄 `REQUEST_ACCEPTED`，再呼叫模型，完成後另記錄結果事件；兩者可按問題雜湊與時間比對（事件 ID 不同）。回應的 `audit_id` 指向結果事件。日誌寫入失敗會停止請求。
 - 範圍放行不表示有資料作答。沒有工具證據時保留證據閘門，攔下模型自行生成的招募數字或法律內容並提示資料限制。
 
-驗收：`python -m pytest tests -q`。指定 17 題、額外 10 題及同類變體見 `tests/test_governance_acceptance.py`，包含護欄判斷、mock 模型呼叫順序和稽核測試。既有 main 測試保持原樣。歷史架構文件以本段及 [治理說明](docs/GOVERNANCE.md) 為準。
+驗收：`python -m pytest tests -q`。指定 17 題、額外 10 題及同類變體見 `tests/test_governance_acceptance.py`；`tests/test_policy_guard.py` 使用假模型回應測試違規、不違規、失敗 fail-open、無金鑰略過及稽核隱私。歷史架構文件以本段及 [治理說明](docs/GOVERNANCE.md) 為準。
 
 ### 3. 一鍵全流程重跑管線與驗證
 ```bash
