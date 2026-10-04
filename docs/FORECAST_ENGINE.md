@@ -58,7 +58,8 @@
 
 ```bash
 python -m forecast.run_real --series jobmarket --horizon 12 --step 3
-python -m forecast.run_real --series gcis-pre-gap --horizon 12 --step 3
+python -m forecast.run_real --series gcis --horizon 12 --step 3
+python -m forecast.run_real --series gcis --horizon 12 --step 3 --chronos
 python -m forecast.run_real --series jobmarket --horizon 12 --step 3 --chronos
 ```
 
@@ -68,12 +69,26 @@ python -m forecast.run_real --series jobmarket --horizon 12 --step 3 --chronos
 |---|---|---|---|---:|---:|---:|---:|
 | 公立就業服務系統新登記求才人數 | 2022-01～2026-06，54 個月 | 12 個月、每 3 個月起算、6 個起點 | **季節 Naive（選中）** | 917.537 人 | 1169.025 人 | 98.15% | 0.0734 |
 | 同上 | 同上 | 同上 | Chronos-Bolt-tiny | 1541.2252 人 | 1832.0424 人 | 87.04% | 0.1044 |
-| 製造業新設公司家數，缺口前 | 2012-06～2025-07，158 個月 | 12 個月、每 3 個月起算、41 個起點 | **Chronos-Bolt-tiny（選中）** | 24.1758 家 | 31.9455 家 | 80.64% | 0.1407 |
-| 同上 | 同上 | 同上 | 季節 Naive | 29.0766 家 | 39.9399 家 | 76.17% | 0.1776 |
+| 製造業新設公司家數，官方缺月已補回 | 2012-06～2026-08，171 個月 | 12 個月、每 3 個月起算、45 個起點 | **Chronos-Bolt-tiny（選中）** | 24.147 家 | 31.4247 家 | 80.65% | 0.1429 |
+| 同上 | 同上 | 同上 | 季節 Naive | 27.8889 家 | 38.407 家 | 78.54% | 0.1760 |
 
 以上是重疊預測期的 rolling-origin 回測誤差，不是未來誤差保證。就業通序列的 80% 區間涵蓋率明顯高於名目 80%，區間偏寬，且只有 6 個回測起點；應同時看 `error_by_horizon.csv`，不能只看平均。Chronos 在就業通序列沒有勝過季節 Naive，因此**不會因為模型較新就選它**。每個模型的完整指標與每個起點的結果見 `reports/forecast_real/`。
 
-就業通資料僅代表公立就業服務系統，不是台中所有職缺，也無法拆成特定區域與產業；資料目前截至 2026-06，輸出也是以該月為預測起點，之後幾個月已非未來。GCIS 原檔 2025-08、09 缺月，不能補 0 或直接跨過缺口。該序列預測起點仍是 2025-07，**只能展示歷史模型比較，不能當作現在的預測**。資料斷點補齊且查證後，才適合更新當前預測。對外 JSON 只提供每期 80%／95% 區間；Chronos-Bolt 不支援的 95% 區間會標成 `null`，不會偽造。
+就業通資料僅代表公立就業服務系統，不是台中所有職缺，也無法拆成特定區域與產業；資料目前截至 2026-06，輸出以該月為起點。GCIS 新設序列已補回官方八、九月觀測值，現在截止 2026-08；預測期為 2026-09～2027-08，截止日後已過去的月份仍屬該起點預測，不應當成最新實績。對外 JSON 只提供每期區間；Chronos-Bolt 不支援的 95% 區間標成 `null`。
+
+## 官方缺月修復
+
+共補回 **147 筆觀測值**：2014-11 的 21 筆現有公司統計，以及 2025-08、09 各 63 筆新設、解散與現有公司統計。八、九月台中製造業新設公司分別為 **91 家、75 家**。數值來自經濟部統計處官方公司登記月報，不做插值、不填 0；標記 `official_monthly_recovered`。
+
+官方工作簿位於 `data/raw/moea_company_monthly/`。解析時驗證月份、單位、台中市兩段表格、21 個行業欄位、非負整數家數、各行業家數及資本額合計。另將七月、十月各 63 筆，以及 2014-11 未缺的新設／解散 42 筆與原 GCIS 數值核對，家數及資本額完全相符。來源 URL 與 SHA-256 記錄在 `reports/forecast_real/gcis_recovery_audit.json`。
+
+```bash
+pip install pandas numpy xlrd openpyxl requests
+python -m etl.recover_gcis_months
+python -m forecast.run_real --series gcis --chronos --horizon 12 --step 3
+```
+
+修復程式可重跑，不覆寫相矛盾的既有觀測值；主 ETL 也會讀取已下載月報作備援。來源的部分行業名稱改為「營建工程業」「出版影音及資通訊業」「教育業」，使用別名銜接既有欄位；這不代表所有行業的跨期分類完全不變，長期比較仍須留意分類調整。
 
 ## 通用 CSV 執行
 
