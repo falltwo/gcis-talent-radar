@@ -2,8 +2,6 @@
 
 舊的 `etl/extract_gcis_batch.py` 與 `etl/extract_demographics.py` 會產生模擬資料，**不要再用**。新的 ETL 放在 `etl/sources/`，一個來源一個模組。
 
-每個來源是怎麼找到、遇到什麼問題、怎麼驗證的，記錄在 [05-ETL過程紀錄.md](05-ETL過程紀錄.md)。
-
 ## 怎麼跑
 
 ```bash
