@@ -23,37 +23,56 @@ FAIR_HIRING_INTENT = re.compile(
 # demographic context, not a request to use that trait in a hiring decision.
 DISCRIMINATORY_DECISION_INTENT = re.compile(
     r"只\s*(?:招|聘|錄用|錄取|要)|不\s*(?:招|聘用|錄用|錄取)|限\s*(?:男|女)"
-    r"|不要|排除|篩(?:掉|選|除|出)|挑(?:出|選)|選出|甄選|刷掉|淘汰|先?不考慮|往後排|排(?:在)?(?:最?後|前)|優先|優先考慮"
+    r"|不要|排除|篩(?:掉|選|除|出)|挑(?:出|選)|選出|甄選|刷掉|淘汰|先?不考慮|只考慮|往後排|排(?:在)?(?:最?後|前)|優先|優先考慮"
+    r"|以.{0,24}為(?:招募|招聘|錄取|聘用)?條件|(?:招募|招聘|錄取|聘用|徵才)條件(?:是|為|寫|限)"
     r"|(?:依|按照|根據).{0,12}(?:性別|年齡|國籍|種族|身心障礙|外貌).{0,12}(?:排序|錄取|排名)"
     r"|\b(?:only\s+(?:hire|recruit|select|employ)|(?:do\s+not|don't|never)\s+hire|exclude|reject|filter(?:\s+out)?|select|selection|choose|pick|shortlist|prioriti[sz]e|prefer|rank|screen(?:\s+out)?)\b", re.I)
 # Generic hiring becomes a selection request when it directly constrains a
 # protected group (e.g. 'hire candidates under 35' / '招募35歲以下').
 HIRING_ACTION = re.compile(r"招募|招聘|徵才|雇用|僱用|聘用|錄取|錄用|\b(?:hire|employ|recruit|hiring)\b", re.I)
 STATISTICAL_INTENT = re.compile(r"比例|人數|人口|結構|分布|分佈|趨勢|統計|\b(?:ratio|count|demographic\w*|trend\w*|statistics)\b", re.I)
+# The negation must govern the selection action in this segment. An earlier
+# fair-hiring phrase does not excuse a later, separate hiring instruction.
+NEGATED_SELECTION = re.compile(
+    r"(?:不得|禁止|避免|防止|不要|不應|不能|不可以|不以|未以)(?:(?!但|卻|同時|並且|仍然).){0,18}?(?:排除|篩選|篩掉|只招|只聘|只錄取|只考慮|錄取|雇用|僱用)"
+    r"|(?:是否|有沒有|是否有).{0,8}(?:禁止|不得).{0,16}(?:排除|篩選|只招|只聘|只錄取)"
+    r"|\b(?:avoid|prevent|prohibit(?:ed)?|forbid(?:den)?|must\s+not|should\s+not)\b.{0,45}"
+    r"(?:exclud\w*|screen\w*|filter\w*|only\s+hir\w*|select\w*|discriminat\w*)", re.I)
+ABILITY_CRITERION = re.compile(r"\b(?:by|based\s+on)\s+(?:skills?|qualifications?|experience)\b|(?:依|以|根據)(?:技能|能力|經驗|資格)(?:為準|篩選|挑選)", re.I)
+ANAPHORA = re.compile(r"她們|他們|這些人|這群人|其(?:中)?(?:應徵者|候選人)|\b(?:them|those\s+(?:applicants|candidates))\b", re.I)
+SEGMENT_BOUNDARY = re.compile(r"[。！？!?;；，,\n]+|(?:但|然而|卻|同時|並且|仍然|接著|然後|再)(?=只|把|以|招|聘|錄|排|篩|先)|\b(?:but|then|and)\b", re.I)
 
 
 def inspect_hiring_prompt(query: str) -> Dict[str, Any]:
     text = unicodedata.normalize("NFKC", query or "").strip()
     text = re.sub(r"[‐‑–—]", "-", text)
     matched_traits = [label for label, pattern in PROTECTED_TRAITS.items() if pattern.search(text)]
-    # Split sentences, not commas: mixed requests such as 'show statistics,
-    # then only hire men' must still be rejected. Education/statistics never
-    # overrides an explicit protected-trait selection request.
-    clauses = re.split(r"[。！？!?;；\n]+", text)
+    # Evaluate each instruction separately, so a statistical or legal clause
+    # cannot cancel a later protected-trait selection instruction.
+    clauses = [part.strip() for part in SEGMENT_BOUNDARY.split(text) if part.strip()]
     decision_request = False
+    antecedent = False
     for clause in clauses:
-        traits = any(p.search(clause) for p in PROTECTED_TRAITS.values())
+        direct_traits = any(p.search(clause) for p in PROTECTED_TRAITS.values())
+        traits = direct_traits or (antecedent and bool(ANAPHORA.search(clause)))
         explicit = bool(DISCRIMINATORY_DECISION_INTENT.search(clause))
-        constrained_hiring = bool(HIRING_ACTION.search(clause)) and not (
-            FAIR_HIRING_INTENT.search(clause) or STATISTICAL_INTENT.search(clause)
+        constrained_hiring = bool(HIRING_ACTION.search(clause)) and not STATISTICAL_INTENT.search(clause)
+        negation = NEGATED_SELECTION.search(clause)
+        # A second selection action after a prohibited/avoided action is a new
+        # instruction, even when the writer omits punctuation or a connector.
+        negated = bool(negation) and not bool(
+            DISCRIMINATORY_DECISION_INTENT.search(clause, negation.end())
         )
-        if traits and (explicit or constrained_hiring):
+        education_only = bool(FAIR_HIRING_INTENT.search(clause)) and not explicit
+        ability_only = bool(ABILITY_CRITERION.search(clause)) and not direct_traits
+        if traits and (explicit or constrained_hiring) and not negated and not education_only and not ability_only:
             decision_request = True
             break
+        antecedent = direct_traits and bool(HIRING_CONTEXT.search(clause))
     blocked = bool(matched_traits) and decision_request
     return {
         "implementation": "HiringPatternGuard",
-        "version": "hiring-pattern-v2",
+        "version": "hiring-pattern-v3",
         "decision": "REJECT" if blocked else "ALLOW",
         "policy_code": "FAIR_HIRING_PROTECTED_TRAIT",
         "matched_traits": matched_traits,
