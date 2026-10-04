@@ -29,6 +29,14 @@ class HiringPromptGuardTests(unittest.TestCase):
         self.assertEqual(result["decision"], "REJECT")
         self.assertTrue(result["discriminatory_decision_request"])
 
+    def test_age_variants_are_detected_for_second_gate_routing(self):
+        for query in ("面試名單只留下二十幾歲的", "履歷只留年紀輕的，其他剔除"):
+            with self.subTest(query=query):
+                result = inspect_hiring_prompt(query)
+                self.assertEqual(result["decision"], "ALLOW")
+                self.assertIn("年齡", result["matched_traits"])
+                self.assertTrue(result["hiring_context"])
+
 
 class GovernancePipelineTests(unittest.TestCase):
     def test_policy_rejection_happens_before_model_and_is_audited_without_raw_prompt(self):

@@ -10,6 +10,7 @@ from config import HISTORICAL_YEARS, TAICHUNG_DISTRICTS, TARGET_INDUSTRIES
 from agent.audit_log import write_agent_audit
 from agent.keyword_scope_guard import keyword_scope_guard
 from agent.numeric_verifier import verify_explanation_numbers
+from agent.policy_guard import evaluate_fair_hiring
 from agent.prompt_guard import inspect_hiring_prompt
 from agent.response_scope import unsupported_geography, vacancy_comparison
 from agent.tool_router import execute_tool
@@ -234,24 +235,47 @@ class OpenRouterAgent:
         query = (user_query or "").strip()
         scope_guard = keyword_scope_guard.evaluate(query)
         prompt_guard = inspect_hiring_prompt(query)
+        policy_guard = {
+            "called": False,
+            "status": "NOT_CALLED_NOT_ELIGIBLE",
+            "decision": "NOT_RUN",
+            "category": "none",
+            "latency_ms": 0,
+        }
         if prompt_guard["decision"] == "REJECT":
-            return self._reject_before_model(query, scope_guard, prompt_guard, policy_rejection=True)
+            policy_guard["status"] = "NOT_CALLED_RULE_REJECTED"
+            return self._reject_before_model(query, scope_guard, prompt_guard, policy_guard,
+                                             policy_rejection=True)
         if re.search(r"天氣|下雨|氣溫|weather", query, re.I) and not re.search(
             r"擴廠|產業|職缺|就業|招募|人力|工廠|缺工|hiring|workforce", query, re.I
         ):
             scope_guard = {**scope_guard, "decision": "REJECT", "category": "UNRECOGNIZED_SCOPE",
                            "reason": "我提供台中產業與人才資料查詢，沒有天氣資料，無法回答天氣問題。可改問行政區職缺或產業趨勢。"}
-            return self._reject_before_model(query, scope_guard, prompt_guard, policy_rejection=False)
+            policy_guard["status"] = "NOT_CALLED_OUT_OF_SCOPE"
+            return self._reject_before_model(query, scope_guard, prompt_guard, policy_guard,
+                                             policy_rejection=False)
         if unsupported_geography(query):
             scope_guard = {**scope_guard, "decision": "REJECT", "category": "UNSUPPORTED_GEOGRAPHY",
                            "reason": "目前區域職缺與產業資料僅涵蓋台中市，沒有你詢問地區的資料；不會以台中或其他行政區替代。"}
-            return self._reject_before_model(query, scope_guard, prompt_guard, policy_rejection=False)
+            policy_guard["status"] = "NOT_CALLED_OUT_OF_SCOPE"
+            return self._reject_before_model(query, scope_guard, prompt_guard, policy_guard,
+                                             policy_rejection=False)
         if scope_guard["decision"] != "ACCEPT":
-            return self._reject_before_model(query, scope_guard, prompt_guard, policy_rejection=False)
+            policy_guard["status"] = "NOT_CALLED_OUT_OF_SCOPE"
+            return self._reject_before_model(query, scope_guard, prompt_guard, policy_guard,
+                                             policy_rejection=False)
+
+        if prompt_guard["hiring_context"] and (
+            prompt_guard["matched_traits"] or prompt_guard["active_hiring_context"]
+        ):
+            policy_guard = evaluate_fair_hiring(query)
+            if policy_guard["decision"] == "VIOLATION":
+                return self._reject_before_model(query, scope_guard, prompt_guard, policy_guard,
+                                                 policy_rejection=True)
 
         # Verify audit availability before sending any prompt to the provider.
         write_agent_audit(query, scope_guard=scope_guard, prompt_guard=prompt_guard,
-                          outcome="REQUEST_ACCEPTED", model_called=False)
+                          policy_guard=policy_guard, outcome="REQUEST_ACCEPTED", model_called=False)
         model = os.environ.get("OPENROUTER_MODEL", DEFAULT_MODEL)
         messages: List[Dict[str, Any]] = [
             {"role": "system", "content": SYSTEM_PROMPT},
@@ -268,6 +292,7 @@ class OpenRouterAgent:
                     query,
                     scope_guard=scope_guard,
                     prompt_guard=prompt_guard,
+                    policy_guard=policy_guard,
                     outcome="PROVIDER_ERROR",
                     model_called=True,
                     tool_calls=[r["tool"] for r in tool_results],
@@ -275,14 +300,16 @@ class OpenRouterAgent:
                 raise
             choices = payload.get("choices") or []
             if not choices or not isinstance(choices[0].get("message"), dict):
-                self._audit_failure(query, scope_guard, prompt_guard, "INVALID_MODEL_RESPONSE", tool_results)
+                self._audit_failure(query, scope_guard, prompt_guard, policy_guard,
+                                    "INVALID_MODEL_RESPONSE", tool_results)
                 raise OpenRouterError("OpenRouter 回應中沒有 assistant message。")
             message = choices[0]["message"]
             calls = message.get("tool_calls") or []
             if not calls:
                 narrative = (message.get("content") or "").strip()
                 if not narrative:
-                    self._audit_failure(query, scope_guard, prompt_guard, "EMPTY_MODEL_RESPONSE", tool_results)
+                    self._audit_failure(query, scope_guard, prompt_guard, policy_guard,
+                                        "EMPTY_MODEL_RESPONSE", tool_results)
                     raise OpenRouterError("模型沒有提供文字回答或工具呼叫。")
                 if not tool_results:
                     verification = {
@@ -296,6 +323,7 @@ class OpenRouterAgent:
                         query,
                         scope_guard=scope_guard,
                         prompt_guard=prompt_guard,
+                        policy_guard=policy_guard,
                         outcome="NO_TOOL_CALL",
                         model_called=True,
                         verification=verification,
@@ -310,7 +338,8 @@ class OpenRouterAgent:
                         "structured_data": {},
                         "evidence": {},
                         "verification": verification,
-                        "governance": {"scope_guard": scope_guard, "prompt_guard": prompt_guard, "audit_id": audit_id},
+                        "governance": {"scope_guard": scope_guard, "prompt_guard": prompt_guard,
+                                       "policy_guard": policy_guard, "audit_id": audit_id},
                         "provider": "openrouter",
                         "model": model,
                     }
@@ -343,6 +372,7 @@ class OpenRouterAgent:
                     query,
                     scope_guard=scope_guard,
                     prompt_guard=prompt_guard,
+                    policy_guard=policy_guard,
                     outcome="DATA_UNAVAILABLE" if unavailable else ("ANSWERED" if passed_numeric_gate else "NUMERIC_GUARD_REJECTED"),
                     model_called=True,
                     tool_calls=tool_names,
@@ -358,14 +388,16 @@ class OpenRouterAgent:
                     "structured_data": structured,
                     "evidence": evidence,
                     "verification": verification,
-                    "governance": {"scope_guard": scope_guard, "prompt_guard": prompt_guard, "audit_id": audit_id},
+                    "governance": {"scope_guard": scope_guard, "prompt_guard": prompt_guard,
+                                   "policy_guard": policy_guard, "audit_id": audit_id},
                     "provider": "openrouter",
                     "model": model,
                 }
 
             calls_used += len(calls)
             if calls_used > MAX_TOOL_CALLS:
-                self._audit_failure(query, scope_guard, prompt_guard, "TOOL_CALL_LIMIT", tool_results)
+                self._audit_failure(query, scope_guard, prompt_guard, policy_guard,
+                                    "TOOL_CALL_LIMIT", tool_results)
                 raise OpenRouterError("查詢需要超過允許的工具次數，已停止。")
             messages.append(message)
             for call in calls:
@@ -380,12 +412,13 @@ class OpenRouterAgent:
                     if requested and isinstance(selected, dict) and selected.get("district") not in requested:
                         rejected_scope = {**scope_guard, "decision": "REJECT", "category": "GEOGRAPHY_MISMATCH",
                                           "reason": "資料工具選取的行政區與你的問題不符，已停止查詢，不會以其他區或全市替代。請重新指定行政區。"}
-                        return self._reject_before_model(query, rejected_scope, prompt_guard, policy_rejection=False,
-                                                         model_called=True)
+                        return self._reject_before_model(query, rejected_scope, prompt_guard, policy_guard,
+                                                         policy_rejection=False, model_called=True)
                 try:
                     result = _run_tool(name, fn.get("arguments", "{}"))
                 except OpenRouterError:
-                    self._audit_failure(query, scope_guard, prompt_guard, "TOOL_CALL_REJECTED", tool_results)
+                    self._audit_failure(query, scope_guard, prompt_guard, policy_guard,
+                                        "TOOL_CALL_REJECTED", tool_results)
                     raise
                 tool_results.append(result)
                 messages.append({
@@ -394,7 +427,8 @@ class OpenRouterAgent:
                     "content": json.dumps(result, ensure_ascii=False, default=str),
                 })
 
-        self._audit_failure(query, scope_guard, prompt_guard, "TOOL_ROUND_LIMIT", tool_results)
+        self._audit_failure(query, scope_guard, prompt_guard, policy_guard,
+                            "TOOL_ROUND_LIMIT", tool_results)
         raise OpenRouterError("模型在允許的回合內未完成回答。")
 
     @staticmethod
@@ -402,6 +436,7 @@ class OpenRouterAgent:
         query: str,
         scope_guard: Dict[str, Any],
         prompt_guard: Dict[str, Any],
+        policy_guard: Dict[str, Any],
         outcome: str,
         tool_results: List[Dict[str, Any]],
     ) -> None:
@@ -409,6 +444,7 @@ class OpenRouterAgent:
             query,
             scope_guard=scope_guard,
             prompt_guard=prompt_guard,
+            policy_guard=policy_guard,
             outcome=outcome,
             model_called=True,
             tool_calls=[result.get("tool", "unknown") for result in tool_results],
@@ -419,6 +455,7 @@ class OpenRouterAgent:
         query: str,
         scope_guard: Dict[str, Any],
         prompt_guard: Dict[str, Any],
+        policy_guard: Dict[str, Any],
         *,
         policy_rejection: bool,
         model_called: bool = False,
@@ -440,6 +477,7 @@ class OpenRouterAgent:
             query,
             scope_guard=scope_guard,
             prompt_guard=prompt_guard,
+            policy_guard=policy_guard,
             outcome=outcome,
             model_called=model_called,
             verification=verification,
@@ -454,7 +492,8 @@ class OpenRouterAgent:
             "structured_data": {},
             "evidence": {},
             "verification": verification,
-            "governance": {"scope_guard": scope_guard, "prompt_guard": prompt_guard, "audit_id": audit_id},
+            "governance": {"scope_guard": scope_guard, "prompt_guard": prompt_guard,
+                           "policy_guard": policy_guard, "audit_id": audit_id},
             "provider": "openrouter",
             "model": os.environ.get("OPENROUTER_MODEL", DEFAULT_MODEL),
         }

@@ -168,7 +168,7 @@ def test_pipeline_acceptance(case_id, query, expected, audit_path):
     assert result["governance"]["audit_id"] == events[-1]["request_id"]
     assert all(e["query_sha256"] == hashlib.sha256(query.encode()).hexdigest() for e in events)
     assert query not in audit_path.read_text()
-    assert all(e["schema_version"] == 2 and "jev" not in e for e in events)
+    assert all(e["schema_version"] == 3 and "jev" not in e for e in events)
     assert all(e["scope_guard"]["implementation"] == "KeywordScopeGuard" for e in events)
     assert "confidence" not in result["governance"]["scope_guard"]
     assert "model" not in result["governance"]["scope_guard"]

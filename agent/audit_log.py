@@ -22,6 +22,7 @@ def write_agent_audit(
     prompt_guard: Dict[str, Any],
     outcome: str,
     model_called: bool,
+    policy_guard: Optional[Dict[str, Any]] = None,
     tool_calls: Optional[list] = None,
     verification: Optional[Dict[str, Any]] = None,
 ) -> str:
@@ -29,7 +30,7 @@ def write_agent_audit(
     normalized_query = (query or "").strip()
     request_id = str(uuid.uuid4())
     event = {
-        "schema_version": 2,
+        "schema_version": 3,
         "timestamp_utc": datetime.now(timezone.utc).isoformat(),
         "request_id": request_id,
         "query_sha256": hashlib.sha256(normalized_query.encode("utf-8")).hexdigest(),
@@ -48,8 +49,16 @@ def write_agent_audit(
             "policy_code": prompt_guard.get("policy_code"),
             "matched_traits": prompt_guard.get("matched_traits", []),
             "hiring_context": prompt_guard.get("hiring_context", False),
+            "active_hiring_context": prompt_guard.get("active_hiring_context", False),
             "discriminatory_decision_request": prompt_guard.get("discriminatory_decision_request", False),
             "reason": prompt_guard.get("reason"),
+        },
+        "policy_guard": {
+            "called": (policy_guard or {}).get("called", False),
+            "status": (policy_guard or {}).get("status", "NOT_CALLED"),
+            "decision": (policy_guard or {}).get("decision", "NOT_RUN"),
+            "category": (policy_guard or {}).get("category", "none"),
+            "latency_ms": (policy_guard or {}).get("latency_ms", 0),
         },
         "outcome": outcome,
         "model_called": model_called,

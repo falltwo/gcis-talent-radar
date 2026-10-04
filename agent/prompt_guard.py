@@ -3,7 +3,7 @@ import re
 import unicodedata
 from typing import Any, Dict
 
-AGE = (r"年齡|[0-9零〇一二兩三四五六七八九十百]+\s*歲|年輕|年長|中高齡|高齡"
+AGE = (r"年齡|年紀|歲數|[0-9零〇一二兩三四五六七八九十百]+(?:幾)?\s*歲|年輕|年長|中高齡|高齡"
        r"|\bage(?:d)?\b|\byoung\b|\bold\b|\b(?:under|over|below|above|younger\s+than|older\s+than)\s*\d{1,3}\b"
        r"|\b\d{1,3}\s*(?:-\s*\d{1,3}\s*)?(?:years?\s*old|歲)")
 PROTECTED_TRAITS = {
@@ -86,11 +86,12 @@ def inspect_hiring_prompt(query: str) -> Dict[str, Any]:
     blocked = bool(matched_traits) and decision_request
     return {
         "implementation": "HiringPatternGuard",
-        "version": "hiring-pattern-v4",
+    "version": "hiring-pattern-v5",
         "decision": "REJECT" if blocked else "ALLOW",
         "policy_code": "FAIR_HIRING_PROTECTED_TRAIT",
         "matched_traits": matched_traits,
         "hiring_context": bool(HIRING_CONTEXT.search(text)),
+        "active_hiring_context": bool(ACTIVE_HIRING_CONTEXT.search(text)),
         "fair_hiring_education": bool(FAIR_HIRING_INTENT.search(text)),
         "discriminatory_decision_request": decision_request,
         "reason": "系統不協助以受保護特徵作招募篩選、錄用或排序。" if blocked else "未命中本地招募歧視規則；不代表法律合規認證。",
