@@ -1,4 +1,4 @@
-"""Regional peer counts from reviewed MOEA factory survey snapshots.
+"""Regional peer counts from provisional MOEA factory survey samples.
 
 Factory counts are not company counts, vacancy counts or workers competing
 for the same jobs. No synthetic fallback is allowed.
@@ -46,10 +46,11 @@ def get_regional_peer_density(district='大雅區', year=113, industry_code=None
     evidence = {'indicator_name': '區域同類營運中工廠家數',
                 'official_sources': ['經濟部工廠校正及營運調查'], 'source_url': SOURCE,
                 'source_tables': ['factory_counts.csv'], 'data_period': f'{year}年',
-                'geography': f'臺中市{district}', 'data_mode': 'reviewed_official_snapshot',
-                'verification_status': 'SOURCE_CHECKED' if status == 'available' else 'NO_DATA',
-                'calculation_steps': ['依年度、行政區與行業中類篩選官方調查值；無資料不補零。'],
+                'geography': f'臺中市{district}', 'data_mode': 'unverified_sample_snapshot',
+                'verification_status': 'SOURCE_UNVERIFIED' if rows else 'NO_DATA',
+                'calculation_steps': ['依年度、行政區與行業中類篩選樣本轉錄值；無資料不補零。'],
                 'limitations': ['只涵蓋已匯入的行業，不代表全區工廠總數。',
+                                '三列數值尚未對官方查詢結果獨立核對，不應作為已驗證決策資料。',
                                 '工廠家數不等於公司家數、徵才需求或缺工人數。',
                                 '未提供面積或通勤資料，不計算每平方公里密度。',
                                 '普查年可能缺資料；*與-保留為未知值。']}
