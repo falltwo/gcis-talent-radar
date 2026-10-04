@@ -91,6 +91,19 @@ class EarlyWarningAgentService:
         # Update evidence with verification status
         evidence["verification_status"] = verification["status"]
 
+        if verification["status"] != "VERIFIED":
+            return {
+                "query": q,
+                "status": "BLOCKED_BY_NUMERIC_VERIFIER",
+                "intent": intent,
+                "tool": tool_name,
+                "answer": "回答中的數值未能全部對上工具結果，因此已由數字驗證器攔截，未顯示未核准的回答。",
+                "jev_decision": jev_decision,
+                "structured_data": structured_data,
+                "evidence": evidence,
+                "verification": verification,
+            }
+
         return {
             "query": q,
             "status": "SUCCESS",

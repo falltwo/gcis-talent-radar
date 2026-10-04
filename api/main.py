@@ -21,6 +21,11 @@ from config import (
 from database.db_manager import db
 from agent.agent_service import agent_service
 from engine.gcis_live_verifier import verify_company_live
+from engine.official_labor_market import (
+    get_gcis_new_company_trend,
+    get_regional_job_demand,
+    get_wage_baseline,
+)
 from tests.test_etl_quality import run_data_quality_audit
 from benchmark.run_benchmark import run_benchmark_validation
 
@@ -270,6 +275,41 @@ def verify_company_api(req: VerifyRequest) -> Dict[str, Any]:
     res = verify_company_live(req.query)
     return res
 
+@app.get("/api/official/job-demand")
+def official_job_demand(
+    district: Optional[str] = Query(None),
+    industry_id: Optional[str] = Query(None),
+    occupation_keyword: Optional[str] = Query(None),
+) -> Dict[str, Any]:
+    """Approved tool: current TaiwanJobs observable vacancy snapshot."""
+    if district and district not in TAICHUNG_DISTRICTS:
+        raise HTTPException(status_code=400, detail="district 必須是台中市 29 行政區之一")
+    result = get_regional_job_demand(district, industry_id, occupation_keyword)
+    if not result.get("available"):
+        raise HTTPException(status_code=503, detail=result)
+    return result
+
+@app.get("/api/official/company-trend")
+def official_company_trend(
+    industry_id: str = Query("IND_MFG"),
+    months: int = Query(36, ge=1, le=180),
+) -> Dict[str, Any]:
+    """Approved tool: GCIS monthly new-company trend at city/industry-major level."""
+    result = get_gcis_new_company_trend(industry_id, months)
+    if not result.get("available"):
+        raise HTTPException(status_code=503, detail=result)
+    return result
+
+@app.get("/api/official/wage-baseline")
+def official_wage_baseline(
+    industry_id: str = Query("IND_MFG"),
+) -> Dict[str, Any]:
+    """Approved tool: BLI average insured-salary baseline (not take-home pay)."""
+    result = get_wage_baseline(industry_id)
+    if not result.get("available"):
+        raise HTTPException(status_code=503, detail=result)
+    return result
+
 @app.get("/api/quality-report")
 def get_quality_report() -> Dict[str, Any]:
     """Section 31: ETL Quality Report"""
@@ -290,8 +330,9 @@ def get_benchmark_summary() -> Dict[str, Any]:
 
 # ----------------- Frontend Web Serving -----------------
 UI_DIR = BASE_DIR / "ui"
-if UI_DIR.exists():
-    app.mount("/static", StaticFiles(directory=str(UI_DIR / "static")), name="static")
+STATIC_DIR = UI_DIR / "static"
+if STATIC_DIR.exists():
+    app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
 @app.get("/")
 def serve_frontend():

@@ -16,6 +16,11 @@ from engine.talent_supply import get_talent_supply, get_department_projection
 from engine.mismatch_engine import get_mismatch_signal
 from engine.gcis_live_verifier import verify_company_live
 from engine.evidence_engine import build_evidence_object
+from engine.official_labor_market import (
+    get_gcis_new_company_trend,
+    get_regional_job_demand,
+    get_wage_baseline,
+)
 
 def get_district_industry(district: str = "西屯區", year: int = 113) -> Dict[str, Any]:
     """
@@ -91,6 +96,37 @@ def execute_tool(intent: str, params: Dict[str, Any]) -> Dict[str, Any]:
     """
     Deterministic Tool Router entry point.
     """
+    if intent == "JOB_DEMAND_QUERY":
+        res = get_regional_job_demand(
+            district=params.get("district"),
+            industry_id=params.get("industry_id"),
+            occupation_keyword=params.get("occupation_keyword"),
+        )
+        return {
+            "tool": "get_regional_job_demand",
+            "data": res,
+            "evidence": res.get("evidence", {"verification_status": "DATA_UNAVAILABLE"}),
+        }
+
+    if intent == "COMPANY_TREND_QUERY":
+        res = get_gcis_new_company_trend(
+            industry_id=params.get("industry_id") or "IND_MFG",
+            months=params.get("months", 36),
+        )
+        return {
+            "tool": "get_gcis_new_company_trend",
+            "data": res,
+            "evidence": res.get("evidence", {"verification_status": "DATA_UNAVAILABLE"}),
+        }
+
+    if intent == "WAGE_QUERY":
+        res = get_wage_baseline(params.get("industry_id") or "IND_MFG")
+        return {
+            "tool": "get_wage_baseline",
+            "data": res,
+            "evidence": res.get("evidence", {"verification_status": "DATA_UNAVAILABLE"}),
+        }
+
     if intent == "COMPANY_VERIFY":
         q = params.get("tax_id") or params.get("query_term", "")
         res = verify_company_live(q)
