@@ -13,11 +13,14 @@ class FactoryCountsTest(unittest.TestCase):
             result=factory_density.get_regional_peer_density('大雅區',year,'29')
             self.assertEqual(result['factory_count'],count)
             self.assertEqual(result['status'],'available')
+            self.assertEqual(result['evidence']['verification_status'],'SOURCE_UNVERIFIED')
+            self.assertEqual(result['evidence']['data_mode'],'unverified_sample_snapshot')
     def test_no_synthetic_fallback(self):
         for district,year,code in [('潭子區',113,'29'),('大雅區',110,'29'),('大雅區',113,'25')]:
             result=factory_density.get_regional_peer_density(district,year,code)
             self.assertEqual(result['status'],'no_data')
             self.assertIsNone(result['factory_count'])
+            self.assertEqual(result['evidence']['verification_status'],'NO_DATA')
             answer=generate_explanation('DISTRICT_QUERY',{'data':result})
             self.assertIn('尚未匯入',answer)
     def test_suppressed_value_and_duplicates(self):
