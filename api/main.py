@@ -22,6 +22,7 @@ from database.db_manager import db
 from agent.audit_log import AuditLogError
 from agent.agent_service import OpenRouterError, agent_service
 from engine.gcis_live_verifier import verify_company_live
+from engine.expansion_demo import build_expansion_report
 from engine.official_labor_market import (
     get_gcis_new_company_trend,
     get_regional_job_demand,
@@ -326,6 +327,16 @@ def _raise_official_tool_error(result: Dict[str, Any]) -> None:
     raise HTTPException(status_code=status_code, detail=result)
 
 
+@app.get("/api/demo/expansion")
+def demo_expansion(
+    district: str = Query("大雅區"),
+    planned_hires: int = Query(10, ge=1, le=100000),
+) -> Dict[str, Any]:
+    """情境值與官方觀測分離；不推估單一企業招募成功率。"""
+    if district not in TAICHUNG_DISTRICTS:
+        raise HTTPException(status_code=422, detail="district 必須是台中市 29 行政區之一")
+    return build_expansion_report(district, planned_hires)
+
 @app.get("/api/official/job-demand")
 def official_job_demand(
     district: Optional[str] = Query(None),
@@ -391,6 +402,10 @@ def serve_frontend():
     if index_file.exists():
         return FileResponse(index_file)
     return {"message": "Regional Industry-Talent Mismatch System API is running. Build index.html next."}
+
+@app.get("/demo")
+def serve_expansion_demo():
+    return FileResponse(UI_DIR / "expansion-demo.html")
 
 @app.get("/architecture")
 @app.get("/architecture/index.html")

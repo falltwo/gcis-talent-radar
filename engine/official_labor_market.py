@@ -127,6 +127,13 @@ def get_regional_job_demand(
         f"SELECT * FROM official_job_fetch_audit WHERE snapshot_date = ? {audit_clause}",
         tuple(audit_params),
     )
+    if not audits:
+        return {
+            "available": False,
+            "reason": "該期行政區職缺抓取紀錄不存在，不能將未抓到資料當作 0 筆",
+            "snapshot_date": snapshot,
+            "district": district,
+        }
     capped = [row["district"] for row in audits if row["limit_reached"]]
     excluded = sum(int(row["excluded_location_count"]) for row in audits)
     total_openings = sum(int(row["openings"]) for row in rows)
