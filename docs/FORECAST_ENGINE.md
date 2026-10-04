@@ -1,6 +1,6 @@
 # 預測引擎（Step 3）
 
-程式在 `forecast/`，測試在 `tests/test_forecast.py`。
+程式在 `forecast/`，測試在 `tests/test_forecast.py` 與 `tests/test_forecast_real.py`。
 
 ## 原則
 
@@ -54,7 +54,28 @@
 | `{id}_backtest_detail.csv` | 每個起點、每一期的預測與實際值 |
 | `{id}_quantiles_internal.csv` | 內部用：完整分位數，不對外顯示 |
 
-## 執行
+## PR #5 真實資料基線
+
+```bash
+python -m forecast.run_real --series jobmarket --horizon 12 --step 3
+python -m forecast.run_real --series gcis-pre-gap --horizon 12 --step 3
+python -m forecast.run_real --series jobmarket --horizon 12 --step 3 --chronos
+```
+
+`--chronos` 只在三個相同的統計基線上加入 Chronos-Bolt，使用**同一批回測起點**比較；預設模型為 `amazon/chronos-bolt-tiny`，可用 `--chronos-model-id` 指定其他模型。需先安裝 `chronos-forecasting`（含 PyTorch），首次執行會下載權重。若套件或權重不可用，不能宣稱已完成 Chronos 的誤差比較。
+
+| 序列 | 實際可用段 | 回測設定 | 模型 | MAE | RMSE | 80% 實際涵蓋率 | WQL |
+|---|---|---|---|---:|---:|---:|---:|
+| 公立就業服務系統新登記求才人數 | 2022-01～2026-06，54 個月 | 12 個月、每 3 個月起算、6 個起點 | **季節 Naive（選中）** | 917.537 人 | 1169.025 人 | 98.15% | 0.0734 |
+| 同上 | 同上 | 同上 | Chronos-Bolt-tiny | 1541.2252 人 | 1832.0424 人 | 87.04% | 0.1044 |
+| 製造業新設公司家數，缺口前 | 2012-06～2025-07，158 個月 | 12 個月、每 3 個月起算、41 個起點 | **Chronos-Bolt-tiny（選中）** | 24.1758 家 | 31.9455 家 | 80.64% | 0.1407 |
+| 同上 | 同上 | 同上 | 季節 Naive | 29.0766 家 | 39.9399 家 | 76.17% | 0.1776 |
+
+以上是重疊預測期的 rolling-origin 回測誤差，不是未來誤差保證。就業通序列的 80% 區間涵蓋率明顯高於名目 80%，區間偏寬，且只有 6 個回測起點；應同時看 `error_by_horizon.csv`，不能只看平均。Chronos 在就業通序列沒有勝過季節 Naive，因此**不會因為模型較新就選它**。每個模型的完整指標與每個起點的結果見 `reports/forecast_real/`。
+
+就業通資料僅代表公立就業服務系統，不是台中所有職缺，也無法拆成特定區域與產業；資料目前截至 2026-06，輸出也是以該月為預測起點，之後幾個月已非未來。GCIS 原檔 2025-08、09 缺月，不能補 0 或直接跨過缺口。該序列預測起點仍是 2025-07，**只能展示歷史模型比較，不能當作現在的預測**。資料斷點補齊且查證後，才適合更新當前預測。對外 JSON 只提供每期 80%／95% 區間；Chronos-Bolt 不支援的 95% 區間會標成 `null`，不會偽造。
+
+## 通用 CSV 執行
 
 ```bash
 python -m forecast.run --csv data/processed/某序列.csv --id tc_mfg_new --name "臺中製造業新設家數" --freq M --horizon 36 --step 3 --source "經濟部商工登記 公司設立登記清冊（月份）"
