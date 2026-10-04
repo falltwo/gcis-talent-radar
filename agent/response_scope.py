@@ -12,16 +12,36 @@ OTHER_CITIES = (
 
 
 def unsupported_geography(query):
-    # Only geographic statistics are restricted; a company name is not its location.
+    """Detect an unsupported requested geography without treating brands as places.
+
+    Bare place words such as ``台北富邦`` and ``新竹物流`` can be company names.
+    When the query already identifies Taichung, only an explicit outside city/county
+    marker or an unsupported district is enough to reject it.
+    """
     if not re.search(r"職缺|就業|薪資|缺工|人力|工廠|新設|行政區|vacanc|workforce|jobs", query, re.I):
         return False
-    if any(city.lower() in query.lower() for city in OTHER_CITIES):
+    text = query.lower()
+    taichung_requested = "台中" in text or "臺中" in text or any(
+        district in query for district in TAICHUNG_DISTRICTS
+    )
+    explicit_other_region = any(
+        re.search(rf"{re.escape(city.lower())}(?:市|縣)", text)
+        for city in OTHER_CITIES
+    )
+    outside_city_district = any(
+        re.search(rf"{re.escape(city.lower())}[\u4e00-\u9fff]{{1,3}}區", text)
+        for city in OTHER_CITIES
+    )
+    if explicit_other_region or outside_city_district:
         return True
     districts = re.findall(r"[\u4e00-\u9fff]{2,3}區", query)
-    return any(
+    unsupported_district = any(
         not d.endswith(("行政區", "工業區", "兩區", "各區", "地區", "園區", "全區"))
         and not any(d.endswith(known) for known in TAICHUNG_DISTRICTS) for d in districts
     )
+    if unsupported_district:
+        return True
+    return not taichung_requested and any(city.lower() in text for city in OTHER_CITIES)
 
 
 def vacancy_comparison(results):
