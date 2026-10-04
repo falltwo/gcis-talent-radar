@@ -1,17 +1,54 @@
-"""展示主線：合約測試與真實官方快照的端到端 API 測試。"""
+"""展示主線：路由合約與真實官方快照測試；ASGI 呼叫不依賴額外 HTTP 客戶端。"""
+import asyncio
 import csv
+import json
 from pathlib import Path
+from types import SimpleNamespace
+from urllib.parse import parse_qsl, urlencode, urlsplit
 from unittest.mock import patch
 
 import pytest
-from fastapi.testclient import TestClient
 
 from api.main import app
 from engine.expansion_demo import build_expansion_report, load_factory_snapshot
 from engine.official_labor_market import get_regional_job_demand
 
 
-client = TestClient(app)
+def _get(url, *, params=None):
+    """以 ASGI 介面真正送 GET 到應用程式，涵蓋 FastAPI 參數驗證。"""
+    parsed = urlsplit(url)
+    query = urlencode(params if params is not None else parse_qsl(parsed.query))
+    messages = []
+
+    async def exchange():
+        received = False
+
+        async def receive():
+            nonlocal received
+            if not received:
+                received = True
+                return {"type": "http.request", "body": b"", "more_body": False}
+            await asyncio.sleep(0)
+            return {"type": "http.disconnect"}
+
+        async def send(message):
+            messages.append(message)
+
+        await app({
+            "type": "http", "asgi": {"version": "3.0"}, "http_version": "1.1",
+            "method": "GET", "scheme": "http", "path": parsed.path,
+            "raw_path": parsed.path.encode(), "root_path": "", "query_string": query.encode(),
+            "headers": [], "client": ("test", 12345), "server": ("test", 80),
+        }, receive, send)
+
+    asyncio.run(exchange())
+    start = next(message for message in messages if message["type"] == "http.response.start")
+    body = b"".join(message.get("body", b"") for message in messages if message["type"] == "http.response.body")
+    headers = {key.decode(): value.decode() for key, value in start["headers"]}
+    return SimpleNamespace(
+        status_code=start["status"], headers=headers, text=body.decode("utf-8"),
+        json=lambda: json.loads(body),
+    )
 
 
 def _fixture(path: Path, rows):
@@ -96,7 +133,7 @@ def test_wage_without_observed_average_is_unavailable_not_zero(tmp_path):
 
 
 def test_api_real_snapshot_and_scenario_are_separate():
-    response = client.get("/api/demo/expansion?district=大雅區&planned_hires=10")
+    response = _get("/api/demo/expansion?district=大雅區&planned_hires=10")
     assert response.status_code == 200
     data = response.json()
     assert data["status"] == "ready"
@@ -124,7 +161,7 @@ def test_api_real_snapshot_and_scenario_are_separate():
     {"district": "大雅區", "planned_hires": "abc"},
 ])
 def test_api_rejects_invalid_scope_and_target(params):
-    assert client.get("/api/demo/expansion", params=params).status_code == 422
+    assert _get("/api/demo/expansion", params=params).status_code == 422
 
 
 def test_zero_observed_postings_is_not_missing():
@@ -144,8 +181,8 @@ def test_missing_district_fetch_audit_is_not_misreported_as_zero():
 
 
 def test_demo_page_is_served_and_root_points_to_it():
-    page = client.get("/demo")
+    page = _get("/demo")
     assert page.status_code == 200
     assert "text/html" in page.headers["content-type"]
     assert "大雅區" in page.text
-    assert 'href="/demo"' in client.get("/").text
+    assert 'href="/demo"' in _get("/").text
