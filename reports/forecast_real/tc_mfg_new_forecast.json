@@ -1,14 +1,14 @@
 {
   "series": {
     "id": "tc_mfg_new",
-    "name": "臺中市製造業新設公司家數（缺月前的歷史段）",
+    "name": "臺中市製造業新設公司家數",
     "unit": "家",
     "freq": "M",
     "first_period": "2012-06",
-    "last_period": "2025-07",
-    "n_obs": 158,
+    "last_period": "2026-08",
+    "n_obs": 171,
     "sources": [
-      "經濟部 GCIS 縣市×行業大類月統計；2025-08/09 缺月未補值"
+      "GCIS 月統計；2025-08/09 由經濟部官方公司登記月報補回，非插補"
     ],
     "is_estimate": false
   },
@@ -17,71 +17,71 @@
     "horizon": 12,
     "min_train": 36,
     "step": 3,
-    "n_origins": 41,
+    "n_origins": 45,
     "leaderboard": [
       {
         "rank": 1,
         "model": "chronos",
-        "n_forecasts": 470,
+        "n_forecasts": 522,
         "n_failed_origins": 0,
-        "MAE": 24.1758,
-        "RMSE": 31.9455,
-        "MASE": 1.031,
-        "sMAPE_pct": 21.2463,
-        "coverage_80": 0.8064,
-        "width_80": 76.5045,
+        "MAE": 24.147,
+        "RMSE": 31.4247,
+        "MASE": 1.0184,
+        "sMAPE_pct": 21.8114,
+        "coverage_80": 0.8065,
+        "width_80": 75.6467,
         "coverage_95": null,
         "width_95": null,
-        "WQL": 0.1407,
-        "WQL_skill_vs_snaive": 0.2076
+        "WQL": 0.1429,
+        "WQL_skill_vs_snaive": 0.1876
       },
       {
         "rank": 2,
         "model": "snaive",
-        "n_forecasts": 470,
+        "n_forecasts": 522,
         "n_failed_origins": 0,
-        "MAE": 29.0766,
-        "RMSE": 39.9399,
-        "MASE": 1.2396,
-        "sMAPE_pct": 24.9317,
-        "coverage_80": 0.7617,
-        "width_80": 90.8788,
-        "coverage_95": 0.9106,
-        "width_95": 138.5048,
-        "WQL": 0.1776,
+        "MAE": 27.8889,
+        "RMSE": 38.407,
+        "MASE": 1.1812,
+        "sMAPE_pct": 24.5038,
+        "coverage_80": 0.7854,
+        "width_80": 91.1771,
+        "coverage_95": 0.9195,
+        "width_95": 138.825,
+        "WQL": 0.176,
         "WQL_skill_vs_snaive": 0.0
       },
       {
         "rank": 3,
         "model": "naive",
-        "n_forecasts": 470,
+        "n_forecasts": 522,
         "n_failed_origins": 0,
-        "MAE": 30.7723,
-        "RMSE": 39.3263,
-        "MASE": 1.307,
-        "sMAPE_pct": 27.6908,
-        "coverage_80": 0.9298,
-        "width_80": 159.6501,
-        "coverage_95": 0.9809,
-        "width_95": 223.5598,
-        "WQL": 0.1933,
-        "WQL_skill_vs_snaive": -0.0884
+        "MAE": 29.2222,
+        "RMSE": 37.7423,
+        "MASE": 1.2343,
+        "sMAPE_pct": 26.864,
+        "coverage_80": 0.9368,
+        "width_80": 159.669,
+        "coverage_95": 0.9828,
+        "width_95": 222.4714,
+        "WQL": 0.194,
+        "WQL_skill_vs_snaive": -0.1023
       },
       {
         "rank": 4,
         "model": "drift",
-        "n_forecasts": 470,
+        "n_forecasts": 522,
         "n_failed_origins": 0,
-        "MAE": 32.4324,
-        "RMSE": 41.6134,
-        "MASE": 1.3828,
-        "sMAPE_pct": 29.1424,
-        "coverage_80": 0.9298,
-        "width_80": 165.1063,
-        "coverage_95": 0.9809,
-        "width_95": 230.2763,
-        "WQL": 0.2015,
-        "WQL_skill_vs_snaive": -0.1345
+        "MAE": 30.7418,
+        "RMSE": 39.8977,
+        "MASE": 1.3035,
+        "sMAPE_pct": 28.2235,
+        "coverage_80": 0.9368,
+        "width_80": 164.7188,
+        "coverage_95": 0.9828,
+        "width_95": 228.7332,
+        "WQL": 0.2017,
+        "WQL_skill_vs_snaive": -0.1465
       }
     ],
     "skipped_models": {}
@@ -93,104 +93,104 @@
   },
   "forecast": [
     {
-      "period": "2025-08",
+      "period": "2026-09",
       "range_80": [
-        80,
-        131
+        61,
+        95
       ],
       "range_95": null
     },
     {
-      "period": "2025-09",
+      "period": "2026-10",
       "range_80": [
-        73,
-        129
+        58,
+        97
       ],
       "range_95": null
     },
     {
-      "period": "2025-10",
+      "period": "2026-11",
       "range_80": [
-        70,
-        129
+        58,
+        100
       ],
       "range_95": null
     },
     {
-      "period": "2025-11",
+      "period": "2026-12",
       "range_80": [
-        72,
-        136
+        55,
+        101
       ],
       "range_95": null
     },
     {
-      "period": "2025-12",
+      "period": "2027-01",
       "range_80": [
-        71,
-        138
+        52,
+        101
       ],
       "range_95": null
     },
     {
-      "period": "2026-01",
+      "period": "2027-02",
+      "range_80": [
+        52,
+        104
+      ],
+      "range_95": null
+    },
+    {
+      "period": "2027-03",
+      "range_80": [
+        63,
+        126
+      ],
+      "range_95": null
+    },
+    {
+      "period": "2027-04",
       "range_80": [
         67,
-        134
+        135
       ],
       "range_95": null
     },
     {
-      "period": "2026-02",
+      "period": "2027-05",
       "range_80": [
         66,
-        136
+        137
       ],
       "range_95": null
     },
     {
-      "period": "2026-03",
+      "period": "2027-06",
       "range_80": [
-        80,
-        156
+        66,
+        139
       ],
       "range_95": null
     },
     {
-      "period": "2026-04",
+      "period": "2027-07",
       "range_80": [
-        84,
-        161
+        65,
+        140
       ],
       "range_95": null
     },
     {
-      "period": "2026-05",
+      "period": "2027-08",
       "range_80": [
-        82,
-        155
-      ],
-      "range_95": null
-    },
-    {
-      "period": "2026-06",
-      "range_80": [
-        79,
-        151
-      ],
-      "range_95": null
-    },
-    {
-      "period": "2026-07",
-      "range_80": [
-        80,
-        151
+        61,
+        134
       ],
       "range_95": null
     }
   ],
   "warnings": [
-    "GCIS 2025-08、09 缺月；本序列只到 2025-07，輸出為歷史起點的回顧性預測，不是當前預測。"
+    "2025-08/09 使用官方月報觀測值；跨期行業名稱已做別名對照，長期趨勢仍須留意分類調整。資料截止日以 series.last_period 為準。"
   ],
   "disclaimer": "本預測為依歷史資料推算的可能範圍，不是保證值。80%／95% 是名目區間；實際涵蓋率請看回測 coverage_80／coverage_95，可能與名目值不同。"
 }

@@ -1,0 +1,51 @@
+{
+  "method": "official_observations_recovered",
+  "is_imputed": false,
+  "recovered_rows": 147,
+  "remaining_missing_in_recovered_months": 0,
+  "cross_checks": [
+    {
+      "month": "2025-07",
+      "matched_rows": 63,
+      "counts_match": true,
+      "capital_match": true
+    },
+    {
+      "month": "2025-10",
+      "matched_rows": 63,
+      "counts_match": true,
+      "capital_match": true
+    },
+    {
+      "month": "2014-11",
+      "matched_rows": 42,
+      "metrics": [
+        "new",
+        "dissolved"
+      ],
+      "counts_match": true,
+      "capital_match": true
+    }
+  ],
+  "sources": [
+    {
+      "month": "2014-11",
+      "url": "https://mnscdn.moea.gov.tw/MNS/DOS/content/wHandMenuFile.ashx?file_id=866",
+      "file": "data/raw/moea_company_monthly/2014-11.xls",
+      "sha256": "c8112f2f27df4f714c1db947a83628dc26b00bd7d68b2adadef08193469463de"
+    },
+    {
+      "month": "2025-08",
+      "url": "https://mnscdn.moea.gov.tw/MNS/DOS/content/wHandMenuFile.ashx?file_id=37479",
+      "file": "data/raw/moea_company_monthly/2025-08.xls",
+      "sha256": "9bb483889500f93f969cc216f42507d04519bab1e19bb9eb3ff7066b88b4dd84"
+    },
+    {
+      "month": "2025-09",
+      "url": "https://mnscdn.moea.gov.tw/MNS/DOS/content/wHandMenuFile.ashx?file_id=37652",
+      "file": "data/raw/moea_company_monthly/2025-09.xls",
+      "sha256": "1693936d5275a19b16fffdcad0b8b82ab978d21e5cf3f41ddff371247cffda86"
+    }
+  ],
+  "industry_aliases_note": "官方月報的營建工程業、出版影音及資通訊業、教育業使用既有資料集名稱作別名對照；不宣稱完整跨期分類不變。"
+}
