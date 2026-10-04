@@ -69,6 +69,40 @@ def parse_workbook(path, year_month, metrics=None):
     return pd.DataFrame(rows)
 
 
+def counts_equal(left, right):
+    """Counts are finite nonnegative integers; a difference of one is a conflict."""
+    arrays = [np.asarray(values, dtype=float) for values in (left, right)]
+    for values in arrays:
+        if not (np.isfinite(values).all() and (values >= 0).all()
+                and (values == np.floor(values)).all()):
+            raise ValueError("Company counts must be finite nonnegative integers")
+    return np.array_equal(*arrays)
+
+
+def validate_overlap(frame, recovered):
+    keys = ["year_month", "industry", "metric"]
+    if frame.duplicated(keys).any() or recovered.duplicated(keys).any():
+        raise ValueError("Duplicate observation keys")
+    joined = frame.merge(recovered, on=keys, suffixes=("", "_official"), validate="one_to_one")
+    present = joined[joined.companies.notna()]
+    if not counts_equal(present.companies, present.companies_official):
+        raise ValueError("Refusing to overwrite contradictory company counts")
+    # A known capital value must also agree, even when its count is missing.
+    capital = joined[joined.capital_million_twd.notna()]
+    if not np.allclose(capital.capital_million_twd, capital.capital_million_twd_official,
+                       atol=1e-5, rtol=0):
+        raise ValueError("Refusing to overwrite contradictory capital")
+
+
+def reconcile_official_gaps(frame, recovered):
+    """Validate all overlaps before filling only keys whose count is absent."""
+    validate_overlap(frame, recovered)
+    keys = ["year_month", "industry", "metric"]
+    missing = frame.loc[frame.companies.isna(), keys]
+    to_fill = recovered.merge(missing, on=keys, validate="one_to_one")
+    return fill_official_gaps(frame, to_fill) if len(to_fill) else frame.copy()
+
+
 def fill_official_gaps(frame, recovered):
     keys = ["year_month", "industry", "metric"]
     if recovered.duplicated(keys).any():
@@ -79,8 +113,9 @@ def fill_official_gaps(frame, recovered):
             raise ValueError(f"Recovered key absent from original data: {key}")
         if pd.notna(result.loc[key, "companies"]):
             raise ValueError(f"Refusing to replace existing observation: {key}")
-        result.loc[key, ["companies", "capital_million_twd", "quality_flag"]] = row[
-            ["companies", "capital_million_twd", "quality_flag"]].values
+        result.loc[key, ["companies", "quality_flag"]] = row[["companies", "quality_flag"]].values
+        if pd.isna(result.loc[key, "capital_million_twd"]):
+            result.loc[key, "capital_million_twd"] = row["capital_million_twd"]
     return result.reset_index().sort_values(["metric", "industry", "year_month"])
 
 
