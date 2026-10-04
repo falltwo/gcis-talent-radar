@@ -17,8 +17,8 @@ from forecast.backtest import (INTERVALS, QUANTILES, default_min_train, qcol, ru
 from forecast.models import ModelFactory, default_models, postprocess
 from forecast.series import Series
 
-DISCLAIMER = ("本預測為依歷史資料推算的可能範圍，不是保證值。80% 區間表示依回測經驗，"
-              "實際值大約每 10 次有 8 次落在範圍內。")
+DISCLAIMER = ("本預測為依歷史資料推算的可能範圍，不是保證值。80%／95% 是名目區間；"
+              "實際涵蓋率請看回測 coverage_80／coverage_95，可能與名目值不同。")
 
 
 def _round_range(lo: float, hi: float, integer: bool):

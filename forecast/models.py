@@ -204,7 +204,7 @@ class Chronos(Forecaster):
     """
     name = "chronos"
     quantile_range = (0.1, 0.9)
-    _pipelines: Dict[str, object] = {}
+    _pipelines: Dict[Tuple[str, str], object] = {}
 
     def __init__(self, model_id: str = "amazon/chronos-bolt-small", device: str = "cpu"):
         self.model_id = model_id
@@ -221,12 +221,13 @@ class Chronos(Forecaster):
             return False, "未安裝 chronos-forecasting / torch"
 
     def _pipeline(self):
-        if self.model_id not in self._pipelines:
+        key = (self.model_id, self.device)
+        if key not in self._pipelines:
             import torch
             from chronos import BaseChronosPipeline
-            self._pipelines[self.model_id] = BaseChronosPipeline.from_pretrained(
+            self._pipelines[key] = BaseChronosPipeline.from_pretrained(
                 self.model_id, device_map=self.device, torch_dtype=torch.float32)
-        return self._pipelines[self.model_id]
+        return self._pipelines[key]
 
     def fit(self, y, season_length=1):
         self.y = np.asarray(y, float)
@@ -237,9 +238,14 @@ class Chronos(Forecaster):
 
         lo, hi = self.quantile_range
         inside = [q for q in quantiles if lo <= q <= hi]
+        if not inside:
+            return np.full((horizon, len(quantiles)), np.nan)
         qs, _ = self._pipeline().predict_quantiles(
-            context=torch.tensor(self.y, dtype=torch.float32), prediction_length=horizon, quantile_levels=inside)
+            inputs=torch.tensor(self.y, dtype=torch.float32), prediction_length=horizon,
+            quantile_levels=inside)
         qs = qs[0].cpu().numpy()  # (horizon, len(inside))
+        if qs.shape != (horizon, len(inside)):
+            raise ValueError(f"Chronos returned unexpected quantile shape: {qs.shape}")
         out = np.full((horizon, len(quantiles)), np.nan)
         for j, q in enumerate(quantiles):
             if q in inside:
