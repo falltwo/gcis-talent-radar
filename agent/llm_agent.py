@@ -237,16 +237,43 @@ class OpenRouterAgent:
                 narrative = (message.get("content") or "").strip()
                 if not narrative:
                     raise OpenRouterError("模型沒有提供文字回答或工具呼叫。")
+                if not tool_results:
+                    return {
+                        "query": query,
+                        "status": "FAILED",
+                        "intent": "GENERAL_RESPONSE",
+                        "tool": "none",
+                        "tool_calls": [],
+                        "answer": "這次回答沒有查詢任何資料工具，因此不顯示模型生成的內容。請改問可由系統資料回答的問題。",
+                        "structured_data": {},
+                        "evidence": {},
+                        "verification": {
+                            "status": "FAILED",
+                            "matched_count": 0,
+                            "total_extracted": 0,
+                            "accuracy_pct": None,
+                            "audit_details": ["模型未呼叫資料工具；回答未通過證據門檻。"],
+                        },
+                        "provider": "openrouter",
+                        "model": model,
+                    }
                 citations = _citation_block(tool_results)
-                answer = narrative + citations
                 structured = tool_results[0].get("data", {}) if len(tool_results) == 1 else {"tool_results": tool_results}
                 verification = verify_explanation_numbers(narrative, structured)
                 evidence = _combine_evidence(tool_results)
                 evidence["verification_status"] = verification["status"]
                 tool_names = list(dict.fromkeys(r["tool"] for r in tool_results))
+                # A failed numeric audit must fail closed: retain diagnostics and
+                # evidence, but never return the unverified model narrative.
+                passed_numeric_gate = verification["status"] in {"VERIFIED", "NOT_APPLICABLE"}
+                answer = (
+                    narrative + citations
+                    if passed_numeric_gate
+                    else "回答中的數值未能由本次工具資料支持，因此已攔下模型回答。請縮小問題範圍或確認資料是否足夠。"
+                )
                 return {
                     "query": query,
-                    "status": "SUCCESS",
+                    "status": "SUCCESS" if passed_numeric_gate else "FAILED",
                     "intent": _intent_for(tool_names),
                     "tool": tool_names[0] if len(tool_names) == 1 else ("multiple" if tool_names else "none"),
                     "tool_calls": tool_names,
