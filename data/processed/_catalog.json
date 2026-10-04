@@ -1,0 +1,384 @@
+{
+  "tc_jobmarket_monthly": {
+    "file": "tc_jobmarket_monthly.csv",
+    "rows": 104,
+    "columns": [
+      "roc_year",
+      "quarter",
+      "source_pdf",
+      "period",
+      "is_quarter_total",
+      "new_seekers",
+      "active_seekers",
+      "new_openings",
+      "active_openings",
+      "new_seekers_placed",
+      "active_seekers_placed",
+      "new_openings_filled",
+      "active_openings_filled",
+      "openings_per_seeker",
+      "placement_rate_pct",
+      "fill_rate_pct",
+      "scope_period"
+    ],
+    "grain": "臺中市 × 月（另含季合計列 is_quarter_total）",
+    "sources": [
+      "臺中市政府勞工局 臺中市就業市場分析報告（季報）",
+      "https://www.labor.taichung.gov.tw/1229008/1229009/822283/822308/822323/post"
+    ],
+    "notes": [
+      "只涵蓋臺中市府所轄就業服務據點，不代表全部雇主職缺",
+      "2022-01 起委辦範圍擴大（scope_period 欄），前後不可直接比較",
+      "表 4 職業別是季合計，不可攤到月"
+    ],
+    "built_at": "2026-10-05T00:18:37"
+  },
+  "tc_jobmarket_occupation_q": {
+    "file": "tc_jobmarket_occupation_q.csv",
+    "rows": 234,
+    "columns": [
+      "roc_year",
+      "quarter",
+      "source_pdf",
+      "occupation",
+      "new_seekers",
+      "new_openings",
+      "active_seekers_placed",
+      "active_openings_filled",
+      "openings_per_seeker",
+      "parse_check"
+    ],
+    "grain": "臺中市 × 季 × 職業大類",
+    "sources": [
+      "臺中市政府勞工局 臺中市就業市場分析報告（季報）",
+      "https://www.labor.taichung.gov.tw/1229008/1229009/822283/822308/822323/post"
+    ],
+    "notes": [
+      "只涵蓋臺中市府所轄就業服務據點，不代表全部雇主職缺",
+      "2022-01 起委辦範圍擴大（scope_period 欄），前後不可直接比較",
+      "表 4 職業別是季合計，不可攤到月"
+    ],
+    "built_at": "2026-10-05T00:18:37"
+  },
+  "tc_jobmarket_industry_q": {
+    "file": "tc_jobmarket_industry_q.csv",
+    "rows": 471,
+    "columns": [
+      "roc_year",
+      "quarter",
+      "source_pdf",
+      "rank",
+      "industry",
+      "new_openings"
+    ],
+    "grain": "臺中市 × 季 × 行業大類（熱門行業排名）",
+    "sources": [
+      "臺中市政府勞工局 臺中市就業市場分析報告（季報）",
+      "https://www.labor.taichung.gov.tw/1229008/1229009/822283/822308/822323/post"
+    ],
+    "notes": [
+      "只涵蓋臺中市府所轄就業服務據點，不代表全部雇主職缺",
+      "2022-01 起委辦範圍擴大（scope_period 欄），前後不可直接比較",
+      "表 4 職業別是季合計，不可攤到月"
+    ],
+    "built_at": "2026-10-05T00:18:37"
+  },
+  "tc_jobmarket_top_jobs_q": {
+    "file": "tc_jobmarket_top_jobs_q.csv",
+    "rows": 481,
+    "columns": [
+      "roc_year",
+      "quarter",
+      "source_pdf",
+      "seeker_rank",
+      "opening_rank",
+      "job",
+      "seekers",
+      "openings",
+      "openings_per_seeker"
+    ],
+    "grain": "臺中市 × 季 × 職類（前 20 名）",
+    "sources": [
+      "臺中市政府勞工局 臺中市就業市場分析報告（季報）",
+      "https://www.labor.taichung.gov.tw/1229008/1229009/822283/822308/822323/post"
+    ],
+    "notes": [
+      "只涵蓋臺中市府所轄就業服務據點，不代表全部雇主職缺",
+      "2022-01 起委辦範圍擴大（scope_period 欄），前後不可直接比較",
+      "表 4 職業別是季合計，不可攤到月"
+    ],
+    "built_at": "2026-10-05T00:18:37"
+  },
+  "tc_company_by_industry_monthly": {
+    "file": "tc_company_by_industry_monthly.csv",
+    "rows": 10899,
+    "columns": [
+      "year_month",
+      "industry",
+      "metric",
+      "companies",
+      "capital_million_twd",
+      "quality_flag"
+    ],
+    "grain": "臺中市 × 行業大類 × 月 × 指標（new/dissolved/existing）",
+    "sources": [
+      "GCIS 公司登記新設立家數及實收資本額－按行業別及縣市別分（oid=01E5CFC6-9F09-4CB5-BE81-22B451E4B1BD）",
+      "GCIS 公司解散、撒銷及廢止家數及實收資本額－按行業別及縣巿別分（oid=795C3F99-6AF1-4F96-A944-CEEC36149272）",
+      "GCIS 公司登記現有家數及實收資本額－按行業別及縣市別（oid=ACA82CEE-1C9D-47F8-9E5F-1DE39D5EEAF9）"
+    ],
+    "notes": [
+      "new 來源缺月：['2025-08', '2025-09']",
+      "dissolved 來源缺月：['2025-08', '2025-09']",
+      "existing 來源缺月：['2014-11', '2025-08', '2025-09']",
+      "來源檔損毀（縣市名稱為亂碼，當作缺月）：['existing 2014-11']",
+      "2012-06 以前只有孤立年底月份（isolated_before_series），建模排除",
+      "行業名稱已去除全形分號與空白（例：公共行政及國防；強制性社會安全 → 公共行政及國防強制性社會安全）",
+      "製造業異常候選：[{'metric': 'dissolved', 'year_month': '2019-05', 'companies': 135.0}, {'metric': 'dissolved', 'year_month': '2019-06', 'companies': 134.0}, {'metric': 'new', 'year_month': '2022-03', 'companies': 233.0}]",
+      "資本額單位：新台幣百萬元"
+    ],
+    "built_at": "2026-10-05T00:20:37"
+  },
+  "tc_labor_insurance_annual": {
+    "file": "tc_labor_insurance_annual.csv",
+    "rows": 735,
+    "columns": [
+      "year_month",
+      "industry_code",
+      "industry",
+      "unit_type_code",
+      "unit_type",
+      "employment_insurance_flag",
+      "employee_scope",
+      "units",
+      "insured",
+      "insured_added",
+      "insured_withdrawn",
+      "avg_insured_wage"
+    ],
+    "grain": "臺中市 × 行業大類 × 單位類別 × 就保註記 × 年（每年 12 月）",
+    "sources": [
+      "勞動部勞工保險局 勞工保險投保單位、人數及平均投保薪資原始統計資料",
+      "https://data.gov.tw/dataset/100999"
+    ],
+    "notes": [
+      "employee_scope=True：產業勞工、公司行號員工、其他事業員工；職業勞工不算",
+      "臺中製造業受僱者口徑投保人數（12 月）：{'2018-12': 412274, '2019-12': 411908, '2020-12': 410192, '2021-12': 416519, '2022-12': 397731, '2023-12': 380655, '2024-12': 379317, '2025-12': 375993}",
+      "加保、退保人數只是 12 月單月流量，不是全年",
+      "平均投保薪資 ≠ 實領薪資"
+    ],
+    "built_at": "2026-10-05T00:22:32"
+  },
+  "tc_factory_count_district_monthly": {
+    "file": "tc_factory_count_district_monthly.csv",
+    "rows": 13572,
+    "columns": [
+      "year_month",
+      "district",
+      "industry",
+      "factories"
+    ],
+    "grain": "臺中市行政區 × 工廠產業類別 × 月（快照）",
+    "sources": [
+      "臺中市政府經濟發展局 臺中市工廠產業類別及行政區域家數",
+      "https://data.gov.tw/dataset/174209"
+    ],
+    "notes": [
+      "只有 18 期且不連續：['2024-08', '2024-09', '2024-10', '2024-11', '2024-12', '2025-02', '2025-04', '2025-05', '2025-07', '2025-08', '2025-11', '2025-12', '2026-02', '2026-03', '2026-04', '2026-05', '2026-06', '2026-07']",
+      "工廠家數 ≠ 職缺；只做現況描述，不做時間序列預測"
+    ],
+    "built_at": "2026-10-05T00:22:48"
+  },
+  "tc_factory_survey_city_annual": {
+    "file": "tc_factory_survey_city_annual.csv",
+    "rows": 185,
+    "columns": [
+      "year",
+      "industry",
+      "employees",
+      "factories",
+      "revenue_thousand_twd"
+    ],
+    "grain": "臺中市（全市）× 製造業中類 × 年",
+    "sources": [
+      "臺中市政府經濟發展局 臺中市製造業工廠校正暨營運調查統計",
+      "https://data.gov.tw/dataset/175730"
+    ],
+    "notes": [
+      "全市層級，不是分區；分區請用 tc_factory_district_industry_annual（EE520）",
+      "工商普查年停辦，該年無資料"
+    ],
+    "built_at": "2026-10-05T00:22:48"
+  },
+  "tc_factory_district_industry_annual": {
+    "file": "tc_factory_district_industry_annual.csv",
+    "rows": 17342,
+    "columns": [
+      "roc_year",
+      "year",
+      "district",
+      "industry_code",
+      "industry",
+      "employees",
+      "factories",
+      "employees_flag",
+      "factories_flag"
+    ],
+    "grain": "臺中市行政區 × 製造業中類 × 年（民國）",
+    "sources": [
+      "經濟部統計處 工廠校正統計調查（EE520 InvestigateG）",
+      "https://service.moea.gov.tw/EE520/investigate/InvestigateG.aspx"
+    ],
+    "notes": [
+      "年份：86–113，共 23 年；工商普查年（85、90、95、100、105、110）原站無資料",
+      "factories_flag／employees_flag：suppressed_lt4＝未滿 4 家保密；no_value＝原站無數值",
+      "科學園區、科技產業園區工廠已併入所在行政區"
+    ],
+    "built_at": "2026-10-05T00:23:43"
+  },
+  "tc_vocational_dept_annual": {
+    "file": "tc_vocational_dept_annual.csv",
+    "rows": 5130,
+    "columns": [
+      "academic_year",
+      "school_code",
+      "school",
+      "level",
+      "day_night",
+      "group",
+      "dept_code",
+      "dept",
+      "grade1_students",
+      "grade2_students",
+      "grade3_students",
+      "grade4_students",
+      "graduates_prev_year"
+    ],
+    "grain": "臺中市 × 學校 × 等級（普通科／專業群科／綜合高中／實用技能／進修部）× 群別 × 科別 × 學年",
+    "sources": [
+      "教育部統計處 高級中等學校科別資料",
+      "https://stats.moe.gov.tw/files/opendata/base2.csv"
+    ],
+    "notes": [
+      "已排除附設國中部",
+      "grade1–3_students：下一、二、三學年度的畢業生管線（不含轉學、休退學損耗）",
+      "graduates_prev_year：該學年度資料所列的『上學年』畢業生數",
+      "學校所在地為臺中市，學生不一定留在臺中就業"
+    ],
+    "built_at": "2026-10-05T00:24:53"
+  },
+  "tc_udb_dept_annual": {
+    "file": "tc_udb_dept_annual.csv",
+    "rows": 12779,
+    "columns": [
+      "academic_year",
+      "school",
+      "school_type",
+      "dept_code",
+      "dept",
+      "program",
+      "enrolled",
+      "graduates"
+    ],
+    "grain": "臺中市 17 所大專 × 系所 × 學制班別 × 學年",
+    "sources": [
+      "教育部 大專校院校務資訊公開平臺 學1-1 在學學生數、學2-1 畢業生數（以系所統計）",
+      "原始檔：data/raw/moe_udb_cache/（沿用原始專案下載檔）"
+    ],
+    "notes": [
+      "在學：106–114 學年；畢業：105–113 學年",
+      "清單內但資料中沒有的學校：無",
+      "系所代碼前碼對應教育部學科標準分類；系所 → 職類的對照尚未建立"
+    ],
+    "built_at": "2026-10-05T00:24:54"
+  },
+  "tc_taiwanjobs_snapshot": {
+    "file": "tc_taiwanjobs_snapshot.csv",
+    "rows": 2856,
+    "columns": [
+      "snapshot_date",
+      "query_zip",
+      "query_district",
+      "job_title",
+      "work_type",
+      "job_major_code",
+      "job_major",
+      "job_minor_code",
+      "job_minor",
+      "openings",
+      "stop_date",
+      "work_location",
+      "experience",
+      "work_time",
+      "salary_basis",
+      "salary_min",
+      "salary_max",
+      "min_education",
+      "url",
+      "company",
+      "updated_date",
+      "location_flag"
+    ],
+    "grain": "快照日 × 職缺（查詢郵遞區號 × 職類）",
+    "sources": [
+      "勞動部勞動力發展署 台灣就業通職缺",
+      "https://data.gov.tw/dataset/44062",
+      "https://free.taiwanjobs.gov.tw/webservice_taipei/Webservice.ashx?city=13&zipno={郵遞區號}&count=1000&T=CSV"
+    ],
+    "notes": [
+      "快照日期：['2026-10-05']（每天跑一次才會累積歷史）",
+      "跨區重複的職缺已去除 0 筆",
+      "location_flag：taichung_unspecified＝工作地點寫台中市不限；other_district／outside_taichung＝與查詢區不符",
+      "不含工作內容全文（可能有聯絡資訊）",
+      "只涵蓋在台灣就業通刊登的雇主，不是所有職缺"
+    ],
+    "built_at": "2026-10-05T01:01:44"
+  },
+  "tc_mfg_company_events_monthly": {
+    "file": "tc_mfg_company_events_monthly.csv",
+    "rows": 10121,
+    "columns": [
+      "year_month",
+      "district",
+      "industry_code",
+      "event",
+      "companies",
+      "capital_twd",
+      "capital_delta_twd",
+      "classified_share"
+    ],
+    "grain": "臺中市行政區 × 製造業中類 × 月 × 事件（new／dissolved／capital_increase）",
+    "sources": [
+      "GCIS 公司設立／解散／變更登記清冊（月份）",
+      "財政部 全國營業（稅籍）登記資料 BGMOPEN1",
+      "GCIS API 236EE382（營業項目）、FCB90AB1（營業項目→行業代碼）"
+    ],
+    "notes": [
+      "⚠ 產業別定義與 GCIS 官方統計不同：本表以稅籍『主要行業代號』判定（實際以製造業報稅者），2026-08 臺中製造業新設本表約 20 家，官方統計 75 家；以營業項目判定則『第一項為製造』45 家、『任一項為製造』102 家。官方分類規則無法由公開資料重現。全市趨勢請用 tc_company_by_industry_monthly",
+      "解散事件：判定率 < 80% 的月份不列入（解散公司不在稅籍，需 API 補查）",
+      "事件月份以核准日期為準，不是清冊月份",
+      "classified_share：該月臺中所有同類事件中已判定產業別的比例，偏低的月份中類數字會低估",
+      "增資只計算前一筆資本額已知者；2013 年前設立且之後第一次出現就是變更的公司，第一次不計",
+      "產業別依稅籍主要行業代號；稅籍查無者用第一順位營業項目轉換，精度較低（industry_source）"
+    ],
+    "built_at": "2026-10-05T00:54:11"
+  },
+  "tc_company_events_coverage_monthly": {
+    "file": "tc_company_events_coverage_monthly.csv",
+    "rows": 486,
+    "columns": [
+      "event",
+      "event_month",
+      "events",
+      "classified",
+      "classified_share"
+    ],
+    "grain": "月 × 事件：臺中全部事件數與已判定產業別比例",
+    "sources": [
+      "同上"
+    ],
+    "notes": [
+      "用來判斷 tc_mfg_company_events_monthly 各月可信度"
+    ],
+    "built_at": "2026-10-05T00:54:11"
+  }
+}
