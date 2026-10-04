@@ -49,6 +49,20 @@ LABOR_INDUSTRY_MAP: Dict[str, List[str]] = {
 }
 
 
+def _unsupported_industry(
+    industry_id: Any,
+    supported_industry_ids: Iterable[str],
+) -> Dict[str, Any]:
+    """Return an explicit failure instead of silently substituting an industry."""
+    return {
+        "available": False,
+        "error_code": "UNSUPPORTED_INDUSTRY",
+        "reason": f"不支援產業代碼：{industry_id}",
+        "requested_industry_id": industry_id,
+        "supported_industry_ids": sorted(supported_industry_ids),
+    }
+
+
 def _industry_name(industry_id: Optional[str]) -> Optional[str]:
     if not industry_id:
         return None
@@ -68,6 +82,9 @@ def get_regional_job_demand(
     industry_id: Optional[str] = None,
     occupation_keyword: Optional[str] = None,
 ) -> Dict[str, Any]:
+    if industry_id and industry_id not in JOB_RETRIEVAL_RULES:
+        return _unsupported_industry(industry_id, JOB_RETRIEVAL_RULES)
+
     latest = db.fetch_one("SELECT MAX(snapshot_date) AS snapshot_date FROM official_job_vacancies")
     snapshot = latest.get("snapshot_date") if latest else None
     if not snapshot:
@@ -175,7 +192,10 @@ def get_gcis_new_company_trend(
     industry_id: str = "IND_MFG",
     months: int = 36,
 ) -> Dict[str, Any]:
-    official_industry = GCIS_INDUSTRY_MAP.get(industry_id, "製造業")
+    if industry_id not in GCIS_INDUSTRY_MAP:
+        return _unsupported_industry(industry_id, GCIS_INDUSTRY_MAP)
+
+    official_industry = GCIS_INDUSTRY_MAP[industry_id]
     rows = db.fetch_all(
         """
         SELECT year_month, county, industry, new_companies,
@@ -263,7 +283,10 @@ def get_gcis_new_company_trend(
 
 
 def get_wage_baseline(industry_id: str = "IND_MFG") -> Dict[str, Any]:
-    codes = LABOR_INDUSTRY_MAP.get(industry_id, ["C"])
+    if industry_id not in LABOR_INDUSTRY_MAP:
+        return _unsupported_industry(industry_id, LABOR_INDUSTRY_MAP)
+
+    codes = LABOR_INDUSTRY_MAP[industry_id]
     placeholders = ",".join("?" for _ in codes)
     latest = db.fetch_one(
         """

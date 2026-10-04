@@ -51,34 +51,46 @@ class VerifyRequest(BaseModel):
     query: str
 
 
-DATASET_REFRESH_QUERIES = {
-    "companies": "SELECT MAX(updated_at) AS refreshed_at FROM companies",
-    "industry_dynamics_mart": "SELECT MAX(updated_at) AS refreshed_at FROM industry_dynamics_mart",
-    "department_indicators_mart": "SELECT MAX(updated_at) AS refreshed_at FROM department_indicators_mart",
-    "industry_momentum_mart": "SELECT MAX(updated_at) AS refreshed_at FROM industry_momentum_mart",
-    "talent_supply_mart": "SELECT MAX(updated_at) AS refreshed_at FROM talent_supply_mart",
-    "mismatch_signal_mart": "SELECT MAX(updated_at) AS refreshed_at FROM mismatch_signal_mart",
+OFFICIAL_DATA_REFRESH_QUERIES = {
     "official_job_vacancies": "SELECT MAX(fetched_at) AS refreshed_at FROM official_job_vacancies",
     "gcis_new_company_monthly": "SELECT MAX(loaded_at) AS refreshed_at FROM gcis_new_company_monthly",
     "labor_insurance_baseline": "SELECT MAX(loaded_at) AS refreshed_at FROM labor_insurance_baseline",
 }
 
+DERIVED_MART_BUILD_QUERIES = {
+    "industry_momentum_mart": "SELECT MAX(updated_at) AS refreshed_at FROM industry_momentum_mart",
+    "talent_supply_mart": "SELECT MAX(updated_at) AS refreshed_at FROM talent_supply_mart",
+    "mismatch_signal_mart": "SELECT MAX(updated_at) AS refreshed_at FROM mismatch_signal_mart",
+}
 
-def get_dataset_refresh_times() -> Dict[str, Optional[str]]:
-    """Return recorded source/mart timestamps without inventing missing dates."""
+UNVERIFIED_LEGACY_TIMESTAMP_QUERIES = {
+    "companies": "SELECT MAX(updated_at) AS refreshed_at FROM companies",
+    "industry_dynamics_mart": "SELECT MAX(updated_at) AS refreshed_at FROM industry_dynamics_mart",
+    "department_indicators_mart": "SELECT MAX(updated_at) AS refreshed_at FROM department_indicators_mart",
+}
+
+
+def _get_recorded_times(queries: Dict[str, str]) -> Dict[str, Optional[str]]:
     refresh_times: Dict[str, Optional[str]] = {}
-    for dataset, sql in DATASET_REFRESH_QUERIES.items():
+    for dataset, sql in queries.items():
         row = db.fetch_one(sql)
         refresh_times[dataset] = row.get("refreshed_at") if row else None
     return refresh_times
+
+
+def get_dataset_refresh_times() -> Dict[str, Optional[str]]:
+    """Return official source fetch/load timestamps only."""
+    return _get_recorded_times(OFFICIAL_DATA_REFRESH_QUERIES)
 
 # ----------------- API Endpoints -----------------
 
 @app.get("/api/overview")
 def get_overview() -> Dict[str, Any]:
     """Page 1: Overview Dashboard Metrics"""
-    dataset_refresh_times = get_dataset_refresh_times()
-    recorded_refresh_times = [value for value in dataset_refresh_times.values() if value]
+    official_refresh_times = get_dataset_refresh_times()
+    derived_mart_build_times = _get_recorded_times(DERIVED_MART_BUILD_QUERIES)
+    unverified_legacy_timestamps = _get_recorded_times(UNVERIFIED_LEGACY_TIMESTAMP_QUERIES)
+    recorded_official_times = [value for value in official_refresh_times.values() if value]
     comp_count = db.fetch_all("SELECT COUNT(*) as c FROM companies")[0]["c"]
     dept_count = db.fetch_all("SELECT COUNT(DISTINCT department_name) as c FROM department_indicators_mart WHERE academic_year = 113")[0]["c"]
     school_count = db.fetch_all("SELECT COUNT(DISTINCT institution_name) as c FROM department_indicators_mart WHERE academic_year = 113")[0]["c"]
@@ -100,9 +112,13 @@ def get_overview() -> Dict[str, Any]:
         "monitored_departments_count": int(dept_count),
         "partner_universities_count": int(school_count),
         "data_period": "產業登記：109-113年 ｜ 高教推估：109-117學年度",
-        "last_updated": max(recorded_refresh_times) if recorded_refresh_times else None,
-        "last_updated_scope": "latest recorded source fetch or mart build timestamp",
-        "dataset_refresh_times": dataset_refresh_times,
+        "last_updated": max(recorded_official_times) if recorded_official_times else None,
+        "last_updated_type": "OFFICIAL_SOURCE_FETCH_OR_LOAD",
+        "last_updated_scope": "latest official source fetch/load timestamp; excludes derived mart build times",
+        "dataset_refresh_times": official_refresh_times,
+        "derived_mart_build_times": derived_mart_build_times,
+        "derived_mart_build_times_note": "Build times describe local computation only and do not imply that official sources were refreshed then.",
+        "unverified_legacy_dataset_timestamps": unverified_legacy_timestamps,
         "high_warning_count": len(high_warnings),
         "medium_warning_count": len(med_warnings),
         "mismatch_signals": mismatch_rows
@@ -301,6 +317,12 @@ def verify_company_api(req: VerifyRequest) -> Dict[str, Any]:
     res = verify_company_live(req.query)
     return res
 
+
+def _raise_official_tool_error(result: Dict[str, Any]) -> None:
+    status_code = 400 if result.get("error_code") == "UNSUPPORTED_INDUSTRY" else 503
+    raise HTTPException(status_code=status_code, detail=result)
+
+
 @app.get("/api/official/job-demand")
 def official_job_demand(
     district: Optional[str] = Query(None),
@@ -312,7 +334,7 @@ def official_job_demand(
         raise HTTPException(status_code=400, detail="district 必須是台中市 29 行政區之一")
     result = get_regional_job_demand(district, industry_id, occupation_keyword)
     if not result.get("available"):
-        raise HTTPException(status_code=503, detail=result)
+        _raise_official_tool_error(result)
     return result
 
 @app.get("/api/official/company-trend")
@@ -323,7 +345,7 @@ def official_company_trend(
     """Approved tool: GCIS monthly new-company trend at city/industry-major level."""
     result = get_gcis_new_company_trend(industry_id, months)
     if not result.get("available"):
-        raise HTTPException(status_code=503, detail=result)
+        _raise_official_tool_error(result)
     return result
 
 @app.get("/api/official/wage-baseline")
@@ -333,7 +355,7 @@ def official_wage_baseline(
     """Approved tool: BLI average insured-salary baseline (not take-home pay)."""
     result = get_wage_baseline(industry_id)
     if not result.get("available"):
-        raise HTTPException(status_code=503, detail=result)
+        _raise_official_tool_error(result)
     return result
 
 @app.get("/api/quality-report")

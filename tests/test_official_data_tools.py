@@ -1,6 +1,10 @@
 import unittest
 from pathlib import Path
 
+from fastapi import HTTPException
+
+from api.main import get_overview, official_company_trend, official_wage_baseline
+from agent.tool_router import execute_tool
 from database.db_manager import db
 from engine.evidence_engine import build_evidence_object
 from engine.official_labor_market import (
@@ -51,6 +55,31 @@ class OfficialDataToolTests(unittest.TestCase):
         self.assertEqual(result["insured_people"], 361509)
         self.assertAlmostEqual(result["average_insured_salary"], 36201.78, places=2)
         self.assertEqual(result["evidence"]["dataset_ids"], ["100999"])
+
+    def test_unknown_industry_is_rejected_without_manufacturing_fallback(self):
+        invalid_id = "NOT_A_REAL_INDUSTRY"
+        cases = (
+            get_regional_job_demand(industry_id=invalid_id),
+            get_gcis_new_company_trend(invalid_id),
+            get_wage_baseline(invalid_id),
+            execute_tool("COMPANY_TREND_QUERY", {"industry_id": invalid_id})["data"],
+            execute_tool("WAGE_QUERY", {"industry_id": invalid_id})["data"],
+        )
+        for result in cases:
+            self.assertFalse(result["available"])
+            self.assertEqual(result["error_code"], "UNSUPPORTED_INDUSTRY")
+            self.assertEqual(result["requested_industry_id"], invalid_id)
+            self.assertNotIn("latest_new_companies", result)
+            self.assertNotIn("insured_people", result)
+
+        for endpoint, args in (
+            (official_company_trend, (invalid_id, 36)),
+            (official_wage_baseline, (invalid_id,)),
+        ):
+            with self.assertRaises(HTTPException) as context:
+                endpoint(*args)
+            self.assertEqual(context.exception.status_code, 400)
+            self.assertEqual(context.exception.detail["error_code"], "UNSUPPORTED_INDUSTRY")
 
     def test_official_tables_do_not_contain_legacy_104_source(self):
         schema = " ".join(
@@ -103,6 +132,49 @@ class OfficialDataToolTests(unittest.TestCase):
             "SELECT MAX(loaded_at) AS refreshed_at FROM labor_insurance_baseline"
         )["refreshed_at"]
         self.assertEqual(wage["evidence"]["last_updated"], expected_wage)
+
+    def test_overview_separates_official_refresh_from_mart_build_times(self):
+        overview = get_overview()
+        official_times = overview["dataset_refresh_times"]
+        expected_official = max(value for value in official_times.values() if value)
+
+        self.assertEqual(overview["last_updated"], expected_official)
+        self.assertEqual(overview["last_updated_type"], "OFFICIAL_SOURCE_FETCH_OR_LOAD")
+        self.assertIn("official source", overview["last_updated_scope"])
+        self.assertEqual(
+            set(official_times),
+            {
+                "official_job_vacancies",
+                "gcis_new_company_monthly",
+                "labor_insurance_baseline",
+            },
+        )
+        self.assertIn("mismatch_signal_mart", overview["derived_mart_build_times"])
+        self.assertNotEqual(
+            overview["last_updated"],
+            overview["derived_mart_build_times"]["mismatch_signal_mart"],
+        )
+
+    def test_unverifiable_legacy_timestamps_are_cleared(self):
+        forbidden = "2026" + "-10-01"
+        for table in ("companies", "industry_dynamics_mart", "department_indicators_mart"):
+            count = db.fetch_one(
+                f"SELECT COUNT(*) AS count FROM {table} WHERE updated_at = ?",
+                (forbidden,),
+            )["count"]
+            self.assertEqual(count, 0, table)
+
+        root = Path(__file__).resolve().parent.parent
+        for relative_path in (
+            "data/processed/companies_taichung_cleaned.csv",
+            "data/marts/industry_dynamics_mart.csv",
+            "data/marts/department_indicators_mart.csv",
+        ):
+            self.assertNotIn(
+                forbidden,
+                (root / relative_path).read_text(encoding="utf-8-sig"),
+                relative_path,
+            )
 
     def test_executable_code_has_no_hard_coded_refresh_date(self):
         root = Path(__file__).resolve().parent.parent
