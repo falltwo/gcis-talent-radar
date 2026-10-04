@@ -185,4 +185,24 @@ def test_demo_page_is_served_and_root_points_to_it():
     assert page.status_code == 200
     assert "text/html" in page.headers["content-type"]
     assert "大雅區" in page.text
-    assert 'href="/demo"' in _get("/").text
+
+
+def test_root_is_new_home_with_question_box_and_expansion_scenario():
+    page = _get("/")
+    assert page.status_code == 200
+    # 首頁要能直接問問題，並走真實的 agent API
+    assert 'id="ask-form"' in page.text
+    assert "/api/agent/chat" in page.text
+    # 建議問題按鈕
+    assert 'class="suggest"' in page.text
+    # 擴廠情境仍在首頁
+    assert "/api/demo/expansion" in page.text
+    # 舊原型的模擬指標不能出現在新首頁
+    assert "65 題" not in page.text
+
+
+def test_legacy_prototype_moves_to_legacy_route():
+    page = _get("/legacy")
+    assert page.status_code == 200
+    assert "text/html" in page.headers["content-type"]
+    assert "舊版原型" in page.text

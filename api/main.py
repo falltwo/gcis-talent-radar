@@ -398,10 +398,12 @@ if STATIC_DIR.exists():
 
 @app.get("/")
 def serve_frontend():
-    index_file = UI_DIR / "index.html"
-    if index_file.exists():
-        return FileResponse(index_file)
-    return {"message": "Regional Industry-Talent Mismatch System API is running. Build index.html next."}
+    return FileResponse(UI_DIR / "home.html")
+
+
+@app.get("/legacy")
+def serve_legacy_prototype():
+    return FileResponse(UI_DIR / "legacy.html")
 
 @app.get("/demo")
 def serve_expansion_demo():

@@ -1,4 +1,4 @@
-> **InnoServe 2026 改造版**：初賽互動展示請開本機 FastAPI 的 `/demo`，操作與資料口徑見 [docs/04-初賽展示主線.md](docs/04-初賽展示主線.md)。產品定位見 [docs/01-產品定位.md](docs/01-產品定位.md)，資料集清單見 [docs/02-資料集.md](docs/02-資料集.md)，資料審查見 [docs/03-資料集審查.md](docs/03-資料集審查.md)。以下為原始專案說明，部分舊資料和 AI 敘述未經改造版驗證，不能當成已完成功能。
+> **InnoServe 2026 改造版**：執行 `python server.py` 後開啟首頁 `/`，上半部可直接用一句話問職缺、新設公司與投保薪資（需在 `.env` 設定 `OPENROUTER_API_KEY`），下半部是擴廠情境的四個官方數字。操作、資料口徑與驗收紀錄見 [docs/04-初賽展示主線.md](docs/04-初賽展示主線.md)。產品定位見 [docs/01-產品定位.md](docs/01-產品定位.md)，資料集清單見 [docs/02-資料集.md](docs/02-資料集.md)，資料審查見 [docs/03-資料集審查.md](docs/03-資料集審查.md)。以下為原始專案說明，部分舊資料和 AI 敘述未經改造版驗證，不能當成已完成功能；舊版原型頁已移到 `/legacy`。
 
 # 區域產業 × 高教人才供需錯配預警系統 (System Specification v1.0)
 ## Regional Industry–Talent Structural Mismatch Early-Warning System
