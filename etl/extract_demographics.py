@@ -1,3 +1,6 @@
+# ⚠ 此檔產出含模擬資料，勿當真實數字使用。（寫死數字）
+# 產出：demographics_projection（18 歲人口與新生數直接寫在程式裡，無法追溯來源）
+# 目前 API 與助理仍在讀取，只能標記、不能刪；替代方案與刪除條件見 docs/SIMULATED_DATA.md
 """
 ETL Module: Demographic & Student Pool Projection (System Spec Section 4.3 & 12)
 Sources:

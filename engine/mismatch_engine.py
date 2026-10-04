@@ -1,3 +1,6 @@
+# ⚠ 此檔產出含模擬資料，勿當真實數字使用。（模擬資料計算結果）
+# 產出：mismatch_signal_mart（輸入的需求動能為模擬、供給動能為推估）
+# 目前 API 與助理仍在讀取，只能標記、不能刪；替代方案與刪除條件見 docs/SIMULATED_DATA.md
 """
 Deterministic Engine: Mismatch Engine & Early-Warning Signal Generator (System Spec Section 20, 21, 22)
 Principles:

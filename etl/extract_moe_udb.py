@@ -1,3 +1,6 @@
+# ⚠ 此檔產出含模擬資料，勿當真實數字使用。（推估補值）
+# 產出：department_indicators_mart（新生數＝在學÷4、註冊率缺值補 92.5、117 學年推估用寫死的人口數）
+# 目前 API 與助理仍在讀取，只能標記、不能刪；替代方案與刪除條件見 docs/SIMULATED_DATA.md
 """
 ETL Module: MOE UDB Extraction & Department Indicators Mart (System Spec Section 4.1, 12, 13, 14)
 Calculates:
