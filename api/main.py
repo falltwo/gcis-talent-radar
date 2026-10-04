@@ -19,7 +19,7 @@ from config import (
     HISTORICAL_YEARS, BASE_ACADEMIC_YEAR, TARGET_PROJECTION_YEAR
 )
 from database.db_manager import db
-from agent.agent_service import agent_service
+from agent.agent_service import OpenRouterError, agent_service
 from engine.gcis_live_verifier import verify_company_live
 from engine.official_labor_market import (
     get_gcis_new_company_trend,
@@ -307,9 +307,11 @@ def get_mismatch_view() -> Dict[str, Any]:
 
 @app.post("/api/agent/chat")
 def agent_chat(req: ChatRequest) -> Dict[str, Any]:
-    """Page 6: AI Analyst Natural Language Q&A with Numeric Verification"""
-    res = agent_service.process_query(req.query)
-    return res
+    """Page 6: OpenRouter tool-calling assistant with numeric verification."""
+    try:
+        return agent_service.process_query(req.query)
+    except OpenRouterError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
 
 @app.post("/api/agent/verify-company")
 def verify_company_api(req: VerifyRequest) -> Dict[str, Any]:

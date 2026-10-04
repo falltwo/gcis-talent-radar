@@ -90,7 +90,8 @@ def get_demographics_data(target_year: int = 117) -> Dict[str, Any]:
                 f"生源縮減差額 = {diff_freshmen:,} 人 ({pct_freshmen}%)"
             ],
             source_tables=["demographics_projection"],
-            official_sources=["內政部戶政司人口統計", "教育部統計處大專校院學生推估報告"]
+            official_sources=["內政部戶政司人口統計", "教育部統計處大專校院學生推估報告"],
+            geography="全國"
         )
     }
 
@@ -188,11 +189,13 @@ def execute_tool(intent: str, params: Dict[str, Any]) -> Dict[str, Any]:
 
     elif intent == "DISTRICT_QUERY":
         dist = params.get("district", "西屯區")
-        res = get_district_industry(dist, 113)
+        year = int(params.get("year", 113))
+        res = get_district_industry(dist, year)
         return {"tool": "get_district_industry", "data": res, "evidence": res["evidence"]}
 
     elif intent == "DEMOGRAPHIC_QUERY":
-        res = get_demographics_data(117)
+        target_year = int(params.get("target_year", 117))
+        res = get_demographics_data(target_year)
         return {"tool": "get_demographic_projection", "data": res, "evidence": res["evidence"]}
 
     elif intent == "DEPARTMENT_QUERY":
@@ -205,9 +208,6 @@ def execute_tool(intent: str, params: Dict[str, Any]) -> Dict[str, Any]:
             rows = get_department_projection(dept_name=dept_name, inst_name=inst_name)
         elif q_term:
             rows = get_department_projection(dept_name=q_term)
-            
-        if not rows:
-            rows = db.fetch_all("SELECT * FROM department_indicators_mart WHERE academic_year = 113 LIMIT 15")
             
         evidence = build_evidence_object(
             intent="DEPARTMENT_QUERY",

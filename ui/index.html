@@ -133,8 +133,8 @@
                     <span class="w-2 h-2 rounded-full bg-rose-500"></span>
                 </button>
                 <button onclick="switchTab('agent')" id="tab-agent" class="tab-btn px-4 py-2 font-medium rounded-lg text-stone-600 hover:text-stone-900 hover:bg-stone-200/60 transition flex items-center gap-1.5">
-                    <span>⑥ AI 決策代理人 (Jev 守門)</span>
-                    <span class="bg-stone-200 text-stone-800 text-xs px-1.5 py-0.5 rounded font-mono-num font-bold">Jev</span>
+                    <span>⑥ AI 資料助理（OpenRouter）</span>
+                    <span class="bg-stone-200 text-stone-800 text-xs px-1.5 py-0.5 rounded font-mono-num font-bold">GPT-6 Luna</span>
                 </button>
                 <a href="/architecture" target="_blank" class="tab-btn px-4 py-2 font-semibold rounded-lg text-blue-700 bg-blue-50/80 hover:bg-blue-100 hover:text-blue-900 border border-blue-200/80 transition flex items-center gap-1.5 ml-auto shadow-2xs">
                     <span class="w-2 h-2 rounded-full bg-blue-500"></span>
@@ -154,7 +154,7 @@
             <div class="py-12 md:py-16 max-w-3xl mx-auto text-center space-y-6">
                 <div class="inline-flex items-center gap-2 bg-stone-100 border border-stone-200 px-3.5 py-1 rounded-full text-xs font-medium text-stone-700">
                     <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
-                    <span>Jev 系統一決策判定 · 五道確定性守門管線 · 100% 數值核驗</span>
+                    <span>OpenRouter GPT-6 Luna · 工具查詢由程式執行 · 數字比對核驗</span>
                 </div>
 
                 <div class="space-y-2">
@@ -162,7 +162,7 @@
                         想了解哪些台中產業動態或高教供需錯配？
                     </h2>
                     <p class="text-stone-600 text-sm max-w-xl mx-auto leading-relaxed">
-                        以自然語言即席提問，由 Jev 模型即時判定問題有效性，並由確定性引擎精確調度商工登記歷史母體與高教生源。
+                        用自然語言提問，由 GPT-6 Luna 選擇資料工具，再以工具結果整理回答。部分產業資料仍是模擬值，請查看每次回答附帶的資料限制。
                     </p>
                 </div>
 
@@ -200,20 +200,18 @@
                     </div>
                 </div>
 
-                <!-- Instant Response Area (Clean White Card with Jev Decision) -->
+                <!-- Instant Response Area -->
                 <div id="home-agent-response" class="hidden text-left bg-white rounded-2xl p-6 sm:p-7 border border-stone-200 shadow-sm space-y-5">
                     <div class="flex flex-wrap justify-between items-center gap-3 border-b border-stone-100 pb-4">
                         <div class="flex items-center gap-2 flex-wrap">
-                            <span id="home-res-jev-badge" class="bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs px-3 py-1 rounded-full font-mono-num font-bold inline-flex items-center gap-1.5">
-                                <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
-                                Jev 判定：合規問題 (置信度 99.5%)
+                            <span id="home-res-model-badge" class="bg-stone-50 text-stone-800 border border-stone-200 text-xs px-3 py-1 rounded-full font-mono-num font-bold inline-flex items-center gap-1.5">
+                                OpenRouter 模型尚未查詢
                             </span>
                             <span id="home-res-intent-badge" class="bg-stone-100 text-stone-700 border border-stone-200 text-xs px-2.5 py-0.5 rounded font-mono-num font-medium">INTENT</span>
                             <span id="home-res-tool-badge" class="bg-stone-100 text-stone-700 border border-stone-200 text-xs px-2.5 py-0.5 rounded font-mono-num font-medium">TOOL</span>
                         </div>
-                        <span id="home-res-verification-badge" class="bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs px-3 py-1 rounded font-mono-num font-bold inline-flex items-center gap-1.5">
-                            <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                            VERIFIED (100% 數值無誤)
+                        <span id="home-res-verification-badge" class="bg-stone-50 text-stone-800 border border-stone-200 text-xs px-3 py-1 rounded font-mono-num font-bold inline-flex items-center gap-1.5">
+                            尚未執行數字比對
                         </span>
                     </div>
 
@@ -226,7 +224,7 @@
                                 <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
                                 可回溯性佐證物件 (Section 27 Evidence Object)
                             </span>
-                            <span id="home-res-verification-audit-summary" class="text-xs text-emerald-700 font-mono-num font-semibold">數值稽核全數符合</span>
+                        <span id="home-res-verification-audit-summary" class="text-xs text-stone-600 font-mono-num font-semibold">數字比對不代表資料來源或語意已驗證</span>
                         </div>
                         <div id="home-res-calculation-box" class="font-mono-num text-xs text-stone-600 space-y-1 overflow-x-auto"></div>
                     </div>
@@ -253,7 +251,7 @@
                             區域產業擴張動能 × 高教生源供給結構性錯配預警
                         </h3>
                         <p class="text-stone-600 leading-relaxed text-xs sm:text-sm">
-                            嚴格鎖定確定性計算原則：<strong>LLM 不計算、不分類、不預測</strong>。所有數值由程式產出，精準剖析台中市 109–113 年登記企業之新設率與資本擴張，對接中部大專院校 772 個系所與 117 學年度少子化生源海嘯谷底（新生驟減 17.02%），發布結構性錯配警示訊號。
+                            數字由程式工具查詢與計算；GPT-6 Luna 負責理解問題、選擇允許的工具並整理文字回答。現有產業動能含模擬資料，所有結果仍需依回答附帶的來源與限制判讀。
                         </p>
                     </div>
                     <div class="border-t md:border-t-0 md:border-l border-stone-200 pt-4 md:pt-0 md:pl-6 space-y-2 min-w-[240px] flex-shrink-0 font-mono-num text-xs">
@@ -690,10 +688,10 @@
             <div class="flex justify-between items-start border-b border-stone-200 pb-4">
                 <div>
                     <h2 class="font-bold text-stone-900 tracking-tight flex items-center gap-2">
-                        <span>AI 決策分析代理人 (Agent 01–05 Guarded Pipeline)</span>
-                        <span class="text-xs bg-emerald-100 text-emerald-800 border border-emerald-200 font-semibold px-2.5 py-0.5 rounded">數值核驗通過</span>
+                        <span>OpenRouter GPT-6 Luna 對話助理</span>
+                        <span class="text-xs bg-stone-100 text-stone-700 border border-stone-200 font-semibold px-2.5 py-0.5 rounded">保留數字比對器</span>
                     </h2>
-                    <p class="text-xs text-stone-500 mt-0.5">五道確定性護欄：Scope Guard &rarr; Intent Router &rarr; Tool Router &rarr; Explanation Gen &rarr; Numeric Verifier</p>
+                    <p class="text-xs text-stone-500 mt-0.5">GPT-6 Luna 理解問題並選擇工具；程式執行唯讀查詢，數字比對器檢查回答中的數值。</p>
                 </div>
                 <span class="text-xs bg-stone-100 text-stone-700 border border-stone-200 px-3 py-1 rounded font-mono-num font-semibold">
                     P2: LLM Does Not Calculate
@@ -740,7 +738,7 @@
                     </div>
                     <span id="res-verification-badge" class="bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs px-3 py-1 rounded font-mono-num font-bold inline-flex items-center gap-1.5">
                         <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                        VERIFIED (100% 數值無誤)
+                        尚未執行數字比對
                     </span>
                 </div>
 
@@ -753,7 +751,7 @@
                             <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
                             可回溯性佐證物件 (Section 27 Evidence Object)
                         </span>
-                        <span id="res-verification-audit-summary" class="text-xs text-emerald-700 font-mono-num font-semibold">數值稽核全數符合</span>
+                        <span id="res-verification-audit-summary" class="text-xs text-stone-600 font-mono-num font-semibold">數字比對不代表資料來源或語意已驗證</span>
                     </div>
                     <div id="res-calculation-box" class="font-mono-num text-xs text-stone-600 space-y-1 overflow-x-auto bg-[#F8F6F2] p-3 rounded-lg border border-stone-200"></div>
                 </div>
@@ -1386,101 +1384,20 @@
         }
         function closeEvidenceModal() { document.getElementById('modal-evidence').classList.add('hidden'); }
 
-        let goldenResponsesCache = null;
         async function fetchAgentResponse(query) {
             const q = (query || "").trim();
-            // 1. Try local server first if available
-            try {
-                const res = await fetch('/api/agent/chat', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ query: q })
-                });
-                if (res.ok) {
-                    const data = await res.json();
-                    if (data && data.answer) return data;
-                }
-            } catch (e) {
-                // Static hosting fallback
+            const res = await fetch('/api/agent/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ query: q })
+            });
+            if (!res.ok) {
+                const error = await res.json().catch(() => ({}));
+                throw new Error(error.detail || `分析服務回應 HTTP ${res.status}`);
             }
-
-            // 2. Load golden responses dictionary
-            if (!goldenResponsesCache) {
-                try {
-                    const res = await fetch('/api/agent-golden-responses.json');
-                    goldenResponsesCache = await res.json();
-                } catch(e) {
-                    console.warn("Could not load golden responses:", e);
-                    goldenResponsesCache = {};
-                }
-            }
-
-            if (goldenResponsesCache && goldenResponsesCache[q]) {
-                return goldenResponsesCache[q];
-            }
-
-            // Fuzzy keyword check
-            const keys = Object.keys(goldenResponsesCache || {});
-            for (const k of keys) {
-                if (k === q || (q.length > 3 && k.includes(q)) || (k.length > 5 && q.includes(k))) {
-                    return goldenResponsesCache[k];
-                }
-            }
-
-            // Keyword heuristics
-            if (q.includes("機械") || q.includes("製造")) {
-                return goldenResponsesCache['請問台中市智慧製造與精密機械產業在113年的新設公司率（Entry Rate）為多少？'] || goldenResponsesCache['智慧製造'];
-            }
-            if (q.includes("軟體") || q.includes("數位科技") || q.includes("資訊")) {
-                return goldenResponsesCache['請問資訊軟體與數位科技產業在台中市的需求擴張動能主分數（Demand Momentum）是多少？'] || goldenResponsesCache['資訊軟體'];
-            }
-            if (q.includes("半導體") || q.includes("綠能")) {
-                return goldenResponsesCache['請問半導體與綠能科技產業在台中市113年的資本擴張率（Capital Rate）為多少？'] || goldenResponsesCache['半導體'];
-            }
-            if (q.includes("生技") || q.includes("醫療") || q.includes("健康")) {
-                return goldenResponsesCache['請問生技醫療與精準健康產業在台中市的需求擴張動能（Demand Momentum）數值是多少？'] || goldenResponsesCache['生技醫療'];
-            }
-            if (q.includes("貿易") || q.includes("物流")) {
-                return goldenResponsesCache['請問國際貿易與現代物流產業113年的歇業解散率（Exit Rate，風險參考值）為多少？'];
-            }
-            if (q.includes("最高") || q.includes("不足") || q.includes("預警")) {
-                return goldenResponsesCache['台中市哪一個產業出現最高等級的人才供給不足預警？'];
-            }
-            if (q.includes("117") || q.includes("少子化") || q.includes("生源") || q.includes("新生")) {
-                return goldenResponsesCache['117學年度少子化對全國新生人數的衝擊推估是多少？'];
-            }
-            if (q.includes("西屯") || q.includes("存量") || q.includes("行政區")) {
-                return goldenResponsesCache['西屯區在113年度的企業存量與新設動能如何？'] || goldenResponsesCache['西屯區'];
-            }
-            if (q.includes("統編") || q.includes("22099131")) {
-                return goldenResponsesCache['請查證統編 22099131 的公司登記現況'];
-            }
-
-            // Out of scope rejection
-            const isOutOfScope = /天氣|股價|火鍋|餐廳|美食|電影|股票|幾點|你好|hi|hello|晚餐|午餐/i.test(q);
-            if (isOutOfScope) {
-                return goldenResponsesCache['請問明天台中市天氣如何？'] || {
-                    query: q,
-                    status: "REJECTED_BY_JEV",
-                    intent: "REJECTED_BY_JEV",
-                    tool: "none",
-                    answer: "【Jev 決策模型判定：未通過有效性審核】\n輸入問題偏離系統範疇。本系統專注於「台中市區域產業動能與高教人才供需錯配分析」。\n\n💡 建議您可以探索以下合規主題：\n1. 「台中市哪一個產業出現最高等級的人才供給不足預警？」\n2. 「智慧製造與精密機械的供需過剩壓力為何？」\n3. 「請查證統編 22099131 的公司登記現況」\n4. 「117學年度少子化對全國新生人數的衝擊推估是多少？」\n5. 「西屯區在113年度的企業存量與新設動能如何？」",
-                    jev_decision: { is_valid_query: false, reason: "提問超出系統分析範疇", confidence: 0.99, latency_ms: 1 },
-                    verification: { status: "REJECTED", accuracy_pct: 0.0, audit_details: ["Jev 判定拒絕：提問超出系統分析範疇"] },
-                    evidence: { source: ["Jev-1 System-1 決策元件", "系統範疇安全守門員"], verification_status: "REJECTED_BY_JEV" }
-                };
-            }
-
-            return goldenResponsesCache['台中市哪一個產業出現最高等級的人才供給不足預警？'] || {
-                query: q,
-                status: "SUCCESS",
-                intent: "GET_MISMATCH",
-                tool: "tool_mismatch_engine",
-                answer: "依據確定性引擎運算，台中市「數位文創與觀光休閒」產業出現最高等級人才供給不足預警（Mismatch = +1.2810，第二象限嚴重短缺風險）。",
-                jev_decision: { is_valid_query: true, reason: "有效合規查詢", confidence: 0.98, latency_ms: 2 },
-                verification: { status: "VERIFIED", accuracy_pct: 100.0, audit_details: ["正則字面核驗 100% 通過"] },
-                evidence: { source: ["經濟部 GCIS 商工登記歷史母體", "教育部大專校院校務公開平臺 UDB"], calculation: ["Mismatch = DemandMomentum - SupplyMomentum"], verification_status: "VERIFIED" }
-            };
+            const data = await res.json();
+            if (!data || !data.answer) throw new Error('分析服務未回傳回答');
+            return data;
         }
 
         async function submitAgentQuery() {
@@ -1504,26 +1421,29 @@
 
                 const vBadge = document.getElementById('res-verification-badge');
                 if (data.verification && data.verification.status === 'VERIFIED') {
-                    vBadge.className = "bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs px-3 py-1 rounded font-mono-num font-bold inline-flex items-center gap-1.5";
-                    vBadge.innerHTML = `<svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg> VERIFIED (100% 數值無誤)`;
+                    vBadge.className = "bg-stone-50 text-stone-800 border border-stone-200 text-xs px-3 py-1 rounded font-mono-num font-bold inline-flex items-center gap-1.5";
+                    vBadge.innerText = `數字比對 ${data.verification.accuracy_pct}%（非來源核驗）`;
                 } else {
-                    vBadge.className = "bg-rose-50 text-rose-800 border border-rose-200 text-xs px-3 py-1 rounded font-mono-num font-bold inline-flex items-center gap-1.5";
-                    vBadge.innerText = (data.status === 'OUT_OF_SCOPE' || data.status === 'REJECTED_BY_JEV') ? "GUARD_REJECTED (已攔截)" : "AUDIT_REJECTED";
+                    vBadge.className = "bg-amber-50 text-amber-800 border border-amber-200 text-xs px-3 py-1 rounded font-mono-num font-bold inline-flex items-center gap-1.5";
+                    vBadge.innerText = `數字比對警示 ${data.verification ? data.verification.accuracy_pct : '未執行'}%`;
                 }
 
                 const evBox = document.getElementById('res-calculation-box');
-                const calcLines = (data.evidence && data.evidence.calculation) ? data.evidence.calculation : ["依確定性引擎標準公式對齊產出"];
-                const srcLines = (data.evidence && data.evidence.source) ? data.evidence.source : ["經濟部商工行政平臺 / 教育部 UDB"];
+                const calcLines = (data.evidence && data.evidence.calculation) ? data.evidence.calculation : ["本次未呼叫資料工具"];
+                const srcLines = (data.evidence && data.evidence.source) ? data.evidence.source : ["本次回答沒有可列出的資料來源"];
                 evBox.innerHTML = `
                     <div class="text-stone-900 font-bold mb-1">【計算歷程】</div>
                     ${calcLines.map(c => `<div>> ${c}</div>`).join('')}
                     <div class="text-stone-900 font-bold mt-2 mb-1">【來源資料】</div>
                     ${srcLines.map(s => `<div># ${s}</div>`).join('')}
                 `;
-                document.getElementById('res-verification-audit-summary').innerText = `核驗結果：${(data.verification && data.verification.accuracy_pct) || 100}% 數值相符`;
+                const accuracy = data.verification && data.verification.accuracy_pct;
+                document.getElementById('res-verification-audit-summary').innerText = `數字比對：${accuracy === null || accuracy === undefined ? '未執行' : `${accuracy}% 相符`}；不核驗語意、單位或資料來源`;
 
             } catch (err) {
                 console.error("Agent error:", err);
+                document.getElementById('agent-response-card').classList.remove('hidden');
+                document.getElementById('res-answer-text').innerText = "查詢失敗：" + err.message;
             } finally {
                 btn.disabled = false;
                 btn.innerHTML = `<span>提問分析</span><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>`;
@@ -1546,23 +1466,13 @@
 
             const card = document.getElementById('home-agent-response');
             card.classList.remove('hidden');
-            document.getElementById('home-res-answer-text').innerText = "五道確定性守門管線比對核驗中...";
+            document.getElementById('home-res-answer-text').innerText = "GPT-6 Luna 正在理解問題並查詢資料...";
 
             try {
                 const data = await fetchAgentResponse(q);
 
-                // 1. Jev Decision Badge
-                const jevBadge = document.getElementById('home-res-jev-badge');
-                if (data.jev_decision) {
-                    const jd = data.jev_decision;
-                    if (jd.is_valid_query) {
-                        jevBadge.className = "bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs px-3 py-1 rounded-full font-mono-num font-bold inline-flex items-center gap-1.5";
-                        jevBadge.innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-500"></span>Jev 判定：合規問題 (${(jd.confidence * 100).toFixed(1)}% 置信度 ｜ ${jd.latency_ms || 1}ms)`;
-                    } else {
-                        jevBadge.className = "bg-rose-50 text-rose-800 border border-rose-200 text-xs px-3 py-1 rounded-full font-mono-num font-bold inline-flex items-center gap-1.5";
-                        jevBadge.innerHTML = `<span class="w-2 h-2 rounded-full bg-rose-500"></span>Jev 判定：未通過有效性審核 (${(jd.confidence * 100).toFixed(1)}%)`;
-                    }
-                }
+                const modelBadge = document.getElementById('home-res-model-badge');
+                modelBadge.innerText = `${data.provider || 'openrouter'} / ${data.model || 'openai/gpt-6-luna'}：已處理問題`;
 
                 // 2. Intent & Tool Badges
                 document.getElementById('home-res-intent-badge').innerText = data.intent;
@@ -1571,25 +1481,21 @@
 
                 // 3. Verification Badge
                 const vBadge = document.getElementById('home-res-verification-badge');
-                if (data.verification && data.verification.status === 'VERIFIED') {
-                    vBadge.className = "bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs px-3 py-1 rounded-full font-mono-num font-bold inline-flex items-center gap-1.5";
-                    vBadge.innerHTML = `<svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg> VERIFIED (100% 數值無誤)`;
-                } else {
-                    vBadge.className = "bg-rose-50 text-rose-800 border border-rose-200 text-xs px-3 py-1 rounded-full font-mono-num font-bold inline-flex items-center gap-1.5";
-                    vBadge.innerText = (data.status === 'REJECTED_BY_JEV' || data.status === 'OUT_OF_SCOPE') ? "GUARD_REJECTED (已攔截)" : "AUDIT_REJECTED";
-                }
+                const accuracy = data.verification && data.verification.accuracy_pct;
+                vBadge.className = "bg-stone-50 text-stone-800 border border-stone-200 text-xs px-3 py-1 rounded-full font-mono-num font-bold inline-flex items-center gap-1.5";
+                vBadge.innerText = accuracy === null || accuracy === undefined ? "數字比對未執行" : `數字比對 ${accuracy}%（非來源核驗）`;
 
                 // 4. Evidence calculation & sources
                 const evBox = document.getElementById('home-res-calculation-box');
-                const calcLines = (data.evidence && data.evidence.calculation) ? data.evidence.calculation : ["依確定性引擎標準公式對齊產出"];
-                const srcLines = (data.evidence && data.evidence.source) ? data.evidence.source : ["經濟部商工行政平臺 / 教育部 UDB"];
+                const calcLines = (data.evidence && data.evidence.calculation) ? data.evidence.calculation : ["模型依問題選擇資料工具；請查看回答中的資料限制。"];
+                const srcLines = (data.evidence && data.evidence.source) ? data.evidence.source : ["本次回答未呼叫資料工具"];
                 evBox.innerHTML = `
                     <div class="text-stone-900 font-bold mb-1">【計算歷程】</div>
                     ${calcLines.map(c => `<div>> ${c}</div>`).join('')}
                     <div class="text-stone-900 font-bold mt-2 mb-1">【來源資料】</div>
                     ${srcLines.map(s => `<div># ${s}</div>`).join('')}
                 `;
-                document.getElementById('home-res-verification-audit-summary').innerText = `核驗結果：${(data.verification && data.verification.accuracy_pct) || 100}% 數值相符`;
+                document.getElementById('home-res-verification-audit-summary').innerText = `數字比對：${accuracy === null || accuracy === undefined ? '未執行' : `${accuracy}% 相符`}；不核驗語意、單位或資料來源`;
 
             } catch (err) {
                 console.error("Home Agent error:", err);
