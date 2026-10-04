@@ -1,12 +1,12 @@
 # 區域同業工廠家數
 
 `GET /api/regional-peer-density?district=大雅區&year=113&industry_code=29`
-回傳已匯入的經濟部工廠校正及營運調查快照。既有 `DISTRICT_QUERY`
+回傳已匯入的經濟部工廠校正及營運調查轉錄樣本。既有 `DISTRICT_QUERY`
 亦改用同一工具，無資料時不再讀取模擬產業資料。
 
 資料來源：https://service.moea.gov.tw/EE520/investigate/InvestigateG.aspx
 
-目前人工核對並轉錄的範圍：大雅區、行業中類29機械設備業。
+目前僅有大雅區、行業中類 29 機械設備業三列樣本。數值尚未對官方查詢結果獨立核對；`verification_status` 為 `SOURCE_UNVERIFIED`，不可宣稱為已核對的官方觀測值。數值核驗器只檢查回答與輸入資料的一致性，不能改寫此來源狀態。
 
 | 年度 | 營運中工廠家數 |
 | --- | ---: |
@@ -14,7 +14,7 @@
 | 112 | 211 |
 | 113 | 219 |
 
-`data/raw/factory_counts.csv` 為可擴充的輸入；資料版本不是即時 API。
+`data/raw/factory_counts.csv` 為可擴充的輸入；資料版本不是即時 API。補齊官方查詢條件、原始匯出檔及逐列核對紀錄後，才能升級來源驗證標記。
 缺資料回傳 `no_data` 與 `factory_count: null`，保密符號 `*`、無值符號
 `-` 回傳未知值；重複年度／行政區／行業紀錄會拒絕處理。
 未指定行業時，只列出已匯入行業，不能視為全區總數。
