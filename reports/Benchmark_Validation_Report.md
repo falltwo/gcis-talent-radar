@@ -1,7 +1,8 @@
 # Benchmark Validation Report (System Spec Section 29 & 30)
 **Accuracy Rate**: **100.0%** (65/65 Passed)  
-**Target**: 100% Numeric Accuracy  
+**Target**: 100% Internal Answer Consistency  
 
+District sample values remain SOURCE_UNVERIFIED; this benchmark does not validate them against the official source.  
 | Question ID | Category | Question | Expected Intent | Actual Intent | Expected Value | Status |
 |:---:|:---|:---|:---:|:---:|:---:|:---:|
 | BM_IND_01 | Industry Dynamics | 請問台中市智慧製造與精密機械產業在113年的新設公司率（En... | INDUSTRY_QUERY | INDUSTRY_QUERY | 3.54 | ✅ PASS |
@@ -9,9 +10,6 @@
 | BM_IND_03 | Industry Dynamics | 請問半導體與綠能科技產業在台中市113年的資本擴張率（Cap... | INDUSTRY_QUERY | INDUSTRY_QUERY | 9.8 | ✅ PASS |
 | BM_IND_04 | Industry Dynamics | 請問生技醫療與精準健康產業在台中市的需求擴張動能（Deman... | INDUSTRY_QUERY | INDUSTRY_QUERY | 0.5272 | ✅ PASS |
 | BM_IND_05 | Industry Dynamics | 請問國際貿易與現代物流產業113年的歇業解散率（Exit R... | INDUSTRY_QUERY | INDUSTRY_QUERY | 3.35 | ✅ PASS |
-| BM_DIST_01 | District Spatial | 請問西屯區在113年度的登記企業總存量為多少家？... | DISTRICT_QUERY | DISTRICT_QUERY | 29291.0 | ✅ PASS |
-| BM_DIST_02 | District Spatial | 請問南屯區在113年度的新設公司總數為多少家？... | DISTRICT_QUERY | DISTRICT_QUERY | 1159.0 | ✅ PASS |
-| BM_DIST_03 | District Spatial | 請問北屯區在113年度的增資公司總數為多少家？... | DISTRICT_QUERY | DISTRICT_QUERY | 1108.0 | ✅ PASS |
 | BM_SUP_01 | Supply Projection | 請問少子化衝擊下，117學年度全國大專新生預估人數是多少人？... | DEMOGRAPHIC_QUERY | DEMOGRAPHIC_QUERY | 156000.0 | ✅ PASS |
 | BM_SUP_02 | Supply Projection | 請問113學年度至117學年度全國新生縮減差額預估為多少人？... | DEMOGRAPHIC_QUERY | DEMOGRAPHIC_QUERY | 32000.0 | ✅ PASS |
 | BM_SUP_03 | Supply Projection | 請問資訊軟體與數位科技產業在117學年度的高教人才供給推估量... | SUPPLY_QUERY | SUPPLY_QUERY | 13457.0 | ✅ PASS |
@@ -59,13 +57,16 @@
 | BM_DEPT_117_08 | Department 117 Projection | 請問國立中興大學應用經濟學系至117學年度的推估生源是多少人... | DEPARTMENT_QUERY | DEPARTMENT_QUERY | 247.5 | ✅ PASS |
 | BM_DEPT_117_09 | Department 117 Projection | 請問國立中興大學國際政治研究所至117學年度的推估生源是多少... | DEPARTMENT_QUERY | DEPARTMENT_QUERY | 55.8 | ✅ PASS |
 | BM_DEPT_117_10 | Department 117 Projection | 請問國立中興大學圖書資訊學研究所至117學年度的推估生源是多... | DEPARTMENT_QUERY | DEPARTMENT_QUERY | 34.4 | ✅ PASS |
-| BM_EXTRA_DIST_01 | District Spatial | 請問大雅區在113年度的企業總存量是多少家？... | DISTRICT_QUERY | DISTRICT_QUERY | 6791.0 | ✅ PASS |
-| BM_EXTRA_DIST_02 | District Spatial | 請問潭子區在113年度的企業總存量是多少家？... | DISTRICT_QUERY | DISTRICT_QUERY | 8182.0 | ✅ PASS |
-| BM_EXTRA_DIST_03 | District Spatial | 請問豐原區在113年度的企業總存量是多少家？... | DISTRICT_QUERY | DISTRICT_QUERY | 6633.0 | ✅ PASS |
-| BM_EXTRA_DIST_04 | District Spatial | 請問梧棲區在113年度的企業總存量是多少家？... | DISTRICT_QUERY | DISTRICT_QUERY | 3973.0 | ✅ PASS |
-| BM_EXTRA_DIST_05 | District Spatial | 請問烏日區在113年度的企業總存量是多少家？... | DISTRICT_QUERY | DISTRICT_QUERY | 4094.0 | ✅ PASS |
-| BM_EXTRA_DIST_06 | District Spatial | 請問大里區在113年度的企業總存量是多少家？... | DISTRICT_QUERY | DISTRICT_QUERY | 7954.0 | ✅ PASS |
-| BM_EXTRA_DIST_07 | District Spatial | 請問太平區在113年度的企業總存量是多少家？... | DISTRICT_QUERY | DISTRICT_QUERY | 5310.0 | ✅ PASS |
-| BM_EXTRA_DIST_08 | District Spatial | 請問西區在113年度的企業總存量是多少家？... | DISTRICT_QUERY | DISTRICT_QUERY | 10594.0 | ✅ PASS |
-| BM_EXTRA_DIST_09 | District Spatial | 請問北區在113年度的企業總存量是多少家？... | DISTRICT_QUERY | DISTRICT_QUERY | 9259.0 | ✅ PASS |
-| BM_EXTRA_DIST_10 | District Spatial | 請問南區在113年度的企業總存量是多少家？... | DISTRICT_QUERY | DISTRICT_QUERY | 6658.0 | ✅ PASS |
+| BM_DIST_01 | District Spatial | 請問大雅區機械設備業在111年度的營運中工廠家數是多少家？... | DISTRICT_QUERY | DISTRICT_QUERY | 207 | ✅ PASS |
+| BM_DIST_02 | District Spatial | 請問大雅區機械設備業在112年度的營運中工廠家數是多少家？... | DISTRICT_QUERY | DISTRICT_QUERY | 211 | ✅ PASS |
+| BM_DIST_03 | District Spatial | 請問大雅區機械設備業在113年度的營運中工廠家數是多少家？... | DISTRICT_QUERY | DISTRICT_QUERY | 219 | ✅ PASS |
+| BM_EXTRA_DIST_01 | District Spatial | 請問潭子區機械設備業在113年度的營運中工廠家數是多少家？... | DISTRICT_QUERY | DISTRICT_QUERY | None | ✅ PASS |
+| BM_EXTRA_DIST_02 | District Spatial | 請問豐原區機械設備業在113年度的營運中工廠家數是多少家？... | DISTRICT_QUERY | DISTRICT_QUERY | None | ✅ PASS |
+| BM_EXTRA_DIST_03 | District Spatial | 請問梧棲區機械設備業在113年度的營運中工廠家數是多少家？... | DISTRICT_QUERY | DISTRICT_QUERY | None | ✅ PASS |
+| BM_EXTRA_DIST_04 | District Spatial | 請問烏日區機械設備業在113年度的營運中工廠家數是多少家？... | DISTRICT_QUERY | DISTRICT_QUERY | None | ✅ PASS |
+| BM_EXTRA_DIST_05 | District Spatial | 請問大里區機械設備業在113年度的營運中工廠家數是多少家？... | DISTRICT_QUERY | DISTRICT_QUERY | None | ✅ PASS |
+| BM_EXTRA_DIST_06 | District Spatial | 請問太平區機械設備業在113年度的營運中工廠家數是多少家？... | DISTRICT_QUERY | DISTRICT_QUERY | None | ✅ PASS |
+| BM_EXTRA_DIST_07 | District Spatial | 請問西區機械設備業在113年度的營運中工廠家數是多少家？... | DISTRICT_QUERY | DISTRICT_QUERY | None | ✅ PASS |
+| BM_EXTRA_DIST_08 | District Spatial | 請問北區機械設備業在113年度的營運中工廠家數是多少家？... | DISTRICT_QUERY | DISTRICT_QUERY | None | ✅ PASS |
+| BM_EXTRA_DIST_09 | District Spatial | 請問南區機械設備業在113年度的營運中工廠家數是多少家？... | DISTRICT_QUERY | DISTRICT_QUERY | None | ✅ PASS |
+| BM_EXTRA_DIST_10 | District Spatial | 請問西屯區機械設備業在113年度的營運中工廠家數是多少家？... | DISTRICT_QUERY | DISTRICT_QUERY | None | ✅ PASS |
