@@ -3,11 +3,13 @@ Benchmark Generation & Validation Runner (System Spec Section 29 & 30)
 Generates:
 - benchmark/golden_questions.json (65+ benchmark questions with canonical golden answers)
 Executes:
-- Full evaluation testing 100% numeric accuracy against golden values.
+- Internal answer consistency checks against current inputs. A passing sample
+  check does not establish that its source values were independently verified.
 """
 import sys
 import json
 import math
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, List, Any
 
@@ -17,6 +19,7 @@ from config import BENCHMARK_DIR, REPORT_DIR
 from database.db_manager import db
 from agent.agent_service import agent_service
 from agent.numeric_verifier import extract_numbers_from_text
+from engine.factory_density import get_regional_peer_density
 
 GOLDEN_QUESTIONS_FILE = BENCHMARK_DIR / "golden_questions.json"
 
@@ -25,9 +28,6 @@ def build_golden_questions() -> List[Dict[str, Any]]:
     mom_rows = {r["industry_id"]: r for r in db.fetch_all("SELECT * FROM industry_momentum_mart")}
     sup_rows = {r["industry_id"]: r for r in db.fetch_all("SELECT * FROM talent_supply_mart")}
     mis_rows = {r["industry_id"]: r for r in db.fetch_all("SELECT * FROM mismatch_signal_mart")}
-    dist_xitun = db.fetch_all("SELECT SUM(ending_stock) as s, SUM(opening_count) as o, SUM(capital_increase_count) as c FROM industry_dynamics_mart WHERE district='西屯區' AND year=113")[0]
-    dist_nantun = db.fetch_all("SELECT SUM(ending_stock) as s, SUM(opening_count) as o, SUM(capital_increase_count) as c FROM industry_dynamics_mart WHERE district='南屯區' AND year=113")[0]
-    dist_beitun = db.fetch_all("SELECT SUM(ending_stock) as s, SUM(opening_count) as o, SUM(capital_increase_count) as c FROM industry_dynamics_mart WHERE district='北屯區' AND year=113")[0]
     demo_117 = db.fetch_one("SELECT * FROM demographics_projection WHERE academic_year = 117")
     demo_113 = db.fetch_one("SELECT * FROM demographics_projection WHERE academic_year = 113")
 
@@ -90,40 +90,7 @@ def build_golden_questions() -> List[Dict[str, Any]]:
             "tolerance": 0.05
         },
 
-        # 3 District Questions
-        {
-            "question_id": "BM_DIST_01",
-            "category": "District Spatial",
-            "question": "請問西屯區在113年度的登記企業總存量為多少家？",
-            "intent": "DISTRICT_QUERY",
-            "expected_tool": "get_district_industry",
-            "expected_value": dist_xitun["s"],
-            "expected_unit": "家",
-            "expected_source": "GCIS_BATCH",
-            "tolerance": 1.0
-        },
-        {
-            "question_id": "BM_DIST_02",
-            "category": "District Spatial",
-            "question": "請問南屯區在113年度的新設公司總數為多少家？",
-            "intent": "DISTRICT_QUERY",
-            "expected_tool": "get_district_industry",
-            "expected_value": dist_nantun["o"],
-            "expected_unit": "家",
-            "expected_source": "GCIS_BATCH",
-            "tolerance": 1.0
-        },
-        {
-            "question_id": "BM_DIST_03",
-            "category": "District Spatial",
-            "question": "請問北屯區在113年度的增資公司總數為多少家？",
-            "intent": "DISTRICT_QUERY",
-            "expected_tool": "get_district_industry",
-            "expected_value": dist_beitun["c"],
-            "expected_unit": "家",
-            "expected_source": "GCIS_BATCH",
-            "tolerance": 1.0
-        },
+        # District questions are appended below from the provisional snapshot.
 
         # 3 Supply Projection Questions
         {
@@ -264,20 +231,28 @@ def build_golden_questions() -> List[Dict[str, Any]]:
             "tolerance": 1.0
         })
 
-    # 10 Additional District & Industry Questions
-    more_dists = ["大雅區", "潭子區", "豐原區", "梧棲區", "烏日區", "大里區", "太平區", "西區", "北區", "南區"]
-    for idx, dist_name in enumerate(more_dists):
-        d_row = db.fetch_all("SELECT SUM(ending_stock) as s FROM industry_dynamics_mart WHERE district=? AND year=113", (dist_name,))[0]
+    # Three sample readings test internal consistency, not official validity.
+    for idx, year in enumerate((111, 112, 113), 1):
+        sample = get_regional_peer_density('大雅區', year, '29')
         questions.append({
-            "question_id": f"BM_EXTRA_DIST_{idx+1:02d}",
-            "category": "District Spatial",
-            "question": f"請問{dist_name}在113年度的企業總存量是多少家？",
-            "intent": "DISTRICT_QUERY",
-            "expected_tool": "get_district_industry",
-            "expected_value": float(d_row["s"]),
-            "expected_unit": "家",
-            "expected_source": "GCIS_BATCH",
-            "tolerance": 1.0
+            "question_id": f"BM_DIST_{idx:02d}", "category": "District Spatial",
+            "question": f"請問大雅區機械設備業在{year}年度的營運中工廠家數是多少家？",
+            "intent": "DISTRICT_QUERY", "expected_tool": "get_district_industry",
+            "expected_status": "available", "expected_value": sample["factory_count"],
+            "expected_unit": "家", "expected_source": "EE520_UNVERIFIED_SAMPLE",
+            "expected_verification_status": "SOURCE_UNVERIFIED", "tolerance": 0.0
+        })
+
+    # The other ten districts are intentionally outside current coverage.
+    more_dists = ["潭子區", "豐原區", "梧棲區", "烏日區", "大里區", "太平區", "西區", "北區", "南區", "西屯區"]
+    for idx, dist_name in enumerate(more_dists, 1):
+        questions.append({
+            "question_id": f"BM_EXTRA_DIST_{idx:02d}", "category": "District Spatial",
+            "question": f"請問{dist_name}機械設備業在113年度的營運中工廠家數是多少家？",
+            "intent": "DISTRICT_QUERY", "expected_tool": "get_district_industry",
+            "expected_status": "no_data", "expected_value": None,
+            "expected_unit": "家", "expected_source": "EE520_UNVERIFIED_SAMPLE",
+            "expected_verification_status": "NO_DATA", "tolerance": 0.0
         })
 
     with open(GOLDEN_QUESTIONS_FILE, "w", encoding="utf-8") as f:
@@ -304,7 +279,7 @@ def run_benchmark_validation() -> Dict[str, Any]:
         qid = item["question_id"]
         q_text = item["question"]
         expected_intent = item["intent"]
-        expected_val = float(item["expected_value"])
+        expected_val = item["expected_value"]
         tolerance = float(item["tolerance"])
         unit = item.get("expected_unit", "")
 
@@ -318,10 +293,20 @@ def run_benchmark_validation() -> Dict[str, Any]:
 
         # Check numeric match against expected_val
         matched = False
-        for num in extracted_nums:
-            if abs(num - expected_val) <= tolerance or (expected_val != 0 and abs(num - expected_val) / abs(expected_val) <= 0.01):
-                matched = True
-                break
+        if expected_intent == "DISTRICT_QUERY":
+            actual = res.get("structured_data") or {}
+            matched = (res.get("tool") == item["expected_tool"]
+                       and actual.get("status") == item["expected_status"]
+                       and actual.get("factory_count") == expected_val
+                       and res.get("evidence", {}).get("verification_status") == item["expected_verification_status"]
+                       and (expected_val is None or expected_val in extracted_nums)
+                       and (expected_val is not None or "尚未匯入" in ans_text))
+        else:
+            expected_val = float(expected_val)
+            for num in extracted_nums:
+                if abs(num - expected_val) <= tolerance or (expected_val != 0 and abs(num - expected_val) / abs(expected_val) <= 0.01):
+                    matched = True
+                    break
 
         intent_correct = (routed_intent == expected_intent)
         q_passed = matched and intent_correct
@@ -348,7 +333,7 @@ def run_benchmark_validation() -> Dict[str, Any]:
     print(f"Benchmark Run Complete: {passed_q}/{total_q} Passed ({accuracy_rate}%)")
 
     benchmark_report = {
-        "timestamp": "2026-10-03T19:35:00",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
         "total_questions": total_q,
         "passed": passed_q,
         "failed": failed_q,
@@ -365,7 +350,8 @@ def run_benchmark_validation() -> Dict[str, Any]:
     md_lines = [
         "# Benchmark Validation Report (System Spec Section 29 & 30)",
         f"**Accuracy Rate**: **{accuracy_rate}%** ({passed_q}/{total_q} Passed)  ",
-        f"**Target**: 100% Numeric Accuracy  \n",
+        f"**Target**: 100% Internal Answer Consistency  \n",
+        "District sample values remain SOURCE_UNVERIFIED; this benchmark does not validate them against the official source.  ",
         "| Question ID | Category | Question | Expected Intent | Actual Intent | Expected Value | Status |",
         "|:---:|:---|:---|:---:|:---:|:---:|:---:|"
     ]
