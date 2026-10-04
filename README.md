@@ -59,7 +59,7 @@
 ├─────────────────────────────────────────────────────────────┤
 │ P1. Deterministic First (確定性第一，數字全由程式精算)     │
 │ P2. LLM Does Not Calculate (LLM 絕對不計算任何數值)         │
-│ P3. LLM Does Not Classify (產業與學門映射一律依固定規則表)  │
+│ P3. Constrained Tools (模型選工具；產業與學門映射用固定規則)│
 │ P4. Traceable (所有輸出具備 5 級確定性佐證回溯鏈)          │
 │ P5. Warning, Not Prediction (定位為結構性預警，非就業預測)  │
 └─────────────────────────────────────────────────────────────┘
@@ -75,11 +75,24 @@
 pip install fastapi uvicorn pandas numpy requests
 ```
 
-### 2. 啟動本機伺服器
+### 2. 啟用問答並啟動本機伺服器
+
+AI 問答由 FastAPI 後端呼叫 OpenRouter。請先在後端執行環境設定 API key，再啟動伺服器；不要把 key 放進 `ui/`、Netlify 前端環境變數或 Git：
+
 ```bash
+cp .env.example .env
+# 將 OPENROUTER_API_KEY 設在本機 .env 檔中
+export OPENROUTER_MODEL="openai/gpt-6-luna"
 python3 server.py
 ```
+
+也可以直接用 shell 環境變數設定 `OPENROUTER_API_KEY`。伺服器會優先採用 shell 中已設定的值；本機 `.env` 已列入 `.gitignore`。
+
 打開瀏覽器訪問：**`http://127.0.0.1:8888`**。
+
+`OPENROUTER_MODEL` 可依 OpenRouter 帳戶可用的模型代碼調整。前端呼叫同源 `/api/agent/chat`，API key 僅由後端讀取。若只部署 Netlify 靜態前端，AI 問答不會自動可用；需另行部署 FastAPI，並配置前端 API 網址／反向代理與後端環境變數。目前靜態頁仍使用相對路徑 `/api/agent/chat`，尚未提供 Netlify Functions 或跨站 API 設定。
+
+這個整合只替換問答的意圖理解、工具選擇及文字生成；底層資料表尚未全部換成審查文件列出的公開資料，產業動能和錯配結果含模擬資料。不能據此宣稱能預測個別公司招募成功率或可招到人數。數字比對只檢查回答數字是否能在工具資料找到，不代表語意、單位或來源已驗證。
 
 ### 3. 一鍵全流程重跑管線與驗證
 ```bash
@@ -108,7 +121,7 @@ python3 pipeline/run_full_pipeline.py
 ### 5. 供需錯配四象限觀測儀（零軸交叉散布圖與 7 大目標產業佐證卡片）
 ![供需錯配四象限](reports/lieflat_mismatch_tab.png)
 
-### 6. 守門型 AI 決策代理人 (Jev 守門 + 數值核驗徽章)
+### 6. OpenRouter GPT-6 Luna 資料助理（受限工具呼叫與數字比對）
 ![AI 決策代理人](reports/lieflat_agent_tab.png)
 
 ### 7. 系統實時動態架構儀表板 (Live-Panel Architecture Diagram)

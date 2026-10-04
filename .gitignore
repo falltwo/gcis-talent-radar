@@ -51,6 +51,9 @@ Thumbs.db
 # Temporary / Scratch files
 tmp/
 *.tmp
+.env
+.env.*
+!.env.example
 .claude/
 TradeDNA*
 spec-presentation.html
