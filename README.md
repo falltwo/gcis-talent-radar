@@ -2,6 +2,10 @@
 
 # 產業人才雷達
 
+[![Tests](https://github.com/falltwo/gcis-talent-radar/actions/workflows/tests.yml/badge.svg)](https://github.com/falltwo/gcis-talent-radar/actions/workflows/tests.yml)
+![Python](https://img.shields.io/badge/python-3.12-3776AB?logo=python&logoColor=white)
+![FastAPI](https://img.shields.io/badge/API-FastAPI-009688?logo=fastapi&logoColor=white)
+
 工廠要擴廠、要招人之前，老闆通常會想問：附近同業在增加還是在退場？這一區現在有多少職缺？薪資大概在什麼水準？產業人才雷達用政府開放資料回答這些問題。每個數字都標明出處和資料期別，資料沒有的，系統就直說沒有。
 
 這是 2026 InnoServe 資訊應用服務創新競賽「商業治理 AI 創新組（GCIS-OD）」的參賽作品，以臺中製造業為示範範圍。

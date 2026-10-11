@@ -2,6 +2,10 @@
 
 # Industry Talent Radar
 
+[![Tests](https://github.com/falltwo/gcis-talent-radar/actions/workflows/tests.yml/badge.svg)](https://github.com/falltwo/gcis-talent-radar/actions/workflows/tests.yml)
+![Python](https://img.shields.io/badge/python-3.12-3776AB?logo=python&logoColor=white)
+![FastAPI](https://img.shields.io/badge/API-FastAPI-009688?logo=fastapi&logoColor=white)
+
 Before a factory expands and starts hiring, the owner wants to know a few things. Are competitors nearby opening up or shutting down? How many job openings are in the district right now? What is the wage level? Industry Talent Radar answers these questions from Taiwan government open data. Every number comes with its source and data period. When the data doesn't cover something, the system says so.
 
 This is an entry in the 2026 InnoServe Awards, Business Governance AI Innovation track (GCIS-OD). Taichung manufacturing is the demo scope.
