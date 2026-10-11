@@ -5,6 +5,7 @@
 [![Tests](https://github.com/falltwo/gcis-talent-radar/actions/workflows/tests.yml/badge.svg)](https://github.com/falltwo/gcis-talent-radar/actions/workflows/tests.yml)
 ![Python](https://img.shields.io/badge/python-3.12-3776AB?logo=python&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/API-FastAPI-009688?logo=fastapi&logoColor=white)
+[![License](https://img.shields.io/github/license/falltwo/gcis-talent-radar)](LICENSE)
 
 工廠要擴廠、要招人之前，老闆通常會想問：附近同業在增加還是在退場？這一區現在有多少職缺？薪資大概在什麼水準？產業人才雷達用政府開放資料回答這些問題。每個數字都標明出處和資料期別，資料沒有的，系統就直說沒有。
 
@@ -136,6 +137,6 @@ docs/       設計與資料文件
 
 使用的政府資料依[政府資料開放授權條款](https://data.gov.tw/license)利用，來源包括經濟部商工行政資料開放平臺、政府資料開放平臺、臺中市政府經濟發展局、勞動部勞動力發展署、勞動部勞工保險局。
 
-本專案目前沒有附開源授權條款，著作權由作者保留。
+程式碼以 [MIT](LICENSE) 授權釋出。上面的政府資料不適用 MIT，仍依各自的授權條款使用。
 
 本專案改造自 [DrChunChihChen/taichung-industry-talent-radar](https://github.com/DrChunChihChen/taichung-industry-talent-radar)。
