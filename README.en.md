@@ -5,6 +5,7 @@
 [![Tests](https://github.com/falltwo/gcis-talent-radar/actions/workflows/tests.yml/badge.svg)](https://github.com/falltwo/gcis-talent-radar/actions/workflows/tests.yml)
 ![Python](https://img.shields.io/badge/python-3.12-3776AB?logo=python&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/API-FastAPI-009688?logo=fastapi&logoColor=white)
+[![License](https://img.shields.io/github/license/falltwo/gcis-talent-radar)](LICENSE)
 
 Before a factory expands and starts hiring, the owner wants to know a few things. Are competitors nearby opening up or shutting down? How many job openings are in the district right now? What is the wage level? Industry Talent Radar answers these questions from Taiwan government open data. Every number comes with its source and data period. When the data doesn't cover something, the system says so.
 
@@ -150,6 +151,6 @@ Government data is used under the [Open Government Data License, version 1.0](ht
 - Workforce Development Agency, Ministry of Labor
 - Bureau of Labor Insurance, Ministry of Labor
 
-This project has no open-source license yet. All rights reserved by the authors.
+The code is released under the [MIT License](LICENSE). The government data above is not covered by MIT and remains under its own license terms.
 
 Adapted from [DrChunChihChen/taichung-industry-talent-radar](https://github.com/DrChunChihChen/taichung-industry-talent-radar).
