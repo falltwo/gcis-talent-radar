@@ -6,7 +6,7 @@ from typing import Any, Dict, Iterable, List, Optional
 
 import pandas as pd
 
-from config import TARGET_INDUSTRIES
+from config import TAICHUNG_DISTRICTS, TARGET_INDUSTRIES
 from database.db_manager import db
 from engine.evidence_engine import build_evidence_object
 
@@ -184,6 +184,211 @@ def get_regional_job_demand(
         "excluded_location_records": excluded,
         "top_vacancies": rows[:20],
         "evidence": evidence,
+    }
+
+
+def _read_district_comparison_snapshot(districts: List[str]):
+    """Read the chosen districts and their audit from one SQLite snapshot."""
+    connection = db.get_connection()
+    try:
+        # Keep all reads in the same transaction, including when an ETL replaces
+        # a same-day snapshot between queries. No data is written here.
+        connection.execute("BEGIN")
+        latest = connection.execute(
+            """
+            SELECT MAX(snapshot_date) AS snapshot_date FROM (
+                SELECT snapshot_date FROM official_job_vacancies
+                UNION ALL
+                SELECT snapshot_date FROM official_job_fetch_audit
+            )
+            """
+        ).fetchone()
+        snapshot = latest["snapshot_date"] if latest else None
+        if not snapshot:
+            return None, [], []
+        placeholders = ",".join("?" for _ in districts)
+        params = (snapshot, *districts)
+        rows = [dict(row) for row in connection.execute(
+            f"""
+            SELECT * FROM official_job_vacancies
+            WHERE snapshot_date = ? AND district IN ({placeholders})
+            ORDER BY openings DESC, updated_date DESC, record_id ASC
+            """,
+            params,
+        ).fetchall()]
+        audits = [dict(row) for row in connection.execute(
+            f"""
+            SELECT * FROM official_job_fetch_audit
+            WHERE snapshot_date = ? AND district IN ({placeholders})
+            """,
+            params,
+        ).fetchall()]
+        return snapshot, rows, audits
+    finally:
+        connection.close()
+
+
+def _comparison_audit_is_complete(audit: Dict[str, Any], row_count: int) -> bool:
+    """A genuine zero requires a complete audit, rather than missing records."""
+    try:
+        returned = int(audit["returned_count"])
+        retained = int(audit["retained_count"])
+        excluded = int(audit["excluded_location_count"])
+        query_limit = int(audit["query_limit"])
+        limit_reached = int(audit["limit_reached"])
+        return (
+            min(returned, retained, excluded) >= 0
+            and query_limit > 0
+            and returned <= query_limit
+            and returned == retained + excluded
+            and retained == row_count
+            and limit_reached in (0, 1)
+            and bool(limit_reached) == (returned >= query_limit)
+            and bool(audit.get("fetched_at"))
+        )
+    except (KeyError, TypeError, ValueError):
+        return False
+
+
+def get_district_job_comparison(
+    districts: List[str],
+    industry_id: Optional[str] = None,
+    occupation_keyword: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Compare 2–3 districts using only one audited TaiwanJobs snapshot."""
+    selected = [value.strip() if isinstance(value, str) else value for value in (districts or [])]
+    if (
+        not 2 <= len(selected) <= 3
+        or any(value not in TAICHUNG_DISTRICTS for value in selected)
+        or len(set(selected)) != len(selected)
+    ):
+        return {
+            "available": False,
+            "error_code": "INVALID_DISTRICTS",
+            "reason": "請選擇 2 至 3 個不重複的台中市行政區。",
+        }
+    industry_id = industry_id.strip() if industry_id else None
+    industry_id = industry_id or None
+    if industry_id and industry_id not in JOB_RETRIEVAL_RULES:
+        return _unsupported_industry(industry_id, JOB_RETRIEVAL_RULES)
+    keyword = (occupation_keyword or "").strip() or None
+    if keyword and len(keyword) > 60:
+        return {
+            "available": False,
+            "error_code": "INVALID_OCCUPATION_KEYWORD",
+            "reason": "職類關鍵字請限制在 60 字以內。",
+        }
+
+    snapshot, rows, audits = _read_district_comparison_snapshot(selected)
+    if not snapshot:
+        return {
+            "available": False,
+            "error_code": "DATA_UNAVAILABLE",
+            "reason": "尚未匯入台灣就業通官方快照，暫時無法比較。",
+            "comparisons": [],
+        }
+    audit_by_district = {audit["district"]: audit for audit in audits}
+    missing = [district for district in selected if district not in audit_by_district]
+    if missing:
+        return {
+            "available": False,
+            "error_code": "MISSING_DISTRICT_AUDIT",
+            "reason": "最新快照缺少所選行政區的抓取稽核，無法將缺失資料視為零筆。",
+            "snapshot_date": snapshot,
+            "missing_districts": missing,
+            "comparisons": [],
+        }
+    rows_by_district = {district: [] for district in selected}
+    for row in rows:
+        rows_by_district[row["district"]].append(row)
+    incomplete = [
+        district for district in selected
+        if not _comparison_audit_is_complete(
+            audit_by_district[district], len(rows_by_district[district])
+        )
+    ]
+    if incomplete:
+        return {
+            "available": False,
+            "error_code": "INCOMPLETE_DISTRICT_AUDIT",
+            "reason": "最新快照的行政區稽核與職缺紀錄不完整或不一致，暫時無法比較。",
+            "snapshot_date": snapshot,
+            "incomplete_districts": incomplete,
+            "comparisons": [],
+        }
+
+    limitations = [
+        "這是同一日期的官方公開職缺樣本，不是實際缺工人數或所有雇主母體。",
+        "達到官方查詢上限的行政區僅能視為觀測下限，不宜直接判斷哪一區需求較高。",
+        "產業條件是職務名稱與職類文字檢索，不等同雇主的正式行業登記分類。",
+        "不同公司數依公開公司名稱去重，並非統編核實的企業家數。",
+    ]
+    calculation = [
+        f"所有行政區使用同一份 {snapshot} 官方快照，並核對各區抓取稽核與原始筆數",
+        "職缺刊登筆數為篩選後紀錄數；刊登需求人數取官方「雇用人數」欄位加總",
+        "產業使用版本化職務文字規則篩選" if industry_id else "未套用產業篩選",
+        f"職類關鍵字：{keyword}" if keyword else "未套用職類關鍵字篩選",
+        "職類優先使用細類名稱，其次為大類名稱；依刊登筆數與需求人數排序，展示前五類",
+    ]
+
+    def evidence_for(geography: str, district_audits: List[Dict[str, Any]]):
+        excluded = sum(int(audit["excluded_location_count"]) for audit in district_audits)
+        return build_evidence_object(
+            intent="DISTRICT_JOB_COMPARISON",
+            indicator_name="台灣就業通行政區職缺比較",
+            calculation_steps=calculation,
+            source_tables=["official_job_vacancies", "official_job_fetch_audit"],
+            official_sources=["勞動部勞動力發展署－台灣就業通網站職缺清單"],
+            data_period=snapshot,
+            geography=geography,
+            source_urls=[TAIWANJOBS_URL],
+            dataset_ids=["44062"],
+            limitations=[*limitations, f"已排除 {excluded} 筆工作地點未明確符合查詢行政區的紀錄。"],
+            fetched_at=max(audit["fetched_at"] for audit in district_audits),
+        )
+
+    comparisons = []
+    for district in selected:
+        matching_rows = rows_by_district[district]
+        if industry_id:
+            matching_rows = [row for row in matching_rows if _contains_any(row, JOB_RETRIEVAL_RULES[industry_id])]
+        if keyword:
+            matching_rows = [row for row in matching_rows if _contains_any(row, [keyword])]
+        occupations: Dict[str, Dict[str, Any]] = {}
+        for row in matching_rows:
+            name = (
+                str(row.get("occupation_minor_name") or "").strip()
+                or str(row.get("occupation_major_name") or "").strip()
+                or "未分類"
+            )
+            group = occupations.setdefault(name, {"name": name, "vacancy_postings": 0, "requested_workers": 0})
+            group["vacancy_postings"] += 1
+            group["requested_workers"] += int(row["openings"])
+        audit = audit_by_district[district]
+        capped = bool(audit["limit_reached"])
+        comparisons.append({
+            "district": district,
+            "vacancy_postings": len(matching_rows),
+            "requested_workers": sum(int(row["openings"]) for row in matching_rows),
+            "distinct_companies": len({row["company_name"] for row in matching_rows if row.get("company_name")}),
+            "coverage_status": "QUERY_LIMIT_REACHED" if capped else "OBSERVED_SNAPSHOT_COMPLETE_WITHIN_QUERY_LIMIT",
+            "query_limit": int(audit["query_limit"]),
+            "limit_reached_districts": [district] if capped else [],
+            "top_vacancies": matching_rows[:10],
+            "top_occupations": sorted(
+                occupations.values(),
+                key=lambda item: (-item["vacancy_postings"], -item["requested_workers"], item["name"]),
+            )[:5],
+            "evidence": evidence_for(f"台中市{district}", [audit]),
+        })
+    return {
+        "available": True,
+        "snapshot_date": snapshot,
+        "industry_id": industry_id,
+        "industry_name": _industry_name(industry_id),
+        "occupation_keyword": keyword,
+        "comparisons": comparisons,
+        "evidence": evidence_for("台中市" + "、".join(selected), audits),
     }
 
 

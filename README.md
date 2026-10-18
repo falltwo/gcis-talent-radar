@@ -20,6 +20,7 @@
 | 這一區的同業在新設、增資，還是解散？ | 經濟部商工登記：公司設立／變更登記清冊（依稅籍行業代號對到製造業中類） | 臺中行政區 × 製造業中類 × 月 |
 | 這一區有幾家工廠？ | 臺中市經發局工廠產業類別家數（[data.gov.tw 174209](https://data.gov.tw/dataset/174209)） | 行政區 × 產業類別 × 月 |
 | 這一區現在有多少公開職缺？ | 台灣就業通職缺清單（[data.gov.tw 44062](https://data.gov.tw/dataset/44062)） | 行政區，每日快照 |
+| 哪幾區有較多同類徵才刊登？ | 同一天的台灣就業通職缺快照，依工作領域與職類文字篩選 | 2～3 個行政區並排比較 |
 | 全市製造業新設公司趨勢？ | 經濟部商工行政資料開放平臺：按行業別及縣市別分的公司新設統計 | 臺中全市 × 行業大類 × 月 |
 | 薪資大概在什麼水準？ | 勞保局投保薪資統計（[data.gov.tw 100999](https://data.gov.tw/dataset/100999)） | 臺中全市 × 行業大類 × 年末 |
 
@@ -88,7 +89,7 @@ python -m forecast.run_real --series gcis --horizon 12 --step 3
 python -m pytest tests -q
 ```
 
-目前共 345 項測試，涵蓋資料整理、資料工具、預測、護欄與稽核。GitHub Actions 會在每個 PR 和 push 到 `main` 時執行。
+目前共 358 項測試，涵蓋資料整理、資料工具、行政區比較、預測、護欄與稽核。GitHub Actions 會在每個 PR 和 push 到 `main` 時執行。
 
 ## 頁面與 API
 
@@ -96,10 +97,12 @@ python -m pytest tests -q
 |---|---|
 | `/` | 首頁：直接問答＋擴廠情境（預設大雅區、招募 10 人） |
 | `/demo` | 擴廠情境單頁版 |
+| `/legacy#compare` | 行政區徵才比較：2～3 區的官方刊登職缺、需求人數、徵才公司與來源職缺 |
 | `/docs` | FastAPI 自動產生的 API 文件 |
 | `POST /api/agent/chat` | AI 問答 |
 | `GET /api/demo/expansion` | 擴廠情境的四個官方數字 |
 | `GET /api/official/job-demand`、`company-trend`、`wage-baseline` | 三個官方資料工具 |
+| `GET /api/official/district-comparison` | 同一官方快照的多行政區比較 |
 | `/legacy` | 舊版原型，含模擬資料，不屬於展示內容 |
 
 ## 專案結構
@@ -128,6 +131,7 @@ docs/       設計與資料文件
 
 - [docs/04-初賽展示主線.md](docs/04-初賽展示主線.md)：展示操作路徑與數字來源
 - [docs/05-三項官方資料工具實作.md](docs/05-三項官方資料工具實作.md)：三個官方資料工具的口徑與驗收
+- [docs/06-行政區徵才比較.md](docs/06-行政區徵才比較.md)：比較頁操作、指標口徑、API 與測試
 - [docs/GOVERNANCE.md](docs/GOVERNANCE.md)：護欄執行順序、稽核欄位
 - [docs/FORECAST_ENGINE.md](docs/FORECAST_ENGINE.md)：預測模型、回測、官方缺月修復
 - [docs/04-ETL.md](docs/04-ETL.md)：資料表清單與 ETL 執行方式
