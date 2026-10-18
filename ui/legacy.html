@@ -3,6 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="/static/district-comparison.css">
+    <script src="/static/district-comparison.js" defer></script>
     <title>區域產業 × 高教人才供需錯配預警系統 | 臺中區域產業與高教人才雷達</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -130,6 +132,9 @@
                 <button onclick="switchTab('map')" id="tab-map" class="tab-btn px-4 py-2 font-medium rounded-lg text-stone-600 hover:text-stone-900 hover:bg-stone-200/60 transition">
                     ③ 台中空間地圖 (需求端)
                 </button>
+                <button onclick="switchTab('compare')" id="tab-compare" class="tab-btn px-4 py-2 font-medium rounded-lg text-stone-600 hover:text-stone-900 hover:bg-stone-200/60 transition">
+                    行政區徵才比較
+                </button>
                 <button onclick="switchTab('supply')" id="tab-supply" class="tab-btn px-4 py-2 font-medium rounded-lg text-stone-600 hover:text-stone-900 hover:bg-stone-200/60 transition">
                     ④ 高教生源推估 (117年)
                 </button>
@@ -238,6 +243,7 @@
 
                 <!-- Smooth Scroll Anchor Link -->
                 <div class="pt-4">
+                    <button type="button" onclick="switchTab('compare')" class="comparison-entry">比較行政區徵才現況 <span aria-hidden="true">→</span></button>
                     <a href="#overview-dashboard" onclick="document.getElementById('overview-dashboard').scrollIntoView({behavior: 'smooth'})" class="text-stone-400 hover:text-stone-700 text-xs font-semibold inline-flex items-center gap-1.5 transition">
                         <span>探索全量 7 大目標產業錯配預警指標與四大維度</span>
                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
@@ -485,6 +491,50 @@
                         <tbody id="dynamics-mart-body" class="divide-y divide-stone-100 text-xs font-mono-num"></tbody>
                     </table>
                 </div>
+            </div>
+        </section>
+
+        <section id="page-compare" class="page-content hidden comparison-page" aria-labelledby="comparison-title">
+            <div class="comparison-heading">
+                <div>
+                    <h2 id="comparison-title">行政區徵才比較</h2>
+                    <p>選擇 2～3 個行政區，看看同類工作在哪裡徵人、有哪些公司正在招募。</p>
+                </div>
+                <span class="comparison-source-label">台灣就業通官方公開資料</span>
+            </div>
+            <form id="comparison-form" class="comparison-form">
+                <fieldset>
+                    <legend>想比較哪些地方？</legend>
+                    <div class="comparison-fields comparison-district-fields">
+                        <label for="comparison-district-1">第一個行政區<select id="comparison-district-1" name="district-1" required></select></label>
+                        <label for="comparison-district-2">第二個行政區<select id="comparison-district-2" name="district-2" required></select></label>
+                        <label for="comparison-district-3">第三個行政區 <span class="comparison-optional">（選填）</span><select id="comparison-district-3" name="district-3"></select></label>
+                    </div>
+                </fieldset>
+                <div class="comparison-fields comparison-filter-fields">
+                    <label for="comparison-industry">工作領域<select id="comparison-industry" name="industry"></select></label>
+                    <label for="comparison-keyword">職稱或職類關鍵字 <span class="comparison-optional">（選填）</span><input id="comparison-keyword" name="keyword" type="search" maxlength="60" placeholder="例如：CNC、機械、品管" aria-describedby="comparison-filter-help"></label>
+                    <button id="comparison-submit" type="submit">開始比較</button>
+                </div>
+                <p id="comparison-filter-help" class="comparison-help">工作領域依職稱及職類文字篩選；關鍵字會在領域範圍內再縮小結果。</p>
+            </form>
+            <p id="comparison-status" class="comparison-status" role="status" aria-live="polite">準備載入比較資料。</p>
+            <div id="comparison-error" class="comparison-error" role="alert" hidden></div>
+            <div id="comparison-loading" class="comparison-loading" aria-hidden="true" hidden><div></div><div></div><div></div></div>
+            <div id="comparison-results" class="comparison-results" aria-busy="false" hidden>
+                <div class="comparison-result-heading">
+                    <h3>同一份快照，並排看差異</h3>
+                    <p id="comparison-period"></p>
+                </div>
+                <p id="comparison-applied" class="comparison-help"></p>
+                <p class="comparison-mobile-hint">左右滑動比較表，可查看全部行政區。</p>
+                <div id="comparison-table-wrap" class="comparison-table-wrap" role="region" aria-label="行政區徵才比較表，可水平捲動" tabindex="0"></div>
+                <p class="comparison-reading-note">刊登職缺多，代表這份樣本中有較多招募活動；不直接代表較難招人。</p>
+                <div id="comparison-details" class="comparison-details"></div>
+                <details class="comparison-evidence">
+                    <summary>資料來源與計算方式</summary>
+                    <div id="comparison-evidence-content"></div>
+                </details>
             </div>
         </section>
 
@@ -852,6 +902,7 @@
     <!-- Scripts -->
     <script>
         // Lieflat Charts Global Design Tokens & Defaults
+        if (typeof Chart !== 'undefined') {
         Chart.defaults.font.family = "'IBM Plex Mono', 'Outfit', 'Noto Sans TC', sans-serif";
         Chart.defaults.color = "#78716C";
         Chart.defaults.scale.grid.color = "rgba(28, 25, 23, 0.06)";
@@ -865,6 +916,7 @@
         Chart.defaults.plugins.tooltip.padding = 10;
         Chart.defaults.plugins.tooltip.cornerRadius = 8;
         Chart.defaults.animation = false;
+        }
 
         let currentTab = 'overview';
         let overviewData = null;
@@ -890,6 +942,11 @@
             const activeBtn = document.getElementById(`tab-${tabId}`);
             if (activeBtn) {
                 activeBtn.className = "tab-btn px-4 py-2 font-semibold rounded-lg text-white bg-stone-900 shadow-xs transition";
+                const navigation = activeBtn.parentElement;
+                const buttonBounds = activeBtn.getBoundingClientRect();
+                const navigationBounds = navigation.getBoundingClientRect();
+                if (buttonBounds.left < navigationBounds.left) navigation.scrollLeft += buttonBounds.left - navigationBounds.left;
+                if (buttonBounds.right > navigationBounds.right) navigation.scrollLeft += buttonBounds.right - navigationBounds.right;
             }
 
             setTimeout(() => {
@@ -897,12 +954,13 @@
                 if (tabId === 'map') loadMapData();
                 if (tabId === 'supply') loadSupplyData();
                 if (tabId === 'mismatch') loadMismatchData();
+                if (tabId === 'compare') window.districtComparison?.activate();
             }, 60);
         }
 
         async function init() {
             const initialHash = window.location.hash.replace('#', '');
-            if (initialHash && ['overview', 'dynamics', 'map', 'supply', 'mismatch', 'agent'].includes(initialHash)) {
+            if (initialHash && ['overview', 'dynamics', 'map', 'compare', 'supply', 'mismatch', 'agent'].includes(initialHash)) {
                 switchTab(initialHash);
             }
 
@@ -965,6 +1023,7 @@
         }
 
         function renderDualBarometerChart(signals) {
+            if (typeof Chart === 'undefined') return;
             if (dualBarometerChart) dualBarometerChart.destroy();
             const ctx = document.getElementById('chart-dual-barometer').getContext('2d');
             

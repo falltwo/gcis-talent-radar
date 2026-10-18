@@ -22,6 +22,7 @@ The app UI and the data are in Traditional Chinese.
 | Are firms in my industry opening, raising capital, or dissolving in this district? | MOEA company registration and change records, mapped to manufacturing sub-sectors via tax industry codes | Taichung district × manufacturing sub-sector × month |
 | How many factories are in this district? | Taichung Economic Development Bureau factory counts ([data.gov.tw 174209](https://data.gov.tw/dataset/174209)) | District × factory category × month |
 | How many public job openings are in this district now? | Taiwan Jobs vacancy list ([data.gov.tw 44062](https://data.gov.tw/dataset/44062)) | District, daily snapshot |
+| Which districts have more postings for similar work? | One Taiwan Jobs snapshot filtered by work field and occupation text | Side-by-side comparison of 2–3 districts |
 | What is the citywide trend in new manufacturing companies? | MOEA open data: new company statistics by industry and county | Taichung citywide × industry section × month |
 | What is the wage level? | Bureau of Labor Insurance insured-salary statistics ([data.gov.tw 100999](https://data.gov.tw/dataset/100999)) | Taichung citywide × industry section × year-end |
 
@@ -96,7 +97,7 @@ See [docs/04-ETL.md](docs/04-ETL.md) (Chinese).
 python -m pytest tests -q
 ```
 
-There are 345 tests covering ETL, data tools, forecasting, guards, and audit logging. GitHub Actions runs them on every PR and on pushes to `main`.
+There are 358 tests covering ETL, data tools, district comparisons, forecasting, guards, and audit logging. GitHub Actions runs them on every PR and on pushes to `main`.
 
 ## Pages and API
 
@@ -104,10 +105,12 @@ There are 345 tests covering ETL, data tools, forecasting, guards, and audit log
 |---|---|
 | `/` | Home: Q&A plus the expansion scenario (defaults to Daya District, hiring 10) |
 | `/demo` | Single-page version of the expansion scenario |
+| `/legacy#compare` | Official vacancy comparison across 2–3 districts, with requested workers, employers, and source listings |
 | `/docs` | FastAPI auto-generated API docs |
 | `POST /api/agent/chat` | AI Q&A |
 | `GET /api/demo/expansion` | The four official figures behind the expansion scenario |
 | `GET /api/official/job-demand`, `company-trend`, `wage-baseline` | The three official-data tools |
+| `GET /api/official/district-comparison` | Multi-district comparison within one audited official snapshot |
 | `/legacy` | Old prototype with simulated data; not part of the demo |
 
 ## Layout
@@ -136,6 +139,7 @@ docs/       design and data docs (Chinese)
 
 - [docs/04-初賽展示主線.md](docs/04-初賽展示主線.md): demo walkthrough and where each number comes from
 - [docs/05-三項官方資料工具實作.md](docs/05-三項官方資料工具實作.md): scope and acceptance of the three official-data tools
+- [docs/06-行政區徵才比較.md](docs/06-行政區徵才比較.md): comparison UI, metric definitions, API, and tests (Chinese)
 - [docs/GOVERNANCE.md](docs/GOVERNANCE.md): guard order and audit fields
 - [docs/FORECAST_ENGINE.md](docs/FORECAST_ENGINE.md): models, backtests, recovery of missing official months
 - [docs/04-ETL.md](docs/04-ETL.md): table list and how to run ETL

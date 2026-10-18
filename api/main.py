@@ -24,6 +24,7 @@ from agent.agent_service import OpenRouterError, agent_service
 from engine.gcis_live_verifier import verify_company_live
 from engine.expansion_demo import build_expansion_report
 from engine.official_labor_market import (
+    get_district_job_comparison,
     get_gcis_new_company_trend,
     get_regional_job_demand,
     get_wage_baseline,
@@ -323,7 +324,10 @@ def verify_company_api(req: VerifyRequest) -> Dict[str, Any]:
 
 
 def _raise_official_tool_error(result: Dict[str, Any]) -> None:
-    status_code = 400 if result.get("error_code") == "UNSUPPORTED_INDUSTRY" else 503
+    invalid_request_codes = {
+        "UNSUPPORTED_INDUSTRY", "INVALID_DISTRICTS", "INVALID_OCCUPATION_KEYWORD",
+    }
+    status_code = 400 if result.get("error_code") in invalid_request_codes else 503
     raise HTTPException(status_code=status_code, detail=result)
 
 
@@ -347,6 +351,18 @@ def official_job_demand(
     if district and district not in TAICHUNG_DISTRICTS:
         raise HTTPException(status_code=400, detail="district 必須是台中市 29 行政區之一")
     result = get_regional_job_demand(district, industry_id, occupation_keyword)
+    if not result.get("available"):
+        _raise_official_tool_error(result)
+    return result
+
+@app.get("/api/official/district-comparison")
+def official_district_comparison(
+    districts: Optional[List[str]] = Query(None),
+    industry_id: Optional[str] = Query(None),
+    occupation_keyword: Optional[str] = Query(None),
+) -> Dict[str, Any]:
+    """Compare 2–3 districts within the same audited official vacancy snapshot."""
+    result = get_district_job_comparison(districts, industry_id, occupation_keyword)
     if not result.get("available"):
         _raise_official_tool_error(result)
     return result
