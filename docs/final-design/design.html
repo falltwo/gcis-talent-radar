@@ -1,0 +1,1112 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="blueprint" data-mode="auto">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="generator" content="Answer me with HTML 0.3.0">
+<title>企業比較、GCIS結論與AI事實核驗</title>
+<style>
+html[data-theme="blueprint"], html[data-theme="blueprint"][data-mode="light"] {
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, "JetBrains Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  --radius: 0px;
+  --shadow: none;
+  --bw: 1.5px;
+  --head-font: var(--font-sans);
+  --bg: #f6f6f3;
+  --paper: #ffffff;
+  --ink: #16181d;
+  --ink-2: #4b5260;
+  --ink-3: #8b929e;
+  --line: #1d2026;
+  --line-2: #d6dae1;
+  --fill: #f3f5f8;
+  --accent: #1d5fbf;
+  --accent-bg: #e4ecf8;
+  --ok: #1d5fbf;
+  --ok-bg: #e4ecf8;
+  --err: #c62828;
+  --err-bg: #fbeaea;
+  --warn: #a8620a;
+  --warn-bg: #fdf3e2;
+  --head-bg: #16181d;
+  --head-fg: #ffffff;
+}
+html[data-theme="blueprint"][data-mode="dark"] {
+  --bg: #081322;
+  --paper: #0d1c31;
+  --ink: #e6edf7;
+  --ink-2: #a9b8cc;
+  --ink-3: #6b7f99;
+  --line: #c9d6e8;
+  --line-2: #23385a;
+  --fill: #12253f;
+  --accent: #6ea8ff;
+  --accent-bg: #16305a;
+  --ok: #6ea8ff;
+  --ok-bg: #16305a;
+  --err: #ff7070;
+  --err-bg: #3b1620;
+  --warn: #f0b14a;
+  --warn-bg: #3a2a10;
+  --head-bg: #e6edf7;
+  --head-fg: #081322;
+}
+@media (prefers-color-scheme: dark) {
+html[data-theme="blueprint"][data-mode="auto"] {
+  --bg: #081322;
+  --paper: #0d1c31;
+  --ink: #e6edf7;
+  --ink-2: #a9b8cc;
+  --ink-3: #6b7f99;
+  --line: #c9d6e8;
+  --line-2: #23385a;
+  --fill: #12253f;
+  --accent: #6ea8ff;
+  --accent-bg: #16305a;
+  --ok: #6ea8ff;
+  --ok-bg: #16305a;
+  --err: #ff7070;
+  --err-bg: #3b1620;
+  --warn: #f0b14a;
+  --warn-bg: #3a2a10;
+  --head-bg: #e6edf7;
+  --head-fg: #081322;
+}
+}
+
+html[data-theme="shadcn"], html[data-theme="shadcn"][data-mode="light"] {
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, "JetBrains Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  --radius: 8px;
+  --shadow: 0 1px 2px 0 rgba(0,0,0,0.05);
+  --bw: 1px;
+  --head-font: var(--font-sans);
+  --bg: #fafafa;
+  --paper: #ffffff;
+  --ink: #09090b;
+  --ink-2: #71717a;
+  --ink-3: #a1a1aa;
+  --line: #e4e4e7;
+  --line-2: #f0f0f2;
+  --fill: #f4f4f5;
+  --accent: #2563eb;
+  --accent-bg: #eff6ff;
+  --ok: #16a34a;
+  --ok-bg: #f0fdf4;
+  --err: #dc2626;
+  --err-bg: #fef2f2;
+  --warn: #d97706;
+  --warn-bg: #fffbeb;
+  --head-bg: #18181b;
+  --head-fg: #fafafa;
+}
+html[data-theme="shadcn"][data-mode="dark"] {
+  --bg: #09090b;
+  --paper: #121215;
+  --ink: #fafafa;
+  --ink-2: #a1a1aa;
+  --ink-3: #71717a;
+  --line: #27272a;
+  --line-2: #1c1c1f;
+  --fill: #18181b;
+  --accent: #60a5fa;
+  --accent-bg: #172554;
+  --ok: #4ade80;
+  --ok-bg: #052e16;
+  --err: #f87171;
+  --err-bg: #450a0a;
+  --warn: #fbbf24;
+  --warn-bg: #451a03;
+  --head-bg: #fafafa;
+  --head-fg: #18181b;
+}
+@media (prefers-color-scheme: dark) {
+html[data-theme="shadcn"][data-mode="auto"] {
+  --bg: #09090b;
+  --paper: #121215;
+  --ink: #fafafa;
+  --ink-2: #a1a1aa;
+  --ink-3: #71717a;
+  --line: #27272a;
+  --line-2: #1c1c1f;
+  --fill: #18181b;
+  --accent: #60a5fa;
+  --accent-bg: #172554;
+  --ok: #4ade80;
+  --ok-bg: #052e16;
+  --err: #f87171;
+  --err-bg: #450a0a;
+  --warn: #fbbf24;
+  --warn-bg: #451a03;
+  --head-bg: #fafafa;
+  --head-fg: #18181b;
+}
+}
+
+/* Answer me with HTML base — 只引用主题变量，禁止写死颜色（主题 token 见 themes/index.js） */
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  background: var(--bg); color: var(--ink);
+  font-family: var(--font-sans); font-size: 14px; line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+code, pre, kbd { font-family: var(--font-mono); }
+
+/* ── 工具栏 ─────────────────────────────── */
+.am-toolbar {
+  position: fixed; top: 12px; right: 12px; z-index: 10; display: flex; gap: 6px;
+}
+.am-btn {
+  font: 12px/1 var(--font-sans); color: var(--ink); background: var(--paper);
+  border: 1px solid var(--line-2); border-radius: var(--radius); padding: 7px 10px; cursor: pointer;
+}
+.am-btn:hover { border-color: var(--ink-3); }
+.am-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* ── 页头 ───────────────────────────────── */
+.am-head { margin: 0 0 20px; padding-right: 260px; }
+.am-head h1 { margin: 0; font-size: 24px; line-height: 1.25; letter-spacing: -0.01em; }
+.am-sub { margin: 4px 0 0; color: var(--ink-2); }
+.am-head-meta { display: flex; flex-wrap: wrap; gap: 6px 18px; margin-top: 10px; font-size: 12px; color: var(--ink-2); }
+.am-head-meta b { font-family: var(--font-mono); font-weight: 400; color: var(--ink-3); margin-right: 6px; }
+.am-intro { margin-top: 12px; max-width: 80ch; }
+
+/* ── sheet 图纸板 ────────────────────────── */
+.am-sheet { max-width: 1680px; margin: 0 auto; padding: 32px 28px 40px; }
+.am-frame { position: relative; }
+.am-grid {
+  display: grid; grid-template-columns: repeat(var(--cols, 3), minmax(0, 1fr));
+  gap: 20px; align-items: start;
+}
+.am-ruler { display: none; }
+html[data-theme="blueprint"] .am-frame { border: 1px solid var(--line); padding: 30px; }
+html[data-theme="blueprint"] .am-frame::before {
+  content: ""; position: absolute; inset: 18px; border: 1px solid var(--line); pointer-events: none;
+}
+html[data-theme="blueprint"] .am-ruler {
+  display: flex; position: absolute; font: 10px/1 var(--font-mono); color: var(--ink-3);
+}
+.am-ruler span { flex: 1; display: flex; align-items: center; justify-content: center; }
+.am-ruler--top, .am-ruler--bottom { left: 18px; right: 18px; height: 18px; }
+.am-ruler--top { top: 0; }
+.am-ruler--bottom { bottom: 0; }
+.am-ruler--left, .am-ruler--right { top: 18px; bottom: 18px; width: 18px; flex-direction: column; }
+.am-ruler--left { left: 0; }
+.am-ruler--right { right: 0; }
+.am-ruler--top span + span, .am-ruler--bottom span + span { border-left: 1px solid var(--line); }
+.am-ruler--left span + span, .am-ruler--right span + span { border-top: 1px solid var(--line); }
+
+/* ── 面板 ───────────────────────────────── */
+.am-panel {
+  background: var(--paper); border: var(--bw) solid var(--line); border-radius: var(--radius);
+  box-shadow: var(--shadow); min-width: 0; overflow: hidden;
+}
+.am-panel-head {
+  display: flex; align-items: stretch; gap: 0; border-bottom: var(--bw) solid var(--line); min-height: 34px;
+}
+.am-panel-id {
+  display: flex; align-items: center; justify-content: center; min-width: 34px; padding: 0 8px;
+  background: var(--head-bg); color: var(--head-fg); font-weight: 600; font-size: 14px;
+}
+html[data-theme="shadcn"] .am-panel-id { border-radius: 6px; min-width: 24px; height: 24px; margin: 9px 0 9px 14px; font-size: 12px; }
+html[data-theme="shadcn"] .am-panel-head { border-bottom-width: 1px; }
+.am-panel-head h2 { margin: 0; padding: 7px 12px; font-size: 15px; font-weight: 600; flex: 1; display: flex; align-items: center; }
+.am-panel-meta { align-self: center; padding: 0 12px; font: 11px/1.3 var(--font-mono); color: var(--ink-2); text-align: right; }
+.am-panel-body { padding: 14px 16px 16px; }
+.am-panel-body > * + * { margin-top: 12px; }
+
+/* ── Markdown 正文 ───────────────────────── */
+.am-md > :first-child { margin-top: 0; }
+.am-md > :last-child { margin-bottom: 0; }
+.am-md p { margin: 0 0 8px; }
+.am-md ul, .am-md ol { margin: 0 0 8px; padding-left: 20px; }
+.am-md li + li { margin-top: 3px; }
+.am-md h3, .am-md h4 { margin: 14px 0 6px; font-size: 13px; }
+.am-md a { color: var(--accent); }
+.am-md blockquote { margin: 0 0 8px; padding: 2px 12px; border-left: 3px solid var(--line-2); color: var(--ink-2); }
+.am-md :not(pre) > code { font-size: 0.9em; background: var(--fill); padding: 1px 5px; border-radius: 4px; }
+.am-md hr { border: 0; border-top: 1px solid var(--line-2); margin: 12px 0; }
+.am-md table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.am-md th {
+  text-align: left; font: 11px/1.3 var(--font-mono); color: var(--ink-2); font-weight: 400;
+  padding: 6px 10px; border-bottom: 1px solid var(--line-2);
+}
+.am-md td { padding: 7px 10px; border-bottom: 1px solid var(--line-2); vertical-align: top; }
+.am-md tbody tr:nth-child(even) td { background: var(--fill); }
+.am-table-wrap { overflow-x: auto; }
+.am-code {
+  margin: 0; padding: 12px 14px; background: var(--fill); border: 1px solid var(--line-2);
+  border-radius: var(--radius); overflow-x: auto; font-size: 12.5px; line-height: 1.5;
+}
+
+/* ── 状态徽章 ok / no / warn ──────────────── */
+.am-status { white-space: nowrap; font-weight: 500; }
+.am-status--ok { color: var(--ok); }
+.am-status--no { color: var(--err); }
+.am-status--warn { color: var(--warn); }
+.am-status-icon { display: inline-block; width: 1.1em; font-weight: 700; }
+
+/* ── callout ─────────────────────────────── */
+.am-callout {
+  border: 1px solid var(--line-2); border-left: 3px solid var(--accent); background: var(--accent-bg);
+  padding: 10px 14px; border-radius: var(--radius);
+}
+.am-callout--ok { border-left-color: var(--ok); background: var(--ok-bg); }
+.am-callout--warn { border-left-color: var(--warn); background: var(--warn-bg); }
+.am-callout--err { border-left-color: var(--err); background: var(--err-bg); }
+.am-callout-title { font-weight: 600; margin-bottom: 4px; }
+
+/* ── kv 标题栏格 ─────────────────────────── */
+.am-kv {
+  display: grid; grid-template-columns: repeat(var(--kv-cols, 2), minmax(0, 1fr)); margin: 0;
+  border-top: var(--bw) solid var(--line); border-left: var(--bw) solid var(--line);
+}
+.am-kv-cell { border-right: var(--bw) solid var(--line); border-bottom: var(--bw) solid var(--line); padding: 6px 10px 8px; min-width: 0; }
+.am-kv-cell--wide { grid-column: 1 / -1; }
+.am-kv dt { font: 11px/1.4 var(--font-mono); color: var(--ink-2); }
+.am-kv dd { margin: 2px 0 0; font-size: 14px; font-weight: 500; overflow-wrap: anywhere; }
+.am-kv-cell--wide dd { font-size: 17px; font-weight: 600; }
+html[data-theme="shadcn"] .am-kv { border-color: var(--line); border-radius: var(--radius); overflow: hidden; }
+
+/* ── timeline ────────────────────────────── */
+.am-timeline { list-style: none; margin: 0; padding: 0; }
+.am-timeline--h { display: grid; grid-template-columns: repeat(var(--n, 1), minmax(0, 1fr)); padding-top: 4px; }
+.am-timeline--h li { position: relative; text-align: center; padding: 0 6px; }
+.am-timeline--h li::before {
+  content: ""; position: absolute; top: 31px; left: 0; right: 0; border-top: var(--bw) solid var(--line);
+}
+.am-timeline--h li:first-child::before { left: 50%; }
+.am-timeline--h li:last-child::before { right: 50%; }
+.am-tl-when { display: block; font-size: 15px; font-weight: 500; height: 24px; }
+.am-tl-dot {
+  position: relative; display: block; width: 11px; height: 11px; margin: 2px auto 8px;
+  border: var(--bw) solid var(--line); border-radius: 50%; background: var(--paper);
+}
+.am-tl-item--hi .am-tl-dot { background: var(--accent); border-color: var(--accent); }
+.am-tl-title { display: block; font-size: 12.5px; font-weight: 500; }
+.am-tl-text { display: block; font-size: 12px; color: var(--ink-2); line-height: 1.45; }
+.am-timeline--v li { position: relative; padding: 0 0 14px 22px; }
+.am-timeline--v li::before { content: ""; position: absolute; left: 5px; top: 6px; bottom: -6px; border-left: var(--bw) solid var(--line-2); }
+.am-timeline--v li:last-child::before { display: none; }
+.am-timeline--v .am-tl-dot { position: absolute; left: 0; top: 4px; margin: 0; }
+.am-timeline--v .am-tl-when { display: inline; height: auto; font: 12px var(--font-mono); color: var(--ink-2); margin-right: 8px; }
+.am-timeline--v .am-tl-title { display: inline; font-size: 14px; }
+.am-timeline--v .am-tl-text { margin-top: 2px; }
+
+/* ── annot 句子标注 ──────────────────────── */
+.am-annot + .am-annot { border-top: 1px solid var(--line-2); padding-top: 12px; }
+.am-annot-head { display: flex; justify-content: space-between; gap: 12px; font-size: 13px; font-weight: 600; margin-bottom: 8px; }
+.am-annot-meta { font: 11px var(--font-mono); font-weight: 400; color: var(--ink-2); }
+.am-annot-scroll { overflow-x: auto; }
+.am-annot-line {
+  position: relative; display: inline-block; white-space: pre; font: 14px/1.6 var(--font-mono);
+  padding-bottom: calc(var(--rows, 0) * 17px + 14px);
+}
+.am-annot-line--wrap { display: block; white-space: normal; padding-bottom: 10px; }
+.am-annot-line--wrap .am-seg { white-space: nowrap; }
+.am-seg { position: relative; }
+.am-seg::after {
+  content: ""; position: absolute; left: 1px; right: 1px; top: calc(100% + 1px); height: 5px;
+  border: 1px solid var(--accent); border-top: 0;
+}
+.am-seg-n {
+  position: absolute; left: 0; top: calc(100% + 8px + var(--row, 0) * 17px);
+  font: 11px/16px var(--font-sans); color: var(--accent); white-space: nowrap;
+}
+.am-seg--err { color: var(--err); }
+.am-seg--err::after { border-color: var(--err); }
+.am-seg--err .am-seg-n { color: var(--err); }
+.am-annot-caption { font-size: 12px; color: var(--ink-2); }
+
+/* ── limits 限值条 ───────────────────────── */
+.am-lim + .am-lim { margin-top: 14px; }
+.am-lim-head { display: flex; justify-content: space-between; gap: 12px; font-size: 13px; margin-bottom: 4px; }
+.am-lim-val { font: 12px var(--font-mono); color: var(--accent); white-space: nowrap; }
+.am-lim-track { position: relative; height: 12px; border: 1px solid var(--line-2); background: var(--fill); border-radius: calc(var(--radius) / 2); }
+.am-lim-fill { position: absolute; left: 0; top: 0; bottom: 0; background: var(--accent-bg); border-right: 1px solid var(--accent); }
+.am-lim-mark { position: absolute; top: -4px; bottom: -4px; border-left: 2px solid var(--accent); }
+.am-lim.is-over .am-lim-fill { background: var(--err-bg); border-right-color: var(--err); }
+.am-lim.is-over .am-lim-val { color: var(--err); }
+.am-lim-ticks { position: relative; height: 16px; font: 10px/16px var(--font-mono); color: var(--ink-3); }
+.am-lim-ticks span { position: absolute; transform: translateX(-50%); }
+.am-lim-ticks span:first-child { transform: none; }
+.am-lim-note { font-size: 11px; color: var(--ink-2); margin-left: 6px; }
+
+/* ── tree 结构树 ─────────────────────────── */
+.am-tree { font-size: 13px; }
+.am-tree-root { display: flex; justify-content: center; position: relative; padding-bottom: 18px; }
+.am-tree-root::after { content: ""; position: absolute; bottom: 0; left: 50%; height: 18px; border-left: var(--bw) solid var(--line); }
+.am-tree-root--solo { padding-bottom: 12px; }
+.am-tree-root--solo::after { display: none; }
+.am-tree-box {
+  border: var(--bw) solid var(--line); background: var(--paper); padding: 6px 14px; text-align: center;
+  border-radius: var(--radius); font-weight: 600;
+}
+.am-tree-box small { display: block; font-weight: 400; color: var(--ink-2); font-size: 12px; }
+.am-tree-box--root { background: var(--accent-bg); font-size: 15px; padding: 8px 28px; }
+.am-tree-cols { display: grid; grid-template-columns: repeat(var(--n, 1), minmax(0, 1fr)); }
+.am-tree-col { position: relative; padding: 18px 8px 0; min-width: 0; }
+.am-tree-col::before { content: ""; position: absolute; top: 0; left: 0; right: 0; border-top: var(--bw) solid var(--line); }
+.am-tree-col:first-child::before { left: 50%; }
+.am-tree-col:last-child::before { right: 50%; }
+.am-tree-col::after { content: ""; position: absolute; top: 0; left: 50%; height: 18px; border-left: var(--bw) solid var(--line); }
+.am-tree-list, .am-tree-list ul { list-style: none; margin: 0; padding: 0; }
+.am-tree-col > .am-tree-list { margin: 8px 0 0 14px; }
+.am-tree-list ul { margin-left: 16px; }
+.am-tree-list li { position: relative; padding: 3px 0 3px 18px; }
+.am-tree-list li::before { content: ""; position: absolute; left: 0; top: 0.95em; width: 12px; border-top: 1px solid var(--ink-3); }
+.am-tree-list li::after { content: ""; position: absolute; left: 0; top: 0; bottom: 0; border-left: 1px solid var(--ink-3); }
+.am-tree-list li:last-child::after { bottom: auto; height: 0.95em; }
+.am-tree-tag { font: 11px var(--font-mono); color: var(--ink-3); margin-right: 4px; }
+.am-tree code { font: 12px var(--font-mono); }
+.am-tree-sub { display: block; font-size: 11.5px; color: var(--ink-2); }
+.am-tree-hi > .am-tree-label { color: var(--accent); font-weight: 600; }
+
+/* ── 图（flow / sequence）───────────────── */
+.am-diagram { margin: 0; overflow-x: auto; text-align: center; }
+.am-diagram svg { max-width: 100%; height: auto; font-family: var(--font-sans); }
+.am-diagram text { fill: var(--ink); font-size: 13px; }
+.am-node-shape { fill: var(--paper); stroke: var(--line); stroke-width: var(--bw); }
+.am-node--hi .am-node-shape { fill: var(--accent-bg); stroke: var(--accent); }
+.am-node--hi text { fill: var(--accent); font-weight: 600; }
+.am-edge { fill: none; stroke: var(--ink-2); stroke-width: 1.3; }
+.am-edge--dashed { stroke-dasharray: 5 4; }
+.am-arrow { fill: var(--ink-2); }
+.am-edge-label rect { fill: var(--paper); }
+.am-diagram .am-edge-label text { fill: var(--accent); font-size: 11.5px; }
+.am-cluster { fill: var(--fill); stroke: var(--line-2); stroke-width: 1; stroke-dasharray: 4 3; }
+.am-diagram .am-cluster-label { fill: var(--ink-2); font: 11px var(--font-mono); }
+.am-lifeline { stroke: var(--ink-3); stroke-width: 1; stroke-dasharray: 4 4; }
+.am-actor { fill: var(--paper); stroke: var(--line); stroke-width: var(--bw); }
+.am-note { fill: var(--warn-bg); stroke: var(--warn); stroke-width: 1; }
+.am-diagram .am-step { fill: var(--ink-3); font: 10px var(--font-mono); }
+
+/* ── doc 线性讲解 ────────────────────────── */
+.am-doc { max-width: 1120px; margin: 0 auto; padding: 40px 28px 64px; }
+.am-doc-layout { display: grid; grid-template-columns: 200px minmax(0, 1fr); gap: 32px; align-items: start; }
+.am-doc-layout--notoc { grid-template-columns: minmax(0, 1fr); max-width: 860px; }
+.am-toc { position: sticky; top: 24px; font-size: 13px; }
+.am-toc a { display: block; color: var(--ink-2); text-decoration: none; padding: 4px 0 4px 10px; border-left: 2px solid var(--line-2); }
+.am-toc a:hover { color: var(--ink); border-left-color: var(--accent); }
+.am-doc-body > .am-panel + .am-panel { margin-top: 20px; }
+
+/* ── 响应式与打印 ─────────────────────────── */
+@media (max-width: 1100px) {
+  .am-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .am-grid > .am-panel { grid-column: auto !important; }
+  .am-grid > .am-panel.am-span-wide { grid-column: 1 / -1 !important; }
+}
+@media (max-width: 760px) {
+  .am-sheet, .am-doc { padding: 56px 12px 24px; }
+  .am-head { padding-right: 0; }
+  .am-grid { grid-template-columns: minmax(0, 1fr); }
+  .am-grid > .am-panel.am-span-wide { grid-column: auto !important; }
+  html[data-theme="blueprint"] .am-frame { padding: 0; border: 0; }
+  html[data-theme="blueprint"] .am-frame::before, html[data-theme="blueprint"] .am-ruler { display: none; }
+  .am-doc-layout { grid-template-columns: minmax(0, 1fr); }
+  .am-toc { position: static; }
+  .am-timeline--h { grid-template-columns: minmax(0, 1fr); }
+  .am-tree-cols { grid-template-columns: minmax(0, 1fr); }
+}
+.am-colophon { text-align: center; padding: 0 0 28px; font: 11px var(--font-mono); color: var(--ink-3); }
+
+@media print {
+  .am-toolbar { display: none; }
+  body { background: var(--paper); }
+  .am-panel { break-inside: avoid; box-shadow: none; }
+}
+.am-panel--bare { border: 0; background: transparent; box-shadow: none; }
+.am-panel--bare > .am-panel-body { padding: 0; }
+.am-panel--bare .am-kv { background: var(--paper); }
+
+</style>
+</head>
+<body>
+<div class="am-toolbar">
+<button class="am-btn" type="button" data-am="theme" data-labels="{&quot;blueprint&quot;:&quot;主题：图纸&quot;,&quot;shadcn&quot;:&quot;主题：卡片&quot;}">主题：图纸</button>
+<button class="am-btn" type="button" data-am="mode" data-labels="{&quot;auto&quot;:&quot;明暗：跟随系统&quot;,&quot;light&quot;:&quot;明暗：亮&quot;,&quot;dark&quot;:&quot;明暗：暗&quot;}">明暗：跟随系统</button>
+<button class="am-btn" type="button" data-am="copy" data-done="已复制 ✓">复制源稿</button>
+</div>
+<main class="am-doc">
+<header class="am-head"><h1>企業比較、GCIS結論與AI事實核驗</h1><p class="am-sub">三項共用一份報告事實｜建議設計 v1｜2026-10-27</p><div class="am-head-meta"><span><b>source</b>main e0cf78c；比較分支 fe6a0b3</span></div><div class="am-intro am-md"><div class="am-md"><p>設計已整理成可開發的流程、資料契約與驗收工作。
+本輪只新增規格，不修改正式產品。</p>
+</div></div></header>
+<div class="am-doc-layout">
+<nav class="am-toc" aria-label="目录"><a href="#panel-A">A · 一份報告，串起三項設計</a><a href="#panel-B">B · 企業輸入，如何真正影響輸出</a><a href="#panel-C">C · 報告畫面與資料資格</a><a href="#panel-D">D · GCIS如何真正改變結論</a><a href="#panel-E">E · AI不再自行寫核心事實</a><a href="#panel-F">F · API、資料與工程邊界</a><a href="#panel-G">G · 工作包與開發順序</a><a href="#panel-H">H · 驗收與完整規格</a></nav><div class="am-doc-body">
+<section class="am-panel" id="panel-A">
+<header class="am-panel-head"><span class="am-panel-id">A</span><h2>一份報告，串起三項設計</h2></header>
+<div class="am-panel-body"><div class="am-callout am-callout--info" role="note"><div class="am-callout-title">產品目標</div><div class="am-callout-body am-md"><p>企業比較2–3區的招募環境。
+GCIS改變摘要、比較資格與查證行動。
+AI只能選用後端核准的主張。</p>
+</div></div>
+<figure class="am-diagram am-flow"><svg viewBox="0 0 1061 63" width="1061" height="63" role="img" aria-label="流程图：企業情境、固定資料快照、事實帳本、比較與GCIS規則、核准主張、統一呈現" xmlns="http://www.w3.org/2000/svg"><defs><marker id="am1-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="am-arrow" d="M0,0 L10,5 L0,10 z"/></marker></defs><g></g><g><g data-step="0"><path class="am-edge" d="M94,31.5 L105.5,31.5 Q117,31.5 128.5,31.5 L140,31.5" marker-end="url(#am1-arrow)"/></g><g data-step="1"><path class="am-edge" d="M246,31.5 L275.9,31.5 Q305.8,31.5 335.7,31.5 L365.6,31.5" marker-end="url(#am1-arrow)"/><g class="am-edge-label"><rect x="270" y="22.5" width="71.6" height="18" rx="3"/><text x="305.8" y="31.5" text-anchor="middle" dominant-baseline="central">FactLedger</text></g></g><g data-step="2"><path class="am-edge" d="M445.6,31.5 L457.1,31.5 Q468.6,31.5 480.1,31.5 L491.6,31.5" marker-end="url(#am1-arrow)"/></g><g data-step="3"><path class="am-edge" d="M617.7,31.5 L650.3,31.5 Q682.9,31.5 715.5,31.5 L748.1,31.5" marker-end="url(#am1-arrow)"/><g class="am-edge-label"><rect x="641.7" y="22.5" width="82.5" height="18" rx="3"/><text x="682.9" y="31.5" text-anchor="middle" dominant-baseline="central">ClaimCatalog</text></g></g><g data-step="4"><path class="am-edge" d="M828.1,31.5 L862.7,31.5 Q897.4,31.5 932,31.5 L966.6,31.5" marker-end="url(#am1-arrow)"/><g class="am-edge-label"><rect x="852.1" y="22.5" width="90.5" height="18" rx="3"/><text x="897.4" y="31.5" text-anchor="middle" dominant-baseline="central">頁面、AI與匯出</text></g></g></g><g><g class="am-node am-node--rect" data-key="企業情境" data-step="0"><rect class="am-node-shape" x="14" y="14" width="80" height="35" rx="3"/><text x="54" y="31.5" text-anchor="middle" dominant-baseline="central">企業情境</text></g><g class="am-node am-node--rect" data-key="固定資料快照" data-step="0"><rect class="am-node-shape" x="140" y="14" width="106" height="35" rx="3"/><text x="193" y="31.5" text-anchor="middle" dominant-baseline="central">固定資料快照</text></g><g class="am-node am-node--rect" data-key="事實帳本" data-step="1"><rect class="am-node-shape" x="365.6" y="14" width="80" height="35" rx="3"/><text x="405.6" y="31.5" text-anchor="middle" dominant-baseline="central">事實帳本</text></g><g class="am-node am-node--rect" data-key="比較與GCIS規則" data-step="2"><rect class="am-node-shape" x="491.6" y="14" width="126" height="35" rx="3"/><text x="554.7" y="31.5" text-anchor="middle" dominant-baseline="central">比較與GCIS規則</text></g><g class="am-node am-node--rect" data-key="核准主張" data-step="3"><rect class="am-node-shape" x="748.1" y="14" width="80" height="35" rx="3"/><text x="788.1" y="31.5" text-anchor="middle" dominant-baseline="central">核准主張</text></g><g class="am-node am-node--rect" data-key="統一呈現" data-step="4"><rect class="am-node-shape" x="966.6" y="14" width="80" height="35" rx="3"/><text x="1006.6" y="31.5" text-anchor="middle" dominant-baseline="central">統一呈現</text></g></g></svg></figure>
+<div class="am-md"><p>模型不可用時，規則摘要、資料來源與列印仍可用。
+核驗代表與本次核准來源及規則一致。
+它不證明來源無誤，也不證明缺工因果。</p>
+</div></div>
+</section>
+<section class="am-panel" id="panel-B">
+<header class="am-panel-head"><span class="am-panel-id">B</span><h2>企業輸入，如何真正影響輸出</h2></header>
+<div class="am-panel-body"><div class="am-md"><div class="am-table-wrap"><table>
+<thead>
+<tr>
+<th>輸入</th>
+<th>第一版規則</th>
+<th>改變的結果</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>行政區</td>
+<td>2–3區、不重複</td>
+<td>比較欄與各區資料</td>
+</tr>
+<tr>
+<td>製造業中類</td>
+<td>單選、使用catalog版本</td>
+<td>公司事件與可對應工廠資料</td>
+</tr>
+<tr>
+<td>職類</td>
+<td>單一職務檢索條件</td>
+<td>公開刊登與相關摘要</td>
+</tr>
+<tr>
+<td>觀測月份</td>
+<td>最新或固定歷史月</td>
+<td>資料期別與缺資料狀態</td>
+</tr>
+<tr>
+<td>招募起迄月份</td>
+<td>最多12個月</td>
+<td>每月到職目標</td>
+</tr>
+<tr>
+<td>淨新增人數</td>
+<td>使用者確認的正整數</td>
+<td>企業規劃，不改官方數字</td>
+</tr>
+</tbody></table></div>
+<p>觀測月份與企業招募月份分開。
+未來招募時間不會產生未來官方職缺。</p>
+<h3>規劃範例</h3>
+<p>31人、3個月，可分成11／10／10人。
+改成60人，月目標變成20／20／20人。
+官方職缺、公司事件及薪資保持原值。
+上述是規劃示例，不代表預測可招到。</p>
+<h3>操作流程</h3>
+<p>選條件 → 確認各來源期別 → 建立報告。
+再看摘要、比較表、證據與月計畫。
+最後可追問、列印或下載JSON。</p>
+<p>正式入口使用<code>/compare</code>與<code>/reports/{id}</code>。
+沿用既有比較服務，移出legacy流程。</p>
+</div></div>
+</section>
+<section class="am-panel" id="panel-C">
+<header class="am-panel-head"><span class="am-panel-id">C</span><h2>報告畫面與資料資格</h2></header>
+<div class="am-panel-body"><div class="am-md"><p>報告先回答能觀察到什麼，再列未知與下一步。</p>
+<div class="am-table-wrap"><table>
+<thead>
+<tr>
+<th>區塊</th>
+<th>內容</th>
+<th>邊界</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>摘要</td>
+<td>最多三項核准主張</td>
+<td>不產生招募成功率</td>
+</tr>
+<tr>
+<td>公開職缺比較</td>
+<td>筆數、需求人數、不同公司名稱數</td>
+<td>同日、同條件、同規則</td>
+</tr>
+<tr>
+<td>GCIS同業訊號</td>
+<td>全市背景、區域已分類樣本</td>
+<td>兩種母體分開</td>
+</tr>
+<tr>
+<td>共同背景</td>
+<td>全市薪資、趨勢與可用預測</td>
+<td>不複製成各區數字</td>
+</tr>
+<tr>
+<td>證據抽屜</td>
+<td>來源、期別、欄位、公式與版本</td>
+<td>每個數字可查</td>
+</tr>
+<tr>
+<td>企業計畫</td>
+<td>月目標與待確認條件</td>
+<td>使用者規劃</td>
+</tr>
+<tr>
+<td>下一步</td>
+<td>規則觸發的查證事項</td>
+<td>不替企業選唯一地點</td>
+</tr>
+</tbody></table></div>
+<h3>三個重要狀態</h3>
+<ul>
+<li>完整抓取的0筆：本快照無符合刊登。</li>
+<li>達查詢上限：顯示至少N筆，取消排名。</li>
+<li>未取得或缺分類：顯示未知，不補0。</li>
+</ul>
+<p>同一資料組跨區必須一致。
+不同資料組可以不同月份，各自標期別。
+歷史月沒有職缺快照，就明示未留存。</p>
+<h3>保存與匯出</h3>
+<p>報告固定來源快照、Facts、Claims及限制。
+ETL更新只影響新報告。
+原頁、AI與列印持續使用原版本。
+修改條件會建立新報告。</p>
+</div></div>
+</section>
+<section class="am-panel" id="panel-D">
+<header class="am-panel-head"><span class="am-panel-id">D</span><h2>GCIS如何真正改變結論</h2></header>
+<div class="am-panel-body"><div class="am-md"><h3>先分開兩條證據</h3>
+<div class="am-table-wrap"><table>
+<thead>
+<tr>
+<th>證據</th>
+<th>允許用途</th>
+<th>不允許用途</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>官方全市製造業統計</td>
+<td>完整窗口的數量與方向</td>
+<td>下推某區或某職類</td>
+</tr>
+<tr>
+<td>區域中類已分類事件</td>
+<td>樣本觀察與查證線索</td>
+<td>當區域母體、算缺工排名</td>
+</tr>
+</tbody></table></div>
+<p>分類率達80%或100%，也不自動成為完整母體。
+當前稅籍回填歷史，仍保留標籤時點限制。
+解散資料不足時，不產生淨增或退出率。</p>
+<h3>規則直接控制摘要與行動</h3>
+<div class="am-table-wrap"><table>
+<thead>
+<tr>
+<th>規則</th>
+<th>條件</th>
+<th>產品變化</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>GS01／02</td>
+<td>全市完整12月比前12月增減</td>
+<td>顯示全市方向與查證理由</td>
+</tr>
+<tr>
+<td>GS03</td>
+<td>本區有有效已分類活動</td>
+<td>增加查證相關職類招聘的工作</td>
+</tr>
+<tr>
+<td>GS04</td>
+<td>分類／歷史標籤有限制</td>
+<td>先顯示限制，取消區域勝負</td>
+</tr>
+<tr>
+<td>GS05</td>
+<td>已分類樣本無命中</td>
+<td>說未觀察到，不說無競爭</td>
+</tr>
+<tr>
+<td>GS06／07</td>
+<td>淨增資格不足或來源缺失</td>
+<td>阻擋比較，列補資料工作</td>
+</tr>
+</tbody></table></div>
+<p>同公司三次變更，不算三家企業。
+首次資本變更沒有前值，就屬未知。
+公司登記地址也不等於工作地點。</p>
+<h3>有／無GCIS的對照</h3>
+<p>固定職缺、薪資與企業計畫，只改GCIS。
+摘要、證據缺口與下一步應依規則改變。
+其他來源數值必須完全相同。
+這是機制驗收，尚不是預測效益證明。</p>
+</div></div>
+</section>
+<section class="am-panel" id="panel-E">
+<header class="am-panel-head"><span class="am-panel-id">E</span><h2>AI不再自行寫核心事實</h2></header>
+<div class="am-panel-body"><figure class="am-diagram am-seq"><svg viewBox="0 0 965 350" width="965" height="350" role="img" aria-label="时序图：後端、官方工具、主張清單、AI、驗證器、呈現器、使用者" xmlns="http://www.w3.org/2000/svg"><defs><marker id="am2-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="am-arrow" d="M0,0 L10,5 L0,10 z"/></marker></defs><line class="am-lifeline" x1="54" y1="42" x2="54" y2="346"/><g data-key="後端"><rect class="am-actor" x="12" y="8" width="84" height="34" rx="2"/><text x="54" y="25" text-anchor="middle" dominant-baseline="central" font-weight="600">後端</text></g><line class="am-lifeline" x1="192" y1="42" x2="192" y2="346"/><g data-key="官方工具"><rect class="am-actor" x="150" y="8" width="84" height="34" rx="2"/><text x="192" y="25" text-anchor="middle" dominant-baseline="central" font-weight="600">官方工具</text></g><line class="am-lifeline" x1="304" y1="42" x2="304" y2="346"/><g data-key="主張清單"><rect class="am-actor" x="262" y="8" width="84" height="34" rx="2"/><text x="304" y="25" text-anchor="middle" dominant-baseline="central" font-weight="600">主張清單</text></g><line class="am-lifeline" x1="444.3" y1="42" x2="444.3" y2="346"/><g data-key="AI"><rect class="am-actor" x="402.3" y="8" width="84" height="34" rx="2"/><text x="444.3" y="25" text-anchor="middle" dominant-baseline="central" font-weight="600">AI</text></g><line class="am-lifeline" x1="569.3" y1="42" x2="569.3" y2="346"/><g data-key="驗證器"><rect class="am-actor" x="527.3" y="8" width="84" height="34" rx="2"/><text x="569.3" y="25" text-anchor="middle" dominant-baseline="central" font-weight="600">驗證器</text></g><line class="am-lifeline" x1="720.3" y1="42" x2="720.3" y2="346"/><g data-key="呈現器"><rect class="am-actor" x="678.3" y="8" width="84" height="34" rx="2"/><text x="720.3" y="25" text-anchor="middle" dominant-baseline="central" font-weight="600">呈現器</text></g><line class="am-lifeline" x1="910.3" y1="42" x2="910.3" y2="346"/><g data-key="使用者"><rect class="am-actor" x="868.3" y="8" width="84" height="34" rx="2"/><text x="910.3" y="25" text-anchor="middle" dominant-baseline="central" font-weight="600">使用者</text></g><g data-step="0"><text x="123" y="70" text-anchor="middle">固定情境與快照</text><path class="am-edge" d="M54,80 L190,80" marker-end="url(#am2-arrow)"/><text class="am-step" x="60" y="74" text-anchor="start">1</text></g><g data-step="1"><text x="123" y="110" text-anchor="middle">結構化結果與證據</text><path class="am-edge" d="M192,120 L56,120" marker-end="url(#am2-arrow)"/><text class="am-step" x="186" y="114" text-anchor="end">2</text></g><g data-step="2"><text x="179" y="150" text-anchor="middle">依規則建立可說的內容</text><path class="am-edge" d="M54,160 L302,160" marker-end="url(#am2-arrow)"/><text class="am-step" x="60" y="154" text-anchor="start">3</text></g><g data-step="3"><text x="374.2" y="190" text-anchor="middle">核准ID與固定標題</text><path class="am-edge" d="M304,200 L442.3,200" marker-end="url(#am2-arrow)"/><text class="am-step" x="310" y="194" text-anchor="start">4</text></g><g data-step="4"><text x="506.8" y="230" text-anchor="middle">只回選擇與排序</text><path class="am-edge" d="M444.3,240 L567.3,240" marker-end="url(#am2-arrow)"/><text class="am-step" x="450.3" y="234" text-anchor="start">5</text></g><g data-step="5"><text x="644.8" y="270" text-anchor="middle">合法主張與必要限制</text><path class="am-edge" d="M569.3,280 L718.3,280" marker-end="url(#am2-arrow)"/><text class="am-step" x="575.3" y="274" text-anchor="start">6</text></g><g data-step="6"><text x="815.3" y="310" text-anchor="middle">同版本的文字、數值及引用</text><path class="am-edge" d="M720.3,320 L908.3,320" marker-end="url(#am2-arrow)"/><text class="am-step" x="726.3" y="314" text-anchor="start">7</text></g></svg></figure>
+<div class="am-md"><h3>每個Fact都鎖定意義</h3>
+<div class="am-table-wrap"><table>
+<thead>
+<tr>
+<th>綁定</th>
+<th>避免的錯誤</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>指標與單位</td>
+<td>200人被寫成200筆</td>
+</tr>
+<tr>
+<td>地區與主體</td>
+<td>西屯值套到大雅</td>
+</tr>
+<tr>
+<td>期別與資料性質</td>
+<td>觀測冒充預測</td>
+</tr>
+<tr>
+<td>篩選與版本</td>
+<td>AND與OR混用</td>
+</tr>
+<tr>
+<td>母體與品質</td>
+<td>樣本冒充完整市場</td>
+</tr>
+<tr>
+<td>report與manifest</td>
+<td>跨報告或混版引用</td>
+</tr>
+</tbody></table></div>
+<h3>模型輸出限制</h3>
+<p>只允許<code>report_id、catalog_hash、sections</code>。
+sections只能含<code>heading_id、claim_ids</code>。
+模型不能提交數值、單位、來源或自由段落。
+標題也用白名單，避免偷加高風險判斷。</p>
+<p>後端強制補上必要限制與證據缺口。
+最多重試一次，不降低核驗規則。
+仍失敗時，使用後端標準主張順序。
+未驗證的模型token不先串流給使用者。</p>
+</div></div>
+</section>
+<section class="am-panel" id="panel-F">
+<header class="am-panel-head"><span class="am-panel-id">F</span><h2>API、資料與工程邊界</h2></header>
+<div class="am-panel-body"><div class="am-md"><div class="am-table-wrap"><table>
+<thead>
+<tr>
+<th>API</th>
+<th>工作</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>GET comparison-options</td>
+<td>取得有效條件、月份與規則版</td>
+</tr>
+<tr>
+<td>POST reports/expansion-comparison/resolve</td>
+<td>固定預覽期別，回傳解析權杖</td>
+</tr>
+<tr>
+<td>POST reports/expansion-comparison</td>
+<td>建立固定版本報告</td>
+</tr>
+<tr>
+<td>GET reports/{id}</td>
+<td>讀取原報告</td>
+</tr>
+<tr>
+<td>POST reports/{id}/questions</td>
+<td>針對原報告追問</td>
+</tr>
+<tr>
+<td>GET reports/{id}/export</td>
+<td>列印HTML或下載JSON</td>
+</tr>
+</tbody></table></div>
+<h3>重用與新增</h3>
+<ul>
+<li>重用既有行政區比較聚合與稽核。</li>
+<li>新增固定快照參數，不複製另一套SQL。</li>
+<li>GCIS影子事件保留分類、重複與衝突。</li>
+<li>用SQLite與不可變JSON保存報告即可。</li>
+<li>每次請求共用request_id，各事件另有event_id。</li>
+<li>報告與建置稽核在同一交易提交。</li>
+</ul>
+<h3>錯誤行為</h3>
+<p>輸入錯誤回422。
+資料不足可建立有限報告。
+必要保存或稽核失敗回503。
+模型失敗不影響官方比較與列印。
+公開部署時，報告ID仍需搭配存取權。</p>
+</div></div>
+</section>
+<section class="am-panel" id="panel-G">
+<header class="am-panel-head"><span class="am-panel-id">G</span><h2>工作包與開發順序</h2></header>
+<div class="am-panel-body"><div class="am-md"><p>以下為建議估時，假設三條工作可並行。</p>
+<div class="am-table-wrap"><table>
+<thead>
+<tr>
+<th>包</th>
+<th>主責</th>
+<th>交付</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>P1</td>
+<td>後端</td>
+<td>契約、固定快照、報告保存</td>
+</tr>
+<tr>
+<td>P2</td>
+<td>資料</td>
+<td>GCIS影子資料、用途資格、規則</td>
+</tr>
+<tr>
+<td>P3</td>
+<td>後端</td>
+<td>Fact、Claim、Renderer</td>
+</tr>
+<tr>
+<td>P4</td>
+<td>前端</td>
+<td>正式比較頁、證據、計畫、匯出</td>
+</tr>
+<tr>
+<td>P5</td>
+<td>後端＋前端</td>
+<td>受限AI、fallback、稽核</td>
+</tr>
+<tr>
+<td>P6</td>
+<td>全體</td>
+<td>整合、反例、故障、企業任務</td>
+</tr>
+</tbody></table></div>
+</div>
+<ol class="am-timeline am-timeline--h" style="--n: 6"><li class="am-tl-item"><span class="am-tl-when">10/27</span><span class="am-tl-dot"></span><span class="am-tl-title">定契約與情境</span><span class="am-tl-text">選中類、職類及工作分配</span></li><li class="am-tl-item"><span class="am-tl-when">10/28–29</span><span class="am-tl-dot"></span><span class="am-tl-title">三線並行</span><span class="am-tl-text">固定快照、GCIS、前端fixture</span></li><li class="am-tl-item"><span class="am-tl-when">10/30–31</span><span class="am-tl-dot"></span><span class="am-tl-title">正式資料接通</span><span class="am-tl-text">報告、證據、規劃及匯出</span></li><li class="am-tl-item"><span class="am-tl-when">11/01–02</span><span class="am-tl-dot"></span><span class="am-tl-title">AI與企業試用</span><span class="am-tl-text">核准主張、真模型、任務驗收</span></li><li class="am-tl-item"><span class="am-tl-when">11/03–04</span><span class="am-tl-dot"></span><span class="am-tl-title">文件與凍結</span><span class="am-tl-text">同版部署、備援與測試紀錄</span></li><li class="am-tl-item"><span class="am-tl-when">11/05–06</span><span class="am-tl-dot"></span><span class="am-tl-title">現場彩排</span><span class="am-tl-text">陌生問題、斷網、逾時</span></li></ol>
+<div class="am-md"><p>若工期落後，先延後人才管線與預測圖選配。
+保留比較報告、GCIS規則與事實綁定。
+不以省略未知或核驗來壓縮交付。</p>
+</div></div>
+</section>
+<section class="am-panel" id="panel-H">
+<header class="am-panel-head"><span class="am-panel-id">H</span><h2>驗收與完整規格</h2></header>
+<div class="am-panel-body"><div class="am-callout am-callout--info" role="note"><div class="am-callout-title">三項完成標準</div><div class="am-callout-body am-md"><p>企業能完成比較、查證、規劃與匯出。
+GCIS改變摘要、比較資格或下一步。
+錯區、錯單位及無證據結論不能通過。</p>
+</div></div>
+<div class="am-md"><h3>必測案例</h3>
+<ul>
+<li>31人改60人，只改月目標。</li>
+<li>中類與職類分開篩選，不冒充雇主分類。</li>
+<li>查詢截斷取消排名，缺資料不補0。</li>
+<li>GCIS分類跨80%，仍不升格母體。</li>
+<li>西屯改大雅、200人改200筆都被擋。</li>
+<li>真來源ID不能替假敘述洗白。</li>
+<li>原報告在資料更新後保持一致。</li>
+<li>模型故障仍有規則報告與匯出。</li>
+</ul>
+<p>完整文件有42項具體驗收場景。
+它們包含正常任務、反例及故障。
+測試通過不代表通用零幻覺。</p>
+<h3>開發閱讀入口</h3>
+<ul>
+<li><a href="README.md">總規格與設計決策</a></li>
+<li><a href="01-enterprise-report.md">企業報告完整設計</a></li>
+<li><a href="02-gcis-conclusions.md">GCIS資料與規則設計</a></li>
+<li><a href="03-fact-verification.md">AI事實一致性設計</a></li>
+<li><a href="04-delivery-and-acceptance.md">工作包與42項驗收</a></li>
+<li><a href="contracts.schema.json">JSON Schema契約</a></li>
+<li><a href="examples.synthetic.json">合成設計範例</a></li>
+</ul>
+<h3>外部依據</h3>
+<p><a href="https://data.gov.tw/dataset/44062">官方就業通資料欄位與查詢上限</a>。
+<a href="https://json-schema.org/draft/2020-12">JSON Schema Draft 2020-12</a>。
+Schema驗資料形狀，業務規則仍由後端檢查。</p>
+</div></div>
+</section>
+</div>
+</div>
+</main>
+<footer class="am-colophon">Generated by Answer me with HTML 0.3.0 · 2026-10-27 14:11</footer>
+<textarea id="am-source" hidden readonly aria-hidden="true">---
+title: 企業比較、GCIS結論與AI事實核驗
+subtitle: 三項共用一份報告事實｜建議設計 v1｜2026-10-27
+template: doc
+theme: blueprint
+lang: zh
+source: main e0cf78c；比較分支 fe6a0b3
+---
+設計已整理成可開發的流程、資料契約與驗收工作。
+本輪只新增規格，不修改正式產品。
+
+## A 一份報告，串起三項設計
+```callout info 產品目標
+企業比較2–3區的招募環境。
+GCIS改變摘要、比較資格與查證行動。
+AI只能選用後端核准的主張。
+```
+
+```flow LR
+企業情境 -&gt; 固定資料快照
+固定資料快照 -&gt; 事實帳本: FactLedger
+事實帳本 -&gt; 比較與GCIS規則
+比較與GCIS規則 -&gt; 核准主張: ClaimCatalog
+核准主張 -&gt; 統一呈現: 頁面、AI與匯出
+```
+
+模型不可用時，規則摘要、資料來源與列印仍可用。
+核驗代表與本次核准來源及規則一致。
+它不證明來源無誤，也不證明缺工因果。
+
+## B 企業輸入，如何真正影響輸出
+| 輸入 | 第一版規則 | 改變的結果 |
+|---|---|---|
+| 行政區 | 2–3區、不重複 | 比較欄與各區資料 |
+| 製造業中類 | 單選、使用catalog版本 | 公司事件與可對應工廠資料 |
+| 職類 | 單一職務檢索條件 | 公開刊登與相關摘要 |
+| 觀測月份 | 最新或固定歷史月 | 資料期別與缺資料狀態 |
+| 招募起迄月份 | 最多12個月 | 每月到職目標 |
+| 淨新增人數 | 使用者確認的正整數 | 企業規劃，不改官方數字 |
+
+觀測月份與企業招募月份分開。
+未來招募時間不會產生未來官方職缺。
+
+### 規劃範例
+
+31人、3個月，可分成11／10／10人。
+改成60人，月目標變成20／20／20人。
+官方職缺、公司事件及薪資保持原值。
+上述是規劃示例，不代表預測可招到。
+
+### 操作流程
+
+選條件 → 確認各來源期別 → 建立報告。
+再看摘要、比較表、證據與月計畫。
+最後可追問、列印或下載JSON。
+
+正式入口使用`/compare`與`/reports/{id}`。
+沿用既有比較服務，移出legacy流程。
+
+## C 報告畫面與資料資格
+報告先回答能觀察到什麼，再列未知與下一步。
+
+| 區塊 | 內容 | 邊界 |
+|---|---|---|
+| 摘要 | 最多三項核准主張 | 不產生招募成功率 |
+| 公開職缺比較 | 筆數、需求人數、不同公司名稱數 | 同日、同條件、同規則 |
+| GCIS同業訊號 | 全市背景、區域已分類樣本 | 兩種母體分開 |
+| 共同背景 | 全市薪資、趨勢與可用預測 | 不複製成各區數字 |
+| 證據抽屜 | 來源、期別、欄位、公式與版本 | 每個數字可查 |
+| 企業計畫 | 月目標與待確認條件 | 使用者規劃 |
+| 下一步 | 規則觸發的查證事項 | 不替企業選唯一地點 |
+
+### 三個重要狀態
+
+- 完整抓取的0筆：本快照無符合刊登。
+- 達查詢上限：顯示至少N筆，取消排名。
+- 未取得或缺分類：顯示未知，不補0。
+
+同一資料組跨區必須一致。
+不同資料組可以不同月份，各自標期別。
+歷史月沒有職缺快照，就明示未留存。
+
+### 保存與匯出
+
+報告固定來源快照、Facts、Claims及限制。
+ETL更新只影響新報告。
+原頁、AI與列印持續使用原版本。
+修改條件會建立新報告。
+
+## D GCIS如何真正改變結論
+### 先分開兩條證據
+
+| 證據 | 允許用途 | 不允許用途 |
+|---|---|---|
+| 官方全市製造業統計 | 完整窗口的數量與方向 | 下推某區或某職類 |
+| 區域中類已分類事件 | 樣本觀察與查證線索 | 當區域母體、算缺工排名 |
+
+分類率達80%或100%，也不自動成為完整母體。
+當前稅籍回填歷史，仍保留標籤時點限制。
+解散資料不足時，不產生淨增或退出率。
+
+### 規則直接控制摘要與行動
+
+| 規則 | 條件 | 產品變化 |
+|---|---|---|
+| GS01／02 | 全市完整12月比前12月增減 | 顯示全市方向與查證理由 |
+| GS03 | 本區有有效已分類活動 | 增加查證相關職類招聘的工作 |
+| GS04 | 分類／歷史標籤有限制 | 先顯示限制，取消區域勝負 |
+| GS05 | 已分類樣本無命中 | 說未觀察到，不說無競爭 |
+| GS06／07 | 淨增資格不足或來源缺失 | 阻擋比較，列補資料工作 |
+
+同公司三次變更，不算三家企業。
+首次資本變更沒有前值，就屬未知。
+公司登記地址也不等於工作地點。
+
+### 有／無GCIS的對照
+
+固定職缺、薪資與企業計畫，只改GCIS。
+摘要、證據缺口與下一步應依規則改變。
+其他來源數值必須完全相同。
+這是機制驗收，尚不是預測效益證明。
+
+## E AI不再自行寫核心事實
+```sequence num
+後端 -&gt; 官方工具: 固定情境與快照
+官方工具 -&gt; 後端: 結構化結果與證據
+後端 -&gt; 主張清單: 依規則建立可說的內容
+主張清單 -&gt; AI: 核准ID與固定標題
+AI -&gt; 驗證器: 只回選擇與排序
+驗證器 -&gt; 呈現器: 合法主張與必要限制
+呈現器 -&gt; 使用者: 同版本的文字、數值及引用
+```
+
+### 每個Fact都鎖定意義
+
+| 綁定 | 避免的錯誤 |
+|---|---|
+| 指標與單位 | 200人被寫成200筆 |
+| 地區與主體 | 西屯值套到大雅 |
+| 期別與資料性質 | 觀測冒充預測 |
+| 篩選與版本 | AND與OR混用 |
+| 母體與品質 | 樣本冒充完整市場 |
+| report與manifest | 跨報告或混版引用 |
+
+### 模型輸出限制
+
+只允許`report_id、catalog_hash、sections`。
+sections只能含`heading_id、claim_ids`。
+模型不能提交數值、單位、來源或自由段落。
+標題也用白名單，避免偷加高風險判斷。
+
+後端強制補上必要限制與證據缺口。
+最多重試一次，不降低核驗規則。
+仍失敗時，使用後端標準主張順序。
+未驗證的模型token不先串流給使用者。
+
+## F API、資料與工程邊界
+| API | 工作 |
+|---|---|
+| GET comparison-options | 取得有效條件、月份與規則版 |
+| POST reports/expansion-comparison/resolve | 固定預覽期別，回傳解析權杖 |
+| POST reports/expansion-comparison | 建立固定版本報告 |
+| GET reports/{id} | 讀取原報告 |
+| POST reports/{id}/questions | 針對原報告追問 |
+| GET reports/{id}/export | 列印HTML或下載JSON |
+
+### 重用與新增
+
+- 重用既有行政區比較聚合與稽核。
+- 新增固定快照參數，不複製另一套SQL。
+- GCIS影子事件保留分類、重複與衝突。
+- 用SQLite與不可變JSON保存報告即可。
+- 每次請求共用request_id，各事件另有event_id。
+- 報告與建置稽核在同一交易提交。
+
+### 錯誤行為
+
+輸入錯誤回422。
+資料不足可建立有限報告。
+必要保存或稽核失敗回503。
+模型失敗不影響官方比較與列印。
+公開部署時，報告ID仍需搭配存取權。
+
+## G 工作包與開發順序
+以下為建議估時，假設三條工作可並行。
+
+| 包 | 主責 | 交付 |
+|---|---|---|
+| P1 | 後端 | 契約、固定快照、報告保存 |
+| P2 | 資料 | GCIS影子資料、用途資格、規則 |
+| P3 | 後端 | Fact、Claim、Renderer |
+| P4 | 前端 | 正式比較頁、證據、計畫、匯出 |
+| P5 | 後端＋前端 | 受限AI、fallback、稽核 |
+| P6 | 全體 | 整合、反例、故障、企業任務 |
+
+```timeline
+10/27 | 定契約與情境 | 選中類、職類及工作分配
+10/28–29 | 三線並行 | 固定快照、GCIS、前端fixture
+10/30–31 | 正式資料接通 | 報告、證據、規劃及匯出
+11/01–02 | AI與企業試用 | 核准主張、真模型、任務驗收
+11/03–04 | 文件與凍結 | 同版部署、備援與測試紀錄
+11/05–06 | 現場彩排 | 陌生問題、斷網、逾時
+```
+
+若工期落後，先延後人才管線與預測圖選配。
+保留比較報告、GCIS規則與事實綁定。
+不以省略未知或核驗來壓縮交付。
+
+## H 驗收與完整規格
+```callout info 三項完成標準
+企業能完成比較、查證、規劃與匯出。
+GCIS改變摘要、比較資格或下一步。
+錯區、錯單位及無證據結論不能通過。
+```
+
+### 必測案例
+
+- 31人改60人，只改月目標。
+- 中類與職類分開篩選，不冒充雇主分類。
+- 查詢截斷取消排名，缺資料不補0。
+- GCIS分類跨80%，仍不升格母體。
+- 西屯改大雅、200人改200筆都被擋。
+- 真來源ID不能替假敘述洗白。
+- 原報告在資料更新後保持一致。
+- 模型故障仍有規則報告與匯出。
+
+完整文件有42項具體驗收場景。
+它們包含正常任務、反例及故障。
+測試通過不代表通用零幻覺。
+
+### 開發閱讀入口
+
+- [總規格與設計決策](README.md)
+- [企業報告完整設計](01-enterprise-report.md)
+- [GCIS資料與規則設計](02-gcis-conclusions.md)
+- [AI事實一致性設計](03-fact-verification.md)
+- [工作包與42項驗收](04-delivery-and-acceptance.md)
+- [JSON Schema契約](contracts.schema.json)
+- [合成設計範例](examples.synthetic.json)
+
+### 外部依據
+
+[官方就業通資料欄位與查詢上限](https://data.gov.tw/dataset/44062)。
+[JSON Schema Draft 2020-12](https://json-schema.org/draft/2020-12)。
+Schema驗資料形狀，業務規則仍由後端檢查。
+</textarea>
+<script>
+(() => {
+  const root = document.documentElement;
+  const cycle = (list, cur) => list[(list.indexOf(cur) + 1) % list.length];
+  const label = (btn, value) => {
+    const map = JSON.parse(btn.dataset.labels || '{}');
+    btn.textContent = map[value] || value;
+  };
+  const bind = (name, attr, values) => {
+    const btn = document.querySelector(`[data-am="${name}"]`);
+    if (!btn) return;
+    label(btn, root.getAttribute(attr));
+    btn.addEventListener('click', () => {
+      const next = cycle(values, root.getAttribute(attr));
+      root.setAttribute(attr, next);
+      label(btn, next);
+    });
+  };
+  bind('theme', 'data-theme', ['blueprint', 'shadcn']);
+  bind('mode', 'data-mode', ['auto', 'light', 'dark']);
+
+  const copyBtn = document.querySelector('[data-am="copy"]');
+  copyBtn?.addEventListener('click', async () => {
+    const text = document.getElementById('am-source').value;
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      const ta = Object.assign(document.createElement('textarea'), { value: text });
+      document.body.append(ta);
+      ta.select();
+      document.execCommand('copy');
+      ta.remove();
+    }
+    const original = copyBtn.textContent;
+    copyBtn.textContent = copyBtn.dataset.done;
+    setTimeout(() => { copyBtn.textContent = original; }, 1400);
+  });
+})();
+</script>
+</body>
+</html>

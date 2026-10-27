@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from datetime import date
+from decimal import Decimal, InvalidOperation
 from typing import Any, Dict, Iterable, List, Optional
 
 import pandas as pd
@@ -187,13 +189,15 @@ def get_regional_job_demand(
     }
 
 
-def _read_district_comparison_snapshot(districts: List[str]):
+def _read_district_comparison_snapshot(districts: List[str], snapshot_date=None, connection=None):
     """Read the chosen districts and their audit from one SQLite snapshot."""
-    connection = db.get_connection()
+    owns_connection = connection is None
+    connection = connection or db.get_connection()
     try:
         # Keep all reads in the same transaction, including when an ETL replaces
         # a same-day snapshot between queries. No data is written here.
-        connection.execute("BEGIN")
+        if owns_connection:
+            connection.execute("BEGIN")
         latest = connection.execute(
             """
             SELECT MAX(snapshot_date) AS snapshot_date FROM (
@@ -203,7 +207,7 @@ def _read_district_comparison_snapshot(districts: List[str]):
             )
             """
         ).fetchone()
-        snapshot = latest["snapshot_date"] if latest else None
+        snapshot = snapshot_date or (latest["snapshot_date"] if latest else None)
         if not snapshot:
             return None, [], []
         placeholders = ",".join("?" for _ in districts)
@@ -225,7 +229,8 @@ def _read_district_comparison_snapshot(districts: List[str]):
         ).fetchall()]
         return snapshot, rows, audits
     finally:
-        connection.close()
+        if owns_connection:
+            connection.close()
 
 
 def _comparison_audit_is_complete(audit: Dict[str, Any], row_count: int) -> bool:
@@ -254,6 +259,9 @@ def get_district_job_comparison(
     districts: List[str],
     industry_id: Optional[str] = None,
     occupation_keyword: Optional[str] = None,
+    *,
+    snapshot_date: Optional[str] = None,
+    connection=None,
 ) -> Dict[str, Any]:
     """Compare 2–3 districts using only one audited TaiwanJobs snapshot."""
     selected = [value.strip() if isinstance(value, str) else value for value in (districts or [])]
@@ -279,7 +287,7 @@ def get_district_job_comparison(
             "reason": "職類關鍵字請限制在 60 字以內。",
         }
 
-    snapshot, rows, audits = _read_district_comparison_snapshot(selected)
+    snapshot, rows, audits = _read_district_comparison_snapshot(selected, snapshot_date, connection)
     if not snapshot:
         return {
             "available": False,
@@ -287,6 +295,20 @@ def get_district_job_comparison(
             "reason": "尚未匯入台灣就業通官方快照，暫時無法比較。",
             "comparisons": [],
         }
+    try:
+        if not isinstance(snapshot, str) or date.fromisoformat(snapshot).isoformat() != snapshot:
+            raise ValueError("invalid snapshot")
+    except ValueError:
+        return {"available": False, "error_code": "INVALID_SOURCE_SNAPSHOT", "snapshot_date": None,
+                "reason": "來源快照日期無效，暫時無法核對資料期間。", "comparisons": []}
+    try:
+        for row in rows:
+            count = Decimal(str(row.get("openings")))
+            if not count.is_finite() or count < 0 or count != count.to_integral_value():
+                raise ValueError("invalid worker count")
+    except (InvalidOperation, ValueError, TypeError):
+        return {"available": False, "error_code": "INVALID_SOURCE_WORKER_COUNT", "snapshot_date": snapshot,
+                "reason": "來源刊登需求人數包含無效、負值或非整數，暫時無法比較；不以零或截斷值補位。", "comparisons": []}
     audit_by_district = {audit["district"]: audit for audit in audits}
     missing = [district for district in selected if district not in audit_by_district]
     if missing:

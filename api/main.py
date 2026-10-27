@@ -6,10 +6,10 @@ import sys
 import json
 from pathlib import Path
 from typing import Dict, Any, List, Optional
-from fastapi import FastAPI, Query, HTTPException
+from fastapi import FastAPI, Query, HTTPException, Header
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, HTMLResponse
 from pydantic import BaseModel
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -23,6 +23,8 @@ from agent.audit_log import AuditLogError
 from agent.agent_service import OpenRouterError, agent_service
 from engine.gcis_live_verifier import verify_company_live
 from engine.expansion_demo import build_expansion_report
+from engine.comparison_report import ComparisonReportService
+from engine.report_scenario import ReportError
 from engine.official_labor_market import (
     get_district_job_comparison,
     get_gcis_new_company_trend,
@@ -37,6 +39,14 @@ app = FastAPI(
     description="台中市區域產業動能 × 高教人才供給結構性錯配預警系統 (System Spec v1.0)",
     version="1.0.0"
 )
+
+# Constructing this service does not initialise or mutate either database.
+comparison_report_service = ComparisonReportService()
+
+
+@app.exception_handler(ReportError)
+async def comparison_report_error_handler(request, exc):
+    return JSONResponse(status_code=exc.status, content={"detail": {"error_code": exc.code, "reason": exc.message}})
 
 app.add_middleware(
     CORSMiddleware,
@@ -360,9 +370,19 @@ def official_district_comparison(
     districts: Optional[List[str]] = Query(None),
     industry_id: Optional[str] = Query(None),
     occupation_keyword: Optional[str] = Query(None),
+    snapshot_date: Optional[str] = Query(None),
 ) -> Dict[str, Any]:
     """Compare 2–3 districts within the same audited official vacancy snapshot."""
-    result = get_district_job_comparison(districts, industry_id, occupation_keyword)
+    if snapshot_date:
+        from datetime import date
+        import re
+        try:
+            if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", snapshot_date):
+                raise ValueError("invalid date format")
+            date.fromisoformat(snapshot_date)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail="snapshot_date須為YYYY-MM-DD日期。") from exc
+    result = get_district_job_comparison(districts, industry_id, occupation_keyword, snapshot_date=snapshot_date)
     if not result.get("available"):
         _raise_official_tool_error(result)
     return result
@@ -406,6 +426,43 @@ def get_benchmark_summary() -> Dict[str, Any]:
             return json.load(f)
     return run_benchmark_validation()
 
+# ----------------- Immutable enterprise comparison reports -----------------
+
+@app.get("/api/comparison-options")
+def comparison_options():
+    return comparison_report_service.options()
+
+
+@app.post("/api/reports/expansion-comparison/resolve")
+def resolve_comparison_report(payload: Dict[str, Any]):
+    return comparison_report_service.resolve(payload)
+
+
+@app.post("/api/reports/expansion-comparison", status_code=201)
+def create_comparison_report(payload: Dict[str, Any], idempotency_key: Optional[str] = Header(None, alias="Idempotency-Key")):
+    return comparison_report_service.build(payload, idempotency_key)
+
+
+@app.get("/api/reports/{report_id}")
+def read_comparison_report(report_id: str):
+    return comparison_report_service.get(report_id)
+
+
+@app.post("/api/reports/{report_id}/questions")
+def question_comparison_report(report_id: str, payload: Dict[str, Any]):
+    return comparison_report_service.question(report_id, payload)
+
+
+@app.get("/api/reports/{report_id}/export")
+def export_comparison_report(report_id: str, format: str = Query("html")):
+    if format == "html":
+        return HTMLResponse(comparison_report_service.export_html(report_id), headers={"Cache-Control": "no-store"})
+    if format == "json":
+        report = comparison_report_service.get(report_id)
+        return JSONResponse(report, headers={"Content-Disposition": f'attachment; filename="{report["report_id"]}.json"', "Cache-Control": "no-store"})
+    raise ReportError("UNSUPPORTED_EXPORT", "匯出僅提供html與json。")
+
+
 # ----------------- Frontend Web Serving -----------------
 UI_DIR = BASE_DIR / "ui"
 STATIC_DIR = UI_DIR / "static"
@@ -415,6 +472,16 @@ if STATIC_DIR.exists():
 @app.get("/")
 def serve_frontend():
     return FileResponse(UI_DIR / "home.html")
+
+
+@app.get("/compare")
+def serve_enterprise_comparison():
+    return FileResponse(UI_DIR / "compare.html")
+
+
+@app.get("/reports/{report_id}")
+def serve_enterprise_report(report_id: str):
+    return FileResponse(UI_DIR / "report.html")
 
 
 @app.get("/legacy")
