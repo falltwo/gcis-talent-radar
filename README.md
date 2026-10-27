@@ -95,7 +95,7 @@ python -m forecast.run_real --series gcis --horizon 12 --step 3
 python -m pytest tests -q
 ```
 
-目前共 494 項測試，涵蓋資料整理、官方比較、固定報告、GCIS事件、事實與主張、模型故障備援、前端、預測、護欄與稽核。GitHub Actions 會在每個 PR 和 push 到 `main` 時執行。
+目前共 496 項測試，涵蓋資料整理、官方比較、固定報告、GCIS事件、事實與主張、模型故障備援、前端、預測、護欄與稽核。GitHub Actions 會在每個 PR 和 push 到 `main` 時執行。
 
 ## 頁面與 API
 

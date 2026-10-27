@@ -99,9 +99,11 @@ node --check ui/static/report-comparison.js
 
 Windows受限環境若無法建立asyncio本機socketpair，既有API測試可能停在事件迴圈初始化；這是執行環境問題。新測試另有不需socket的同步ASGI驗收；完整測試需在允許本機迴圈socket的終端執行。
 
-2026-10-28 PR前完整回歸：**494項通過，30.97秒**。正式資料冒煙與JSON Schema驗證通過，來源資料庫雜湊在操作前後一致。驗證1個Scenario、27個Fact、61個Claim、4個Assessment與1個AnswerPlan。
+2026-10-28 PR前完整回歸：**496項通過，31.25秒**。正式資料冒煙與JSON Schema驗證通過，來源資料庫雜湊在操作前後一致。驗證1個Scenario、27個Fact、61個Claim、4個Assessment與1個AnswerPlan。
 
 PR前檢查另修正三項可重現問題，均有回歸覆蓋：異常provider envelope改走受控備援；GCIS與薪資排除未來觀測期，歷史回看也排除尚未發生的清冊月份；前端共同背景只呈現核准blocks，不能回填未進FactLedger的原值。
+
+初輪Linux CI另發現新版FastAPI／Starlette會在測試客戶端提前斷線時取消檔案回應。頁面測試改為收齊最後body才回斷線，保留原內容斷言與有限timeout；新增比較／報告兩個頁面內容驗收，JSON API測試明示ASGI 2.4而不偽造斷線。
 
 2026-10-27桌面1280×900及手機390×844已完成實際建立報告、來源查閱與備援追問確認，無頁面水平溢出；寬表格保留容器內捲動，瀏覽器無console錯誤。PR前前端修正另以實際renderCity函式的Node DOM回歸確認。
 

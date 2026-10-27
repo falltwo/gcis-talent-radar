@@ -257,11 +257,11 @@ async def asgi_request(app,path,method="GET",body=None,headers=None):
     data=json.dumps(body,ensure_ascii=False).encode("utf-8") if body is not None else b""
     async def receive():
         nonlocal delivered
-        if delivered:return {"type":"http.disconnect"}
+        if delivered:raise AssertionError("Unexpected request-body read after the complete request")
         delivered=True
         return {"type":"http.request","body":data,"more_body":False}
     async def send(message):sent.append(message)
-    await app({"type":"http","asgi":{"version":"3.0"},"http_version":"1.1","method":method,"scheme":"http","path":path,"raw_path":path.encode(),"query_string":b"","root_path":"","headers":[(b"content-type",b"application/json"),*((k.lower().encode(),v.encode()) for k,v in (headers or {}).items())],"server":("testserver",80),"client":("127.0.0.1",1)},receive,send)
+    await app({"type":"http","asgi":{"version":"3.0","spec_version":"2.4"},"http_version":"1.1","method":method,"scheme":"http","path":path,"raw_path":path.encode(),"query_string":b"","root_path":"","headers":[(b"content-type",b"application/json"),*((k.lower().encode(),v.encode()) for k,v in (headers or {}).items())],"server":("testserver",80),"client":("127.0.0.1",1)},receive,send)
     start=next(item for item in sent if item["type"]=="http.response.start")
     payload=b"".join(item.get("body",b"") for item in sent if item["type"]=="http.response.body")
     return start["status"],payload

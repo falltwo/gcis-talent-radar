@@ -101,7 +101,7 @@ See [docs/04-ETL.md](docs/04-ETL.md) (Chinese).
 python -m pytest tests -q
 ```
 
-There are 494 tests covering ETL, official comparisons, saved reports, GCIS events, facts and claims, provider fallback, the frontend, forecasting, guards, and audit logging. GitHub Actions runs them on every PR and on pushes to `main`.
+There are 496 tests covering ETL, official comparisons, saved reports, GCIS events, facts and claims, provider fallback, the frontend, forecasting, guards, and audit logging. GitHub Actions runs them on every PR and on pushes to `main`.
 
 ## Pages and API
 

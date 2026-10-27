@@ -22,17 +22,22 @@ def _get(url, *, params=None):
 
     async def exchange():
         received = False
+        response_finished = asyncio.Event()
 
         async def receive():
             nonlocal received
             if not received:
                 received = True
                 return {"type": "http.request", "body": b"", "more_body": False}
-            await asyncio.sleep(0)
+            # Stay connected while FileResponse performs asynchronous reads.
+            # An immediate disconnect can cancel the body on newer Starlette.
+            await response_finished.wait()
             return {"type": "http.disconnect"}
 
         async def send(message):
             messages.append(message)
+            if message["type"] == "http.response.body" and not message.get("more_body", False):
+                response_finished.set()
 
         await app({
             "type": "http", "asgi": {"version": "3.0"}, "http_version": "1.1",
@@ -41,7 +46,7 @@ def _get(url, *, params=None):
             "headers": [], "client": ("test", 12345), "server": ("test", 80),
         }, receive, send)
 
-    asyncio.run(exchange())
+    asyncio.run(asyncio.wait_for(exchange(), timeout=10))
     start = next(message for message in messages if message["type"] == "http.response.start")
     body = b"".join(message.get("body", b"") for message in messages if message["type"] == "http.response.body")
     headers = {key.decode(): value.decode() for key, value in start["headers"]}
@@ -206,3 +211,15 @@ def test_legacy_prototype_moves_to_legacy_route():
     assert page.status_code == 200
     assert "text/html" in page.headers["content-type"]
     assert "舊版原型" in page.text
+
+
+@pytest.mark.parametrize("path,page_name", [
+    ("/compare", "compare"),
+    ("/reports/rep_test", "report"),
+])
+def test_business_report_pages_serve_complete_html(path, page_name):
+    page = _get(path)
+    assert page.status_code == 200
+    assert "text/html" in page.headers["content-type"]
+    assert f'data-page="{page_name}"' in page.text
+    assert "/static/report-comparison.js" in page.text

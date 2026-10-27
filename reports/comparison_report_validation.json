@@ -3,10 +3,10 @@
   "branch": "codex/final-comparison-report",
   "base": "fe6a0b37d7acf162a272f322495628e898a49d2d",
   "full_test_suite": {
-    "passed": 494,
-    "seconds": 30.97,
+    "passed": 496,
+    "seconds": 31.25,
     "python": "3.13.9",
-    "command": "python -X utf8 -B -m pytest tests -q --basetemp tmp/report-pr-release-tests-20261028 -p no:cacheprovider"
+    "command": "python -X utf8 -B -m pytest tests -q --basetemp tmp/report-pr-final-tests-20261028 -p no:cacheprovider"
   },
   "schema_objects_validated": {
     "scenario": 1,
@@ -97,5 +97,6 @@
     "Malformed provider envelope uses controlled retry/fallback; optional invalid usage metadata is ignored",
     "GCIS/wage exclude future observation periods; future GCIS lists are excluded in latest and historical modes",
     "City context renders only approved blocks; rejected raw GCIS values cannot be restored by the frontend"
-  ]
+  ],
+  "ci_compatibility_fix": "Keep ASGI test client connected through final FileResponse body; preserve content assertions, bounded timeout, add compare/report page checks and use ASGI 2.4 for inline JSON harness"
 }
