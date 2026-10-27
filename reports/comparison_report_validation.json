@@ -1,0 +1,102 @@
+{
+  "date": "2026-10-28",
+  "branch": "codex/final-comparison-report",
+  "base": "fe6a0b37d7acf162a272f322495628e898a49d2d",
+  "full_test_suite": {
+    "passed": 496,
+    "seconds": 31.25,
+    "python": "3.13.9",
+    "command": "python -X utf8 -B -m pytest tests -q --basetemp tmp/report-pr-final-tests-20261028 -p no:cacheprovider"
+  },
+  "schema_objects_validated": {
+    "scenario": 1,
+    "fact": 27,
+    "claim": 61,
+    "assessment": 4,
+    "answer_plan": 1
+  },
+  "real_source_smoke_seconds": 1.256,
+  "official_source_database_unchanged": true,
+  "source_database_sha256": "0b437f18fd9d9053e3d3779405a866ed3cb5ccc5830d78cf2088950a70b3bf36",
+  "live_provider_key_configured": false,
+  "real_provider_validation": "not run; deterministic fallback verified in browser; ID-plan providers mocked in tests",
+  "responsive_checks": {
+    "desktop": {
+      "viewport": [
+        1280,
+        900
+      ],
+      "body_overflow": false
+    },
+    "mobile": {
+      "viewport": [
+        390,
+        844
+      ],
+      "body_overflow": false,
+      "table_overflow": "contained, accessible horizontal scroll"
+    }
+  },
+  "console_errors": [],
+  "data_periods": {
+    "factory": "2026-07",
+    "gcis_city": {
+      "baseline_end": "2025-08",
+      "baseline_start": "2024-09",
+      "end": "2026-08",
+      "start": "2025-09"
+    },
+    "gcis_local": {
+      "end": "2026-08",
+      "start": "2026-06"
+    },
+    "jobs": "2026-10-05",
+    "wage": "2025-12"
+  },
+  "job_comparison": [
+    {
+      "district": "大雅區",
+      "postings": 2,
+      "requested_workers": 5
+    },
+    {
+      "district": "潭子區",
+      "postings": 3,
+      "requested_workers": 10
+    },
+    {
+      "district": "神岡區",
+      "postings": 12,
+      "requested_workers": 33
+    }
+  ],
+  "gcis_city": {
+    "start": "2025-09",
+    "end": "2026-08",
+    "current_sum": 916,
+    "baseline_start": "2024-09",
+    "baseline_end": "2025-08",
+    "baseline_sum": 1088,
+    "change_pct": -15.8088
+  },
+  "remaining_data_limitations": [
+    "Missing retained tax-registry and business-item-to-industry mapping; local official figures remain UNKNOWN",
+    "Eight legacy aggregate observations retained separately; never promoted to population counts"
+  ],
+  "screenshots": [
+    "comparison_report_desktop.png",
+    "comparison_report_mobile.png"
+  ],
+  "data_status": "LIMITED",
+  "malformed_provider_question": "FALLBACK; committed audit event",
+  "base_branch": "codex/district-job-comparison",
+  "depends_on_pull_request": 20,
+  "responsive_checks_date": "2026-10-27",
+  "local_report_database_committed": false,
+  "pr_review_fixes": [
+    "Malformed provider envelope uses controlled retry/fallback; optional invalid usage metadata is ignored",
+    "GCIS/wage exclude future observation periods; future GCIS lists are excluded in latest and historical modes",
+    "City context renders only approved blocks; rejected raw GCIS values cannot be restored by the frontend"
+  ],
+  "ci_compatibility_fix": "Keep ASGI test client connected through final FileResponse body; preserve content assertions, bounded timeout, add compare/report page checks and use ASGI 2.4 for inline JSON harness"
+}

@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>比較招募環境｜產業人才雷達</title>
+  <link rel="stylesheet" href="/static/report-comparison.css">
+  <script src="/static/report-comparison.js" defer></script>
+</head>
+<body data-page="compare">
+  <a class="skip-link" href="#main">跳到主要內容</a>
+  <header class="top"><div class="shell"><a class="brand" href="/">產業人才雷達</a><nav aria-label="主要導覽"><a href="/">問資料</a><a href="/compare" aria-current="page">比較招募環境</a></nav></div></header>
+  <main class="shell" id="main">
+    <div class="page-heading"><h1>比較擴廠前的招募環境</h1><p>選擇行政區、製造業中類與職務，並排查看公開職缺與同業動向，保存這次比較的資料和證據。</p></div>
+    <p class="notice">公司中類與職務是兩種條件：公司事件依產業分類；職缺依職務文字篩選，不代表雇主的正式行業。</p>
+    <div id="options-status" class="status" role="status" aria-live="polite">正在載入可比較的地區與資料期別…</div>
+    <div id="compare-error" class="error" role="alert" hidden></div>
+    <button id="retry-options" type="button" class="secondary" hidden>重新載入選項</button>
+    <form id="comparison-form">
+      <fieldset id="scenario-fields" disabled>
+        <legend>比較條件</legend>
+        <div class="fields fields-three">
+          <div class="field"><label for="district-1">第一個行政區</label><select id="district-1" name="district-1" required></select></div>
+          <div class="field"><label for="district-2">第二個行政區</label><select id="district-2" name="district-2" required></select></div>
+          <div class="field"><label for="district-3">第三個行政區 <span class="optional">選填</span></label><select id="district-3" name="district-3"></select></div>
+        </div>
+        <div class="fields fields-two">
+          <div class="field"><label for="division">製造業中類</label><select id="division" name="division" required aria-describedby="division-help"></select><p class="help" id="division-help">用於查公司事件與可對應的工廠資料。</p></div>
+          <div class="field"><label for="occupation">職稱或職類關鍵字</label><input id="occupation" name="occupation" type="search" maxlength="60" required placeholder="例如：CNC、品管" aria-describedby="occupation-help"><p class="help" id="occupation-help">在製造相關職務規則內再篩選；不是雇主行業分類。</p></div>
+        </div>
+        <div class="fields fields-three">
+          <div class="field"><label for="observation-mode">資料觀測方式</label><select id="observation-mode" name="observation-mode"><option value="LATEST_AVAILABLE">各來源最新可用期別</option><option value="FIXED_MONTH">回看指定月份</option></select></div>
+          <div class="field" id="observation-month-field" hidden><label for="observation-month">觀測月份</label><input id="observation-month" name="observation-month" type="month" aria-describedby="observation-help"></div>
+          <div class="field"><label for="window-months">區域公司事件觀察窗</label><select id="window-months" name="window-months" required></select></div>
+        </div>
+        <p class="help" id="observation-help">各來源可能不同期，下一步會逐一列出。回看使用目前留存的版本；未留存的歷史職缺會標示未知。</p>
+        <hr>
+        <h2 class="form-subheading">你的招募計畫</h2>
+        <div class="fields fields-three">
+          <div class="field"><label for="net-hires">預計淨新增到職人數</label><input id="net-hires" name="net-hires" type="number" min="1" max="100000" step="1" required value="31"></div>
+          <div class="field"><label for="hiring-start">開始月份</label><input id="hiring-start" name="hiring-start" type="month" required></div>
+          <div class="field"><label for="hiring-end">完成月份</label><input id="hiring-end" name="hiring-end" type="month" required></div>
+        </div>
+        <p class="help">最多規劃12個月。人數與月份只用來分配你的每月到職目標，不會改寫官方數字，也不代表預測能招到人。</p>
+        <div class="form-actions"><button id="resolve-submit" type="submit">確認資料期別</button><span>建立報告不需要 AI 金鑰。</span></div>
+      </fieldset>
+    </form>
+    <section id="resolution" class="resolution" aria-labelledby="resolution-title" tabindex="-1" hidden>
+      <h2 id="resolution-title">這次報告會使用的資料</h2>
+      <p id="resolution-scenario"></p>
+      <dl id="resolved-periods" class="period-list"></dl>
+      <p id="resolution-warning" class="help">未知資料會保留為未知；各區不會改用不同日期湊成比較。</p>
+      <p id="resolution-expiry" class="help"></p>
+      <div class="form-actions"><button id="build-report" type="button">使用這些期別建立報告</button><button id="edit-scenario" type="button" class="secondary">返回修改條件</button></div>
+    </section>
+    <div id="compare-status" class="status" role="status" aria-live="polite" aria-atomic="true"></div>
+  </main>
+  <footer class="foot"><div class="shell">公開職缺不等於實際缺工；公司事件不代表招聘計畫。報告提供比較與查證線索，不提供單一企業招募成功率。</div></footer>
+</body>
+</html>

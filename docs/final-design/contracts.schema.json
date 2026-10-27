@@ -1,0 +1,245 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:gcis-talent-radar:final-design:v1",
+  "title": "Proposed v1 contracts, not deployed production interfaces",
+  "oneOf": [
+    {"$ref": "#/$defs/scenario"},
+    {"$ref": "#/$defs/fact"},
+    {"$ref": "#/$defs/assessment"},
+    {"$ref": "#/$defs/claim"},
+    {"$ref": "#/$defs/answer_plan"}
+  ],
+  "$defs": {
+    "hash": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "id": {"type": "string", "minLength": 1, "maxLength": 160},
+    "decimal": {"type": "string", "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]+)?$"},
+    "month": {"type": "string", "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])$"},
+    "period_key": {"type": "string", "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])(-(0[1-9]|[12][0-9]|3[01]))?$"},
+    "division": {"type": "string", "pattern": "^(0[89]|[12][0-9]|3[0-4])$"},
+    "district": {
+      "enum": ["中區", "東區", "南區", "西區", "北區", "西屯區", "南屯區", "北屯區", "豐原區", "東勢區", "大甲區", "清水區", "沙鹿區", "梧棲區", "后里區", "神岡區", "潭子區", "大雅區", "新社區", "石岡區", "外埔區", "大安區", "烏日區", "大肚區", "龍井區", "霧峰區", "太平區", "大里區", "和平區"]
+    },
+    "ids": {"type": "array", "items": {"$ref": "#/$defs/id"}, "uniqueItems": true, "maxItems": 100},
+    "scenario": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "districts", "manufacturing", "occupation", "observation", "hiring_plan"],
+      "properties": {
+        "schema_version": {"const": "1.0"},
+        "districts": {"type": "array", "minItems": 2, "maxItems": 3, "uniqueItems": true, "items": {"$ref": "#/$defs/district"}},
+        "manufacturing": {
+          "type": "object", "additionalProperties": false,
+          "required": ["division_code", "classification_version"],
+          "properties": {
+            "division_code": {"$ref": "#/$defs/division"},
+            "classification_version": {"$ref": "#/$defs/id"}
+          }
+        },
+        "occupation": {
+          "type": "object", "additionalProperties": false,
+          "required": ["type", "keyword", "retrieval_profile_version"],
+          "properties": {
+            "type": {"const": "KEYWORD"},
+            "keyword": {"type": "string", "minLength": 1, "maxLength": 60},
+            "retrieval_profile_version": {"$ref": "#/$defs/id"}
+          }
+        },
+        "observation": {
+          "type": "object", "additionalProperties": false,
+          "required": ["mode", "month", "window_months", "knowledge_cutoff"],
+          "properties": {
+            "mode": {"enum": ["LATEST_AVAILABLE", "FIXED_MONTH"]},
+            "month": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/month"}]},
+            "window_months": {"enum": [3, 6, 12]},
+            "knowledge_cutoff": {"type": "null", "description": "Historical knowledge-vintage reconstruction is outside MVP."}
+          },
+          "allOf": [
+            {"if": {"properties": {"mode": {"const": "LATEST_AVAILABLE"}}}, "then": {"properties": {"month": {"type": "null"}}}},
+            {"if": {"properties": {"mode": {"const": "FIXED_MONTH"}}}, "then": {"properties": {"month": {"$ref": "#/$defs/month"}}}}
+          ]
+        },
+        "hiring_plan": {
+          "type": "object", "additionalProperties": false,
+          "required": ["net_hires", "start_month", "end_month"],
+          "properties": {
+            "net_hires": {"type": "integer", "minimum": 1, "maximum": 100000},
+            "start_month": {"$ref": "#/$defs/month"},
+            "end_month": {"$ref": "#/$defs/month"}
+          },
+          "$comment": "Application validates start<=end, <=12 inclusive months, catalog membership and confirmed user intent."
+        }
+      }
+    },
+    "fact": {
+      "type": "object", "additionalProperties": false,
+      "required": ["fact_id", "report_id", "manifest_hash", "metric_id", "value", "unit", "subject", "period", "selection", "data_kind", "quality", "evidence_ids"],
+      "properties": {
+        "fact_id": {"$ref": "#/$defs/id"},
+        "report_id": {"$ref": "#/$defs/id"},
+        "manifest_hash": {"$ref": "#/$defs/hash"},
+        "metric_id": {"$ref": "#/$defs/id"},
+        "value": {
+          "type": "object", "additionalProperties": false,
+          "required": ["kind", "amount", "lower", "upper"],
+          "properties": {
+            "kind": {"enum": ["COUNT", "DECIMAL", "INTERVAL", "UNKNOWN"]},
+            "amount": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/decimal"}]},
+            "lower": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/decimal"}]},
+            "upper": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/decimal"}]}
+          },
+          "allOf": [
+            {"if": {"properties": {"kind": {"const": "COUNT"}}}, "then": {"properties": {"amount": {"type": "string", "pattern": "^(0|[1-9][0-9]*)$"}, "lower": {"type": "null"}, "upper": {"type": "null"}}}},
+            {"if": {"properties": {"kind": {"const": "DECIMAL"}}}, "then": {"properties": {"amount": {"$ref": "#/$defs/decimal"}, "lower": {"type": "null"}, "upper": {"type": "null"}}}},
+            {"if": {"properties": {"kind": {"const": "INTERVAL"}}}, "then": {"properties": {"amount": {"type": "null"}, "lower": {"$ref": "#/$defs/decimal"}, "upper": {"$ref": "#/$defs/decimal"}}}},
+            {"if": {"properties": {"kind": {"const": "UNKNOWN"}}}, "then": {"properties": {"amount": {"type": "null"}, "lower": {"type": "null"}, "upper": {"type": "null"}}}}
+          ]
+        },
+        "unit": {"enum": ["person", "posting", "company", "company_name", "factory", "TWD", "percent", "ratio"]},
+        "subject": {
+          "type": "object", "additionalProperties": false,
+          "required": ["city", "district", "geography_role"],
+          "properties": {
+            "city": {"const": "臺中市"},
+            "district": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/district"}]},
+            "geography_role": {"enum": ["WORK_LOCATION", "REGISTERED_ADDRESS", "CITY_AGGREGATE", "USER_SELECTION", "FACTORY_LOCATION"]}
+          }
+        },
+        "period": {
+          "type": "object", "additionalProperties": false,
+          "required": ["kind", "start", "end", "calendar"],
+          "properties": {
+            "kind": {"enum": ["SNAPSHOT", "MONTH_WINDOW", "FORECAST_TARGET", "PLAN_MONTH", "YEAR", "ACADEMIC_YEAR"]},
+            "start": {"$ref": "#/$defs/period_key"},
+            "end": {"$ref": "#/$defs/period_key"},
+            "calendar": {"const": "GREGORIAN_NORMALIZED"}
+          }
+        },
+        "selection": {
+          "type": "object", "additionalProperties": false,
+          "required": ["manufacturing_division", "occupation_keyword", "classification_basis", "classification_version", "filter_spec_id", "filter_digest"],
+          "properties": {
+            "manufacturing_division": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/division"}]},
+            "occupation_keyword": {"type": ["string", "null"], "maxLength": 60},
+            "classification_basis": {"enum": ["OCCUPATION_TEXT_PROXY", "TAX_PRIMARY_INDUSTRY", "CURRENT_API_ITEM", "CITY_OFFICIAL_CLASSIFICATION", "USER_PLAN", "REVIEWED_FACTORY_MAPPING"]},
+            "classification_version": {"$ref": "#/$defs/id"},
+            "filter_spec_id": {"$ref": "#/$defs/id"},
+            "filter_digest": {"$ref": "#/$defs/hash"}
+          }
+        },
+        "data_kind": {"enum": ["OBSERVED", "DERIVED", "FORECAST", "USER_PLAN", "SYNTHETIC_FIXTURE"]},
+        "quality": {
+          "type": "object", "additionalProperties": false,
+          "required": ["purpose", "population_scope", "qualification", "value_status", "comparison_status", "classification_denominator_scope", "classification_ratio", "reason_codes"],
+          "properties": {
+            "purpose": {"const": "POINT_DESCRIPTION"},
+            "population_scope": {"enum": ["PUBLISHED_VACANCIES", "CLASSIFIED_EVENT_SAMPLE", "OFFICIAL_CITY_AGGREGATE", "FACTORY_REGISTER", "USER_PLAN", "SYNTHETIC_FIXTURE"]},
+            "qualification": {"enum": ["QUALIFIED", "PARTIAL", "UNAVAILABLE"]},
+            "value_status": {"enum": ["EXACT_WITHIN_SCOPE", "LOWER_BOUND", "SAMPLE_MATCH_ZERO", "UNKNOWN"]},
+            "comparison_status": {"enum": ["COMPARABLE_SAMPLE", "DESCRIPTIVE_ONLY", "NOT_COMPARABLE"]},
+            "classification_denominator_scope": {"type": ["string", "null"]},
+            "classification_ratio": {"type": ["number", "null"], "minimum": 0, "maximum": 1},
+            "reason_codes": {"$ref": "#/$defs/ids"}
+          }
+        },
+        "evidence_ids": {"type": "array", "items": {"$ref": "#/$defs/id"}, "minItems": 1, "maxItems": 100, "uniqueItems": true},
+        "forecast_metadata": {
+          "type": "object", "additionalProperties": false,
+          "required": ["origin", "horizon_steps", "model_id", "model_revision", "report_hash", "interval_level", "backtest_coverage"],
+          "properties": {
+            "origin": {"$ref": "#/$defs/month"},
+            "horizon_steps": {"type": "integer", "minimum": 1},
+            "model_id": {"$ref": "#/$defs/id"},
+            "model_revision": {"$ref": "#/$defs/id"},
+            "report_hash": {"$ref": "#/$defs/hash"},
+            "interval_level": {"enum": [0.8, 0.95]},
+            "backtest_coverage": {"type": ["number", "null"], "minimum": 0, "maximum": 1}
+          }
+        }
+      },
+      "allOf": [
+        {"if": {"properties": {"data_kind": {"const": "FORECAST"}}}, "then": {"required": ["forecast_metadata"], "properties": {"value": {"properties": {"kind": {"const": "INTERVAL"}}}, "period": {"properties": {"kind": {"const": "FORECAST_TARGET"}}}}}},
+        {"if": {"properties": {"quality": {"properties": {"value_status": {"const": "UNKNOWN"}}}}}, "then": {"properties": {"value": {"properties": {"kind": {"const": "UNKNOWN"}}}}}},
+        {"if": {"properties": {"quality": {"properties": {"population_scope": {"const": "CLASSIFIED_EVENT_SAMPLE"}}}}}, "then": {"properties": {"quality": {"properties": {"value_status": {"enum": ["EXACT_WITHIN_SCOPE", "SAMPLE_MATCH_ZERO", "UNKNOWN"]}, "comparison_status": {"enum": ["DESCRIPTIVE_ONLY", "NOT_COMPARABLE"]}}}}}}
+      ],
+      "$comment": "Server validates unit/metric/scope agreement, report ownership, Evidence existence, real dates, interval order, source provenance and rule eligibility. Shape validation alone is insufficient."
+    },
+    "assessment": {
+      "type": "object", "additionalProperties": false,
+      "required": ["assessment_id", "report_id", "purpose", "population_scope", "fact_refs", "scope_digest", "period_digest", "source_release", "classification_version", "qualification", "comparison_status", "reason_codes"],
+      "properties": {
+        "assessment_id": {"$ref": "#/$defs/id"},
+        "report_id": {"$ref": "#/$defs/id"},
+        "purpose": {"enum": ["POINT_DESCRIPTION", "WITHIN_SERIES_CHANGE", "CROSS_REGION_COMPARISON", "NET_CHANGE", "HIRING_CAUSAL_INFERENCE"]},
+        "population_scope": {"enum": ["PUBLISHED_VACANCIES", "CLASSIFIED_EVENT_SAMPLE", "OFFICIAL_CITY_AGGREGATE", "FACTORY_REGISTER", "USER_PLAN", "SYNTHETIC_FIXTURE"]},
+        "fact_refs": {"type": "array", "minItems": 1, "maxItems": 100, "uniqueItems": true, "items": {"$ref": "#/$defs/id"}},
+        "scope_digest": {"$ref": "#/$defs/hash"},
+        "period_digest": {"$ref": "#/$defs/hash"},
+        "source_release": {"$ref": "#/$defs/id"},
+        "classification_version": {"$ref": "#/$defs/id"},
+        "qualification": {"enum": ["QUALIFIED", "PARTIAL", "UNAVAILABLE"]},
+        "comparison_status": {"enum": ["COMPARABLE_SAMPLE", "DESCRIPTIVE_ONLY", "NOT_COMPARABLE"]},
+        "reason_codes": {"$ref": "#/$defs/ids"}
+      },
+      "$comment": "Server checks the purpose-specific eligibility. Classified local GCIS samples cannot qualify for regional or temporal ranking in MVP."
+    },
+    "binary_operands": {
+      "type": "object", "additionalProperties": false,
+      "required": ["left_fact_id", "right_fact_id"],
+      "properties": {"left_fact_id": {"$ref": "#/$defs/id"}, "right_fact_id": {"$ref": "#/$defs/id"}}
+    },
+    "period_operands": {
+      "type": "object", "additionalProperties": false,
+      "required": ["current_fact_id", "baseline_fact_id"],
+      "properties": {"current_fact_id": {"$ref": "#/$defs/id"}, "baseline_fact_id": {"$ref": "#/$defs/id"}}
+    },
+    "claim": {
+      "type": "object", "additionalProperties": false,
+      "required": ["claim_id", "report_id", "type", "fact_refs", "operands", "assessment_refs", "rule_id", "operation", "template_id", "required_disclosures", "evidence_refs", "rules_version"],
+      "properties": {
+        "claim_id": {"$ref": "#/$defs/id"},
+        "report_id": {"$ref": "#/$defs/id"},
+        "type": {"enum": ["OBSERVATION", "COMPARISON", "DIFFERENCE", "PERIOD_CHANGE", "FORECAST_INTERVAL", "USER_PLAN", "LIMITATION", "UNAVAILABLE", "NEXT_ACTION"]},
+        "fact_refs": {"$ref": "#/$defs/ids"},
+        "operands": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/binary_operands"}, {"$ref": "#/$defs/period_operands"}]},
+        "assessment_refs": {"$ref": "#/$defs/ids"},
+        "rule_id": {"$ref": "#/$defs/id"},
+        "operation": {"enum": ["IDENTITY", "COMPARE", "ABSOLUTE_DIFFERENCE", "RELATIVE_CHANGE", "INTERVAL", "PLAN_SPLIT", "RULE_TEMPLATE"]},
+        "template_id": {"$ref": "#/$defs/id"},
+        "required_disclosures": {"$ref": "#/$defs/ids"},
+        "evidence_refs": {"$ref": "#/$defs/ids"},
+        "rules_version": {"$ref": "#/$defs/id"}
+      },
+      "allOf": [
+        {"if": {"properties": {"type": {"enum": ["COMPARISON", "DIFFERENCE"]}}}, "then": {"properties": {"operands": {"$ref": "#/$defs/binary_operands"}, "fact_refs": {"minItems": 2, "maxItems": 2}, "assessment_refs": {"minItems": 1}}}, "else": {"if": {"properties": {"type": {"const": "PERIOD_CHANGE"}}}, "then": {"properties": {"operands": {"$ref": "#/$defs/period_operands"}, "fact_refs": {"minItems": 2, "maxItems": 2}, "assessment_refs": {"minItems": 1}}}, "else": {"properties": {"operands": {"type": "null"}}}}},
+        {"if": {"properties": {"type": {"const": "COMPARISON"}}}, "then": {"properties": {"operation": {"const": "COMPARE"}}}},
+        {"if": {"properties": {"type": {"const": "DIFFERENCE"}}}, "then": {"properties": {"operation": {"const": "ABSOLUTE_DIFFERENCE"}}}},
+        {"if": {"properties": {"type": {"const": "PERIOD_CHANGE"}}}, "then": {"properties": {"operation": {"const": "RELATIVE_CHANGE"}}}},
+        {"if": {"properties": {"type": {"const": "OBSERVATION"}}}, "then": {"properties": {"operation": {"const": "IDENTITY"}}}},
+        {"if": {"properties": {"type": {"const": "FORECAST_INTERVAL"}}}, "then": {"properties": {"operation": {"const": "INTERVAL"}}}},
+        {"if": {"properties": {"type": {"const": "USER_PLAN"}}}, "then": {"properties": {"operation": {"const": "PLAN_SPLIT"}}}},
+        {"if": {"properties": {"type": {"enum": ["LIMITATION", "UNAVAILABLE", "NEXT_ACTION"]}}}, "then": {"properties": {"operation": {"const": "RULE_TEMPLATE"}}}}
+      ],
+      "$comment": "Server-only object. Validate operand roles, fact_refs and assessment_refs against the immutable Catalog; never trust a model-supplied Claim."
+    },
+    "answer_plan": {
+      "type": "object", "additionalProperties": false,
+      "required": ["report_id", "catalog_hash", "sections"],
+      "properties": {
+        "report_id": {"$ref": "#/$defs/id"},
+        "catalog_hash": {"$ref": "#/$defs/hash"},
+        "sections": {
+          "type": "array", "minItems": 1, "maxItems": 6,
+          "items": {
+            "type": "object", "additionalProperties": false,
+            "required": ["heading_id", "claim_ids"],
+            "properties": {
+              "heading_id": {"enum": ["PUBLIC_JOB_OBSERVATIONS", "GCIS_CONTEXT", "COMMON_BACKGROUND", "HIRING_PLAN", "EVIDENCE_GAPS", "NEXT_STEPS"]},
+              "claim_ids": {"type": "array", "minItems": 1, "maxItems": 12, "uniqueItems": true, "items": {"$ref": "#/$defs/id"}}
+            }
+          }
+        }
+      },
+      "$comment": "Server additionally validates membership in the immutable report Catalog, heading compatibility, duplicate sections, dependencies and mandatory disclosures."
+    }
+  }
+}
