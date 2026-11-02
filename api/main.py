@@ -58,7 +58,8 @@ class SourcingRequest(BaseModel):
     query: str = Field(..., min_length=2, max_length=300)
     max_candidates: int = Field(5, ge=1, le=20)
     sites: Optional[List[str]] = None
-    screenshots: bool = True
+    live: bool = True          # 送 Chrome 即時畫面（frame 事件）
+    screenshots: bool = False  # 每一步另附截圖（不需要即時畫面時用）
 
 
 OFFICIAL_DATA_REFRESH_QUERIES = {
@@ -337,8 +338,10 @@ def sourcing_search(req: SourcingRequest) -> StreamingResponse:
     except AuditLogError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
 
+    events = sourcing_service.stream_live(prepared) if req.live else sourcing_service.stream(prepared)
+
     def frames():
-        for event in sourcing_service.stream(prepared):
+        for event in events:
             yield f"event: {event['type']}\ndata: {json.dumps(event, ensure_ascii=False)}\n\n"
 
     return StreamingResponse(frames(), media_type="text/event-stream",
@@ -433,6 +436,11 @@ def serve_frontend():
 @app.get("/legacy")
 def serve_legacy_prototype():
     return FileResponse(UI_DIR / "legacy.html")
+
+@app.get("/sourcing")
+def serve_sourcing_live():
+    """找人 agent 即時頁：輸入需求後直接看 agent 操作瀏覽器。"""
+    return FileResponse(UI_DIR / "sourcing.html")
 
 @app.get("/demo")
 def serve_expansion_demo():

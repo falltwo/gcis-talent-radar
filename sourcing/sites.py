@@ -46,11 +46,21 @@ class SearchTerms:
         return " ".join(parts)
 
 
-def _github(terms: SearchTerms) -> str:
+def _github_query(terms: SearchTerms) -> str:
     parts = [f"language:{s}" if s.lower() in GITHUB_LANGUAGES else s for s in terms.skills]
     if terms.location:
-        parts.append(f"location:{terms.location}")
-    return f"https://github.com/search?q={quote_plus(' '.join(parts))}&type=users"
+        loc = terms.location
+        parts.append(f'location:"{loc}"' if " " in loc else f"location:{loc}")
+    return " ".join(parts)
+
+
+def _github(terms: SearchTerms) -> str:
+    return f"https://github.com/search?q={quote_plus(_github_query(terms))}&type=users"
+
+
+def _github_typed(terms: SearchTerms) -> str:
+    """打進 GitHub 搜尋框的字：用 type:user 限定找人。"""
+    return "type:user " + _github_query(terms)
 
 
 def _stackoverflow(terms: SearchTerms) -> str:
@@ -87,6 +97,9 @@ class Site:
     work_pattern: Optional[re.Pattern] = None
     # 個人頁會跳機器人驗證時改走官方 API（不繞過驗證）
     profile_api: Optional[str] = None
+    # Jev 操作的起點：入口頁上有搜尋框，Jev 把 typed_query 打進去再送出；沒有就直接開 search_url
+    entry_url: Optional[str] = None
+    typed_query: Optional[Callable[[SearchTerms], str]] = None
     available: bool = True
     unavailable_reason: str = ""
 
@@ -131,18 +144,23 @@ advertise places resources cookie-policy
 
 SITES: dict[str, Site] = {s.id: s for s in [
     Site("github", "GitHub", ("software", "ai_data"), ("github.com",), _github,
-         re.compile(r"^https://github\.com/([A-Za-z0-9](?:[A-Za-z0-9-]{0,38}))$"), _GITHUB_RESERVED),
+         re.compile(r"^https://github\.com/([A-Za-z0-9](?:[A-Za-z0-9-]{0,38}))$"), _GITHUB_RESERVED,
+         entry_url="https://github.com/search?type=users", typed_query=_github_typed),
     Site("stackoverflow", "Stack Overflow", ("software",), ("stackoverflow.com",), _stackoverflow,
          re.compile(r"^https://stackoverflow\.com/users/(\d+)/[^/]+$"), profile_api="stackexchange"),
     Site("huggingface", "Hugging Face", ("ai_data",), ("huggingface.co",), _huggingface,
          re.compile(r"^https://huggingface\.co/([A-Za-z0-9][A-Za-z0-9._-]*)$"), _HF_RESERVED,
-         work_pattern=re.compile(r"^https://huggingface\.co/([A-Za-z0-9][A-Za-z0-9._-]*)/[A-Za-z0-9._-]+$")),
+         work_pattern=re.compile(r"^https://huggingface\.co/([A-Za-z0-9][A-Za-z0-9._-]*)/[A-Za-z0-9._-]+$"),
+         entry_url="https://huggingface.co/models", typed_query=lambda t: t.text(with_location=False)),
     Site("kaggle", "Kaggle", ("ai_data",), ("www.kaggle.com", "kaggle.com"), _kaggle,
-         re.compile(r"^https://www\.kaggle\.com/([A-Za-z0-9_-]+)$"), _KAGGLE_RESERVED),
+         re.compile(r"^https://www\.kaggle\.com/([A-Za-z0-9_-]+)$"), _KAGGLE_RESERVED,
+         entry_url="https://www.kaggle.com/search", typed_query=lambda t: t.text()),
     Site("dribbble", "Dribbble", ("design",), ("dribbble.com",), _dribbble,
-         re.compile(r"^https://dribbble\.com/([A-Za-z0-9_-]+)$"), _DRIBBBLE_RESERVED),
+         re.compile(r"^https://dribbble\.com/([A-Za-z0-9_-]+)$"), _DRIBBBLE_RESERVED,
+         entry_url="https://dribbble.com/", typed_query=lambda t: t.text()),
     Site("orcid", "ORCID", ("research",), ("orcid.org",), _orcid,
-         re.compile(r"^https://orcid\.org/(\d{4}-\d{4}-\d{4}-\d{3}[\dX])$")),
+         re.compile(r"^https://orcid\.org/(\d{4}-\d{4}-\d{4}-\d{3}[\dX])$"),
+         entry_url="https://orcid.org/orcid-search/search", typed_query=lambda t: t.text()),
     # Google Scholar 沒有官方 API 且禁止自動化，研究類改用 OpenAlex 官方 API
     Site("openalex", "OpenAlex", ("research",), ("openalex.org", "api.openalex.org"), None, None,
          profile_api="openalex"),

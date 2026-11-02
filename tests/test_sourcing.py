@@ -171,13 +171,18 @@ class FakeBrowser:
     def links(self):
         return [Link(h, t) for h, t in self.pages.get(self.current, {}).get("links", [])]
 
+    def result_cards(self):
+        return [(h, t, f"{t} card text") for h, t in self.pages.get(self.current, {}).get("links", [])]
+
     def screenshot(self):
         return "data:image/jpeg;base64,AAAA"
 
     def challenge(self):
         return "驗證頁" if any(self.current.startswith(p) for p in self.challenge_on) else None
 
-    def jev_steps(self, goal, domains, **kw):
+    last_outcome = "skipped"
+
+    def jev_goal(self, goal, domains, **kw):
         return iter(())
 
 
@@ -277,7 +282,7 @@ def _post(path, body):
 
 def test_search_endpoint_streams_server_sent_events(monkeypatch):
     browser = FakeBrowser(_github_pages())
-    monkeypatch.setattr(service, "SourcingBrowser", lambda: browser)
+    monkeypatch.setattr(service, "SourcingBrowser", lambda **kw: browser)
     status, body = _post("/api/sourcing/search", {"query": "Python 工程師", "max_candidates": 1, "sites": ["github"]})
     assert status == 200
     frames = [f for f in body.split("\n\n") if f.strip()]
@@ -344,8 +349,8 @@ def test_jev_dismisses_banner_then_stops_when_done(monkeypatch):
     monkeypatch.setattr("sourcing.browser.time.sleep", lambda s: None)
     accept = SimpleNamespace(index=3, href="", in_view=True, covered=False)
     b = _jev_browser([_decision("click", 3), _decision("done", satisfied=0.9)], [accept])
-    steps = list(b.jev_steps("close banner", ("orcid.org",)))
-    assert [s["action"] for s in steps] == ["click", "done"]
+    steps = list(b.jev_goal("close banner", ("orcid.org",)))
+    assert [s["action"] for s in steps] == ["click", "done"] and b.last_outcome == "done"
     assert b._act.calls == [("click", 3)]
 
 
@@ -353,18 +358,16 @@ def test_jev_cannot_type_or_leave_allowed_domain(monkeypatch):
     monkeypatch.setattr("sourcing.browser.time.sleep", lambda s: None)
     outside = SimpleNamespace(index=1, href="https://evil.example/login", in_view=True, covered=False)
     b = _jev_browser([_decision("click", 1)], [outside])
-    steps = list(b.jev_steps("x", ("orcid.org",)))
-    assert steps[0]["action"] == "none" and b._act.calls == []
-    b = _jev_browser([_decision("type_text", 1)], [outside])
-    assert list(b.jev_steps("x", ("orcid.org",)))[0]["action"] == "none"
+    steps = list(b.jev_goal("x", ("orcid.org",)))
+    assert steps[0]["action"] == "refused" and b._act.calls == []
 
 
 def test_jev_low_confidence_stops_and_missing_key_skips():
     b = _jev_browser([_decision("press_escape", confidence=0.2), _decision("done")], [])
-    steps = list(b.jev_steps("x", ("orcid.org",)))
-    assert len(steps) == 1 and steps[0]["action"] == "press_escape"
+    steps = list(b.jev_goal("x", ("orcid.org",)))
+    assert len(steps) == 1 and steps[0]["action"] == "press_escape" and b.last_outcome == "low_confidence"
     b._client = None
-    assert list(b.jev_steps("x", ("orcid.org",))) == []
+    assert list(b.jev_goal("x", ("orcid.org",))) == []
 
 
 # ------------------------------------------------------------------ OpenAlex（取代 Google Scholar）
@@ -429,3 +432,110 @@ def test_openalex_drops_authors_who_moved_away(monkeypatch):
 
     monkeypatch.setattr(apis, "_openalex", fake)
     assert apis.openalex_authors("x", "Taichung") == []
+
+
+# ------------------------------------------------------------------ Jev 操作搜尋＋gpt-6-luna 決策＋即時畫面
+from sourcing import decider
+from sourcing.extract import Candidate
+
+
+class JevFakeBrowser(FakeBrowser):
+    """jev_ready 的假瀏覽器：Jev 在入口頁「打字送出」後跳到搜尋結果頁。"""
+
+    jev_ready = True
+
+    def __init__(self, pages, *, jev_finishes=True):
+        super().__init__(pages)
+        self.jev_finishes = jev_finishes
+        self.goals = []
+        self.frames = 0
+
+    def jev_goal(self, goal, domains, *, text=None, entry_url=None, **kw):
+        self.goals.append((goal, text))
+        if text is None:
+            return iter(())
+        if not self.jev_finishes:
+            self.last_outcome = "stuck"
+            return iter([{"action": "refused", "detail": "拒絕", "confidence": 0.5}])
+        self.open(SITES["github"].search_url(SearchTerms(("python",), None)))
+        self.last_outcome = "done"
+        return iter([{"action": "type_text", "detail": f"輸入：{text}", "confidence": 0.9},
+                     {"action": "press_enter", "detail": "enter", "confidence": 0.9}])
+
+    def latest_frame(self):
+        self.frames += 1
+        return self.frames, "AAAA"
+
+
+def _types(events):
+    return [e["type"] + (":" + e["action"] if e["type"] == "step" else "") for e in events]
+
+
+def test_jev_types_the_search_that_rules_decided_without_model():
+    prep = service.prepare("Python 工程師", max_candidates=1, site_ids=["github"])
+    browser = JevFakeBrowser(_github_pages())
+    events = list(service.stream(prep, browser_factory=lambda: browser))
+    kinds = _types(events)
+    assert kinds[:5] == ["plan", "decision", "step:open_entry", "step:jev_type_text", "step:jev_press_enter"]
+    search = next(e for e in events if e["type"] == "decision" and e["what"] == "search_text")
+    assert search["by"] == "rules" and "type:user language:python" in search["detail"]
+    assert browser.goals[0][1] == "type:user language:python"
+    assert "step:open_search" not in kinds and kinds.count("candidate") == 1
+
+
+def test_falls_back_to_search_url_when_jev_does_not_finish():
+    prep = service.prepare("Python 工程師", max_candidates=1, site_ids=["github"])
+    browser = JevFakeBrowser(_github_pages(), jev_finishes=False)
+    kinds = _types(list(service.stream(prep, browser_factory=lambda: browser)))
+    assert "step:fallback" in kinds and "step:open_search" in kinds and kinds.count("candidate") == 1
+
+
+def test_model_judged_mismatch_is_skipped_and_not_counted(monkeypatch):
+    def fake_summarize(site, url, *a, **k):
+        fit = "不符合" if url.endswith("alice") else "符合"
+        return Candidate(site.id, url, url.rsplit("/", 1)[-1], fit=fit, fit_reason="只有前端經驗" if fit == "不符合" else "")
+
+    monkeypatch.setattr(service, "summarize", fake_summarize)
+    prep = service.prepare("Python 工程師", max_candidates=1, site_ids=["github"])
+    events = list(service.stream(prep, browser_factory=lambda: FakeBrowser(_github_pages())))
+    skipped = [e for e in events if e["type"] == "candidate_skipped"]
+    kept = [e["candidate"]["name"] for e in events if e["type"] == "candidate"]
+    assert skipped[0]["name"] == "alice" and skipped[0]["reason"] == "只有前端經驗" and kept == ["bob"]
+
+
+def test_stream_live_interleaves_frames_and_finishes():
+    prep = service.prepare("Python 工程師", max_candidates=1, site_ids=["github"])
+    browser = JevFakeBrowser(_github_pages())
+    events = list(service.stream_live(prep, fps=50, browser_factory=lambda: browser))
+    assert events[-1]["type"] == "done"
+    assert any(e["type"] == "frame" and e["data"].startswith("data:image/jpeg;base64,") for e in events)
+
+
+def test_decider_validates_model_output(monkeypatch):
+    plan = planner.rule_plan("Python 工程師，在台中")
+    monkeypatch.setenv("OPENROUTER_API_KEY", "test")
+    monkeypatch.setattr(llm, "chat_json", lambda *a, **k: {"query": "language:python location:Taichung"})
+    assert decider.search_text(SITES["github"], plan) == ("type:user language:python location:Taichung", "llm")
+    monkeypatch.setattr(llm, "chat_json", lambda *a, **k: {"query": "male python developer"})
+    assert decider.search_text(SITES["github"], plan)[1] == "rules"
+    cards = [decider.Card(f"https://github.com/u{i}", f"u{i}") for i in range(5)]
+    monkeypatch.setattr(llm, "chat_json", lambda *a, **k: {"picks": [3, 3, 99, 1]})
+    picked, source = decider.pick_candidates(SITES["github"], plan, cards, k=2)
+    assert [c.name for c in picked] == ["u3", "u1"] and source == "llm"
+
+
+def test_jev_may_only_type_into_search_fields_and_enter_after_typing(monkeypatch):
+    monkeypatch.setattr("sourcing.browser.time.sleep", lambda s: None)
+    login = SimpleNamespace(index=1, href="", name="Username or email", field=True, secret=False, in_view=True, covered=False)
+    box = SimpleNamespace(index=2, href="", name="Search GitHub", field=True, secret=False, in_view=True, covered=False)
+    b = _jev_browser([_decision("press_enter"), _decision("type_text", 1), _decision("type_text", 2),
+                      _decision("press_enter"), _decision("done")], [login, box])
+    typed = []
+    b._act.type_text = lambda session, index, text: typed.append((index, text))
+    b._act.field_value = lambda session, index: ""
+    steps = list(b.jev_goal("search", ("orcid.org",), text="python"))
+    assert [s["action"] for s in steps] == ["refused", "refused"] and b.last_outcome == "stuck" and typed == []
+    b = _jev_browser([_decision("type_text", 2), _decision("press_enter"), _decision("done")], [login, box])
+    b._act.type_text = lambda session, index, text: typed.append((index, text))
+    steps = list(b.jev_goal("search", ("orcid.org",), text="python"))
+    assert [s["action"] for s in steps] == ["type_text", "press_enter", "done"] and typed == [(2, "python")]

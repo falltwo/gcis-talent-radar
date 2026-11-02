@@ -1,0 +1,333 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>找人 agent</title>
+<!--
+  即時版：POST /api/sourcing/search（live=true）回傳 SSE，frame 事件是 Chrome 的即時畫面，
+  其他事件（plan、decision、step、candidate…）由 handle() 畫到時間軸與候選人卡片。
+  gpt-6-luna 負責決策（decision 事件），Jev 負責操作瀏覽器（step 的 jev_* 動作）。
+-->
+<style>
+  :root {
+    --bg: #f5f6f8; --card: #ffffff; --ink: #1d2433; --muted: #667085; --line: #e4e7ec;
+    --accent: #2f6fde; --accent-soft: #e8f0fd; --ok: #2e7d4f; --ok-soft: #e6f4ec;
+    --warn: #b54708; --warn-soft: #fef0e1; --bad: #b42318; --bad-soft: #fde8e7;
+    --jev: #7a4fd6; --jev-soft: #f1ebfd; --luna: #0f7b8a; --luna-soft: #e2f4f6;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #11141a; --card: #1a1f28; --ink: #e8ebf1; --muted: #98a2b3; --line: #2b3240;
+      --accent: #6f9ff0; --accent-soft: #1c2a42; --ok: #63c08b; --ok-soft: #16301f; --warn: #f0a356; --warn-soft: #3a2614;
+      --bad: #f2867c; --bad-soft: #3b1a18; --jev: #b39af2; --jev-soft: #2a2140; --luna: #5cc8d6; --luna-soft: #123236; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+    font: 15px/1.55 "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", system-ui, sans-serif; }
+  header { padding: 16px 24px; background: var(--card); border-bottom: 1px solid var(--line); }
+  .bar { max-width: 1400px; margin: 0 auto; display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; }
+  h1 { margin: 0 8px 0 0; font-size: 19px; white-space: nowrap; }
+  form { display: flex; flex: 1; min-width: 280px; gap: 8px; flex-wrap: wrap; }
+  input[type=text] { flex: 1; min-width: 200px; font: inherit; padding: 8px 12px; border-radius: 8px;
+    border: 1px solid var(--line); background: var(--bg); color: var(--ink); }
+  select, button { font: inherit; padding: 8px 14px; border-radius: 8px; border: 1px solid var(--line);
+    background: var(--card); color: var(--ink); cursor: pointer; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button:disabled { opacity: .5; cursor: default; }
+  .status { color: var(--muted); font-size: 14px; }
+  .status b { color: var(--ink); }
+  .legend { display: flex; gap: 12px; font-size: 13px; color: var(--muted); }
+  .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 4px; vertical-align: -1px; }
+  main { max-width: 1400px; margin: 0 auto; padding: 20px 24px 40px; display: grid; gap: 20px;
+    grid-template-columns: minmax(0, 2fr) minmax(300px, 1fr); }
+  section { background: var(--card); border: 1px solid var(--line); border-radius: 14px; }
+  section > h2 { margin: 0; padding: 14px 18px; font-size: 15px; border-bottom: 1px solid var(--line); }
+  .plan { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 12px 18px; }
+  .plan .label { color: var(--muted); margin: 0 2px 0 8px; }
+  .plan .label:first-child { margin-left: 0; }
+  .chip { display: inline-block; padding: 2px 10px; border-radius: 999px; background: var(--bg); border: 1px solid var(--line); font-size: 13px; }
+  .chip.match { background: var(--ok-soft); border-color: transparent; color: var(--ok); }
+  #banners { grid-column: 1 / -1; display: grid; gap: 8px; }
+  #banners:empty { display: none; }
+  .banner { padding: 10px 16px; border-radius: 10px; background: var(--warn-soft); color: var(--warn); }
+  .banner.bad { background: var(--bad-soft); color: var(--bad); }
+  .banner.ok { background: var(--ok-soft); color: var(--ok); }
+
+  .browserbar { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 1px solid var(--line); }
+  .live { display: none; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; color: var(--bad); }
+  .live.on { display: inline-flex; }
+  .live::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--bad); animation: pulse 1.2s infinite; }
+  @keyframes pulse { 50% { opacity: .25; } }
+  .url { flex: 1; min-width: 0; padding: 5px 12px; border-radius: 8px; background: var(--bg); color: var(--muted);
+    font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .badge { padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; white-space: nowrap; }
+  .viewport { position: relative; aspect-ratio: 1280 / 800; background: var(--bg); overflow: hidden; border-radius: 0 0 14px 14px; }
+  .viewport img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; object-position: top; }
+  .viewport .empty { position: absolute; inset: 0; display: grid; place-items: center; color: var(--muted); text-align: center; padding: 24px; }
+  .caption { padding: 12px 16px; border-top: 1px solid var(--line); min-height: 48px; }
+
+  .timeline { list-style: none; margin: 0; padding: 8px 0; max-height: 680px; overflow: auto; }
+  .timeline li { display: grid; grid-template-columns: 34px 1fr auto; gap: 10px; align-items: start; padding: 9px 16px; animation: in .25s ease; }
+  .timeline .icon { width: 30px; height: 30px; border-radius: 8px; display: grid; place-items: center; font-size: 15px; }
+  .timeline .t { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+  .timeline .detail { word-break: break-word; }
+  .timeline .sub { color: var(--muted); font-size: 12px; }
+  @keyframes in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
+  .candidates { grid-column: 1 / -1; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; padding: 16px; }
+  .card { border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; animation: in .25s ease; }
+  .card .top { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+  .card .name { font-weight: 700; font-size: 16px; }
+  .card .site { font-size: 12px; color: var(--muted); white-space: nowrap; }
+  .card .headline, .card .reason { color: var(--muted); font-size: 14px; }
+  .fit { align-self: flex-start; font-size: 12px; font-weight: 700; padding: 2px 10px; border-radius: 999px; }
+  .fit.yes { background: var(--ok-soft); color: var(--ok); }
+  .fit.part { background: var(--warn-soft); color: var(--warn); }
+  .fit.unknown { background: var(--bg); color: var(--muted); }
+  .card .links { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 13px; }
+  .card a { color: var(--accent); text-decoration: none; }
+  .card a:hover { text-decoration: underline; }
+  .none { padding: 18px; color: var(--muted); }
+  @media (max-width: 900px) { main { grid-template-columns: 1fr; padding: 16px; } header { padding: 14px 16px; } }
+</style>
+</head>
+<body>
+<header>
+  <div class="bar">
+    <h1>找人 agent</h1>
+    <form id="form">
+      <input type="text" id="query" maxlength="300" required value="找會 Python 的軟體工程師，在台中"
+             aria-label="職缺需求" placeholder="例如：找會 Python 的軟體工程師，在台中">
+      <select id="max" aria-label="人數">
+        <option value="3" selected>3 位</option><option value="5">5 位</option><option value="10">10 位</option>
+      </select>
+      <button class="primary" id="start" type="submit">開始搜尋</button>
+      <button id="stop" type="button" disabled>停止</button>
+    </form>
+    <span class="status" id="status">輸入需求後按「開始搜尋」</span>
+    <span class="legend"><span><i style="background:var(--luna)"></i>gpt-6-luna 決策</span><span><i style="background:var(--jev)"></i>Jev 操作</span></span>
+  </div>
+</header>
+
+<main>
+  <section class="plan" id="plan"><span class="label">搜尋計畫</span><span class="none">尚未開始</span></section>
+  <div id="banners"></div>
+
+  <section>
+    <div class="browserbar">
+      <span class="live" id="live">LIVE</span>
+      <div class="url" id="url">about:blank</div>
+      <span class="badge" id="badge" hidden></span>
+    </div>
+    <div class="viewport" id="viewport"><div class="empty">這裡會直接顯示 agent 操作的 Chrome 畫面</div></div>
+    <div class="caption" id="caption"></div>
+  </section>
+
+  <section>
+    <h2>每一步</h2>
+    <ol class="timeline" id="timeline"></ol>
+  </section>
+
+  <section class="candidates">
+    <h2 id="cand-title">候選人</h2>
+    <div class="cards" id="cards"><div class="none">還沒有候選人</div></div>
+  </section>
+</main>
+
+<script>
+const SITE_NAMES = {github: "GitHub", stackoverflow: "Stack Overflow", huggingface: "Hugging Face", kaggle: "Kaggle",
+                    dribbble: "Dribbble", orcid: "ORCID", openalex: "OpenAlex"};
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"}[c]));
+const siteName = (id) => SITE_NAMES[id] || id;
+let state, controller = null, frameImg = null, started = 0;
+
+function action(a) {
+  if (a.startsWith("jev_")) {
+    const names = {type_text: "Jev：打字", press_enter: "Jev：按 Enter", click: "Jev：點擊", scroll_down: "Jev：往下捲",
+                   scroll_up: "Jev：往上捲", press_escape: "Jev：關閉彈窗", back: "Jev：返回", done: "Jev：完成",
+                   none: "Jev：無法繼續", refused: "已拒絕 Jev 的動作", navigate: "Jev：回入口頁", wait: "Jev：等待"};
+    return {icon: "🤖", label: names[a.slice(4)] || "Jev：" + a.slice(4), color: a === "jev_refused" ? "warn" : "jev"};
+  }
+  return ({open_entry: {icon: "🌐", label: "開啟網站", color: "accent"},
+           open_search: {icon: "🔍", label: "開搜尋結果", color: "accent"},
+           open_profile: {icon: "🖱️", label: "開個人頁", color: "accent"},
+           fallback: {icon: "↪️", label: "改用備案", color: "warn"},
+           read_api: {icon: "🔌", label: "官方 API", color: "ok"}})[a] || {icon: "•", label: a, color: "accent"};
+}
+
+function reset() {
+  state = {steps: 0, candidates: 0, frames: 0};
+  frameImg = null;
+  $("timeline").innerHTML = ""; $("banners").innerHTML = "";
+  $("cards").innerHTML = '<div class="none">還沒有候選人</div>'; $("cand-title").textContent = "候選人";
+  $("plan").innerHTML = '<span class="label">搜尋計畫</span><span class="none">判斷中…</span>';
+  $("viewport").innerHTML = '<div class="empty">啟動瀏覽器中…</div>';
+  $("url").textContent = "about:blank"; $("badge").hidden = true; $("caption").textContent = "";
+}
+
+const elapsed = () => (performance.now() - started) / 1000;
+
+function addTimeline(icon, color, text, sub) {
+  const li = document.createElement("li");
+  li.innerHTML = `<span class="icon" style="background:var(--${color}-soft);color:var(--${color})">${icon}</span>
+    <div><div class="detail">${esc(text)}</div>${sub ? `<div class="sub">${esc(sub)}</div>` : ""}</div>
+    <span class="t">${elapsed().toFixed(1)}s</span>`;
+  $("timeline").append(li);
+  li.scrollIntoView({block: "nearest"});
+}
+
+function banner(text, kind = "") {
+  const div = document.createElement("div");
+  div.className = "banner " + kind;
+  div.textContent = text;
+  $("banners").append(div);
+}
+
+function showFrame(src) {
+  if (!frameImg) {
+    $("viewport").innerHTML = "";
+    frameImg = new Image();
+    frameImg.alt = "agent 操作中的瀏覽器畫面";
+    $("viewport").append(frameImg);
+  }
+  frameImg.src = src;
+  $("live").classList.add("on");
+}
+
+function renderCandidate(c) {
+  if (!state.candidates) $("cards").innerHTML = "";
+  state.candidates += 1;
+  $("cand-title").textContent = `候選人（${state.candidates}）`;
+  const matched = new Set((c.matched_skills || []).map((s) => s.toLowerCase()));
+  const skills = (c.skills || []).map((s) => `<span class="chip ${matched.has(s.toLowerCase()) ? "match" : ""}">${esc(s)}</span>`).join(" ");
+  const links = (c.evidence || []).map((e) => `<a href="${esc(e.url)}" target="_blank" rel="noopener noreferrer">${esc(e.label)} ↗</a>`).join("");
+  const fitClass = {"符合": "yes", "部分符合": "part"}[c.fit] || "unknown";
+  const card = document.createElement("article");
+  card.className = "card";
+  card.innerHTML = `<div class="top"><span class="name">${esc(c.name)}</span><span class="site">${esc(siteName(c.site))}</span></div>
+    <span class="fit ${fitClass}">${esc(c.fit || "未判斷")}</span>
+    ${c.headline ? `<div class="headline">${esc(c.headline)}</div>` : ""}
+    ${skills ? `<div>${skills}</div>` : ""}
+    ${c.summary ? `<div>${esc(c.summary)}</div>` : ""}
+    ${c.fit_reason ? `<div class="reason">判斷根據：${esc(c.fit_reason)}</div>` : ""}
+    <div class="links">${links}</div>`;
+  $("cards").append(card);
+}
+
+function finish(text) {
+  $("status").innerHTML = text;
+  $("live").classList.remove("on");
+  $("start").disabled = false; $("stop").disabled = true;
+}
+
+function handle(ev) {
+  switch (ev.type) {
+    case "frame":
+      state.frames += 1;
+      showFrame(ev.data);
+      break;
+    case "plan": {
+      const p = ev.plan;
+      $("plan").innerHTML = `<span class="label">搜尋計畫</span>${p.categories.map((c) => `<span class="chip">${esc(c.name)}</span>`).join(" ")}
+        <span class="label">技能</span>${p.skills.map((s) => `<span class="chip">${esc(s)}</span>`).join(" ")}
+        ${p.location ? `<span class="label">地點</span><span class="chip">${esc(p.location)}</span>` : ""}
+        <span class="label">網站</span>${ev.sites.map((s) => `<span class="chip">${esc(s.name)}</span>`).join(" ")}
+        <span class="label">判斷</span><span class="chip">${p.source === "llm" ? "gpt-6-luna" : "規則"}</span>`;
+      $("status").innerHTML = "<b>搜尋中</b>";
+      break;
+    }
+    case "decision":
+      addTimeline("🧠", ev.by === "gpt-6-luna" ? "luna" : "accent", ev.detail,
+                  `${ev.by === "gpt-6-luna" ? "gpt-6-luna 決定" : "規則決定"} · ${siteName(ev.site)}`);
+      break;
+    case "step": {
+      state.steps += 1;
+      const a = action(ev.action);
+      addTimeline(a.icon, a.color, ev.detail, siteName(ev.site) + (ev.confidence != null ? ` · 信心 ${ev.confidence}` : ""));
+      $("url").textContent = ev.url || $("url").textContent;
+      Object.assign($("badge"), {hidden: false, textContent: `${a.icon} ${a.label}`});
+      $("badge").style.background = `var(--${a.color}-soft)`;
+      $("badge").style.color = `var(--${a.color})`;
+      $("caption").textContent = ev.detail;
+      if (ev.screenshot && !state.frames) showFrame(ev.screenshot);
+      break;
+    }
+    case "candidate":
+      renderCandidate(ev.candidate);
+      addTimeline("👤", "ok", "找到候選人：" + ev.candidate.name, siteName(ev.candidate.site));
+      break;
+    case "candidate_skipped":
+      addTimeline("⏭️", "warn", `略過 ${ev.name}：${ev.reason || "不符合需求"}`, "gpt-6-luna 判斷 · " + siteName(ev.site));
+      break;
+    case "site_skipped":
+      addTimeline("⏭️", "warn", `${ev.name} 已跳過：${ev.reason}`, "");
+      break;
+    case "site_error":
+      addTimeline("⚠️", "warn", ev.reason, siteName(ev.site));
+      break;
+    case "notice":
+      banner(ev.message);
+      break;
+    case "rejected":
+      banner("已拒絕：" + ev.reason, "bad");
+      finish("<b>已拒絕</b>");
+      break;
+    case "no_public_work":
+      banner(ev.advice || "這類職缺網路上少有公開作品，建議改用其他管道。");
+      finish("<b>結束</b>");
+      break;
+    case "error":
+      banner(ev.reason, "bad");
+      finish("<b>發生錯誤</b>");
+      break;
+    case "done":
+      banner(`完成：找到 ${ev.count} 位候選人。${ev.message || ""}`, "ok");
+      finish(`<b>完成</b> · ${state.steps} 步 · ${ev.count} 位 · ${elapsed().toFixed(0)} 秒`);
+      break;
+  }
+}
+
+async function run(query, maxCandidates) {
+  reset();
+  controller = new AbortController();
+  started = performance.now();
+  $("start").disabled = true; $("stop").disabled = false;
+  $("status").innerHTML = "<b>準備中</b>";
+  try {
+    const res = await fetch("/api/sourcing/search", {
+      method: "POST", headers: {"Content-Type": "application/json"}, signal: controller.signal,
+      body: JSON.stringify({query, max_candidates: maxCandidates, live: true})});
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      handle({type: "error", reason: `HTTP ${res.status}：${typeof body.detail === "string" ? body.detail : "請確認輸入"}`});
+      return;
+    }
+    const reader = res.body.pipeThrough(new TextDecoderStream()).getReader();
+    let buf = "";
+    for (;;) {
+      const {value, done} = await reader.read();
+      if (done) break;
+      buf += value;
+      let i;
+      while ((i = buf.indexOf("\n\n")) >= 0) {
+        const frame = buf.slice(0, i); buf = buf.slice(i + 2);
+        const line = frame.split("\n").find((l) => l.startsWith("data: "));
+        if (line) handle(JSON.parse(line.slice(6)));
+      }
+    }
+  } catch (err) {
+    if (err.name === "AbortError") { banner("已停止。"); finish("<b>已停止</b>"); }
+    else handle({type: "error", reason: "連線中斷：" + err.message});
+  }
+}
+
+$("form").onsubmit = (e) => { e.preventDefault(); run($("query").value.trim(), Number($("max").value)); };
+$("stop").onclick = () => controller && controller.abort();
+reset();
+$("plan").innerHTML = '<span class="label">搜尋計畫</span><span class="none">尚未開始</span>';
+$("viewport").innerHTML = '<div class="empty">這裡會直接顯示 agent 操作的 Chrome 畫面</div>';
+</script>
+</body>
+</html>

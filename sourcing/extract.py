@@ -38,7 +38,9 @@ class Candidate:
     summary: str = ""
     evidence: list[dict] = field(default_factory=list)
     personal_site: Optional[str] = None
-    summary_source: str = "rules"  # rules | llm
+    summary_source: str = "rules"  # rules | llm | api
+    fit: str = "未判斷"  # 符合 | 部分符合 | 不符合 | 未判斷（gpt-6-luna 判斷）
+    fit_reason: str = ""
 
     def as_dict(self) -> dict:
         return asdict(self)
@@ -49,6 +51,20 @@ def clean_text(text: str) -> str:
     text = (text or "").encode("utf-8", "replace").decode("utf-8")
     text = EMAIL.sub("[已移除 Email]", text)
     return PHONE.sub("[已移除電話]", text)
+
+
+def result_cards(site: Site, rows: Iterable[tuple[str, str, str]], *, limit: int = 20) -> list["Card"]:
+    """搜尋結果頁上的候選人：個人頁網址、名稱，加上卡片文字（給 gpt-6-luna 挑人）。"""
+    from sourcing.decider import Card
+
+    rows = list(rows)
+    context: dict[str, str] = {}
+    for href, _, ctx in rows:
+        url = site.profile_url(href)
+        if url and ctx and url not in context:
+            context[url] = ctx
+    return [Card(link.href, link.text, context.get(link.href, ""))
+            for link in profile_links(site, (Link(h, t) for h, t, _ in rows), limit=limit)]
 
 
 def profile_links(site: Site, links: Iterable[Link], *, limit: int = 20) -> list[Link]:
@@ -107,7 +123,8 @@ def _rule_summary(site: Site, profile_url: str, title: str, text: list[str], pla
     headline = next((t for t in text if 12 <= len(t) <= 120 and name not in t and not t.startswith("/")
                      and ".md" not in t and not NOISE.search(t) and (" " in t or re.search(r"[一-鿿]", t))), "")
     return Candidate(site.id, profile_url, name[:80], headline[:120], matched, matched,
-                     summary=f"頁面提到：{'、'.join(matched)}" if matched else "")
+                     summary=f"頁面提到：{'、'.join(matched)}" if matched else "",
+                     fit="部分符合" if matched else "未判斷")
 
 
 _SUMMARY_SCHEMA = {
@@ -117,15 +134,17 @@ _SUMMARY_SCHEMA = {
         "headline": {"type": "string"},
         "skills": {"type": "array", "items": {"type": "string"}},
         "summary": {"type": "string"},
+        "fit": {"type": "string", "enum": ["符合", "部分符合", "不符合"]},
+        "fit_reason": {"type": "string"},
     },
-    "required": ["name", "headline", "skills", "summary"],
+    "required": ["name", "headline", "skills", "summary", "fit", "fit_reason"],
     "additionalProperties": False,
 }
 _SUMMARY_SYSTEM = (
     "你根據一位候選人的公開個人頁文字，整理給 HR 看的專長摘要。只能用頁面上出現的資訊，不可推測。"
     "name 用頁面上的顯示名稱或帳號；headline 是一句話的自我介紹；skills 最多 6 個專業技能；"
-    "summary 用繁體中文 60 字內說明他的專長和代表作品。不要提及或推測年齡、性別、國籍、婚育、宗教、外貌、"
-    "聯絡方式。只回 JSON。"
+    "summary 用繁體中文 60 字內說明他的專長和代表作品。fit 判斷他的專業是否符合職缺需求，fit_reason 用 30 字內說明根據；"
+    "只能依專業技能與作品判斷。不要提及或推測年齡、性別、國籍、婚育、宗教、外貌、聯絡方式。只回 JSON。"
 )
 
 
@@ -134,7 +153,7 @@ def summarize(site: Site, profile_url: str, title: str, text: list[str], links: 
     text = [clean_text(t) for t in text if t and t.strip()]
     cand = _rule_summary(site, profile_url, title, text, plan, fallback_name)
     if llm.has_key() and text:
-        user = (f"職缺需要的技能：{', '.join(plan.terms.skills)}\n網站：{site.name}\n頁面標題：{clean_text(title)}\n"
+        user = (f"職缺需求：{plan.query}\n需要的技能：{', '.join(plan.terms.skills)}\n網站：{site.name}\n頁面標題：{clean_text(title)}\n"
                 "頁面文字：\n" + "\n".join(text)[:6000])
         out = llm.chat_json(_SUMMARY_SYSTEM, user, "candidate_summary", _SUMMARY_SCHEMA, max_tokens=400)
         if out:
@@ -147,6 +166,10 @@ def summarize(site: Site, profile_url: str, title: str, text: list[str], links: 
             cand.skills = [s for s in skills if not PERSONAL_TRAIT.search(s)]
             cand.summary = summary
             cand.summary_source = "llm"
+            if out.get("fit") in ("符合", "部分符合", "不符合"):
+                cand.fit = out["fit"]
+                reason = clean_text(str(out.get("fit_reason", "")))[:80]
+                cand.fit_reason = "" if PERSONAL_TRAIT.search(reason) else reason
     cand.evidence = [{"label": "個人頁", "url": profile_url}] + [
         {"label": w.text or "作品", "url": w.href} for w in work_links(site, profile_url, links)
     ]
