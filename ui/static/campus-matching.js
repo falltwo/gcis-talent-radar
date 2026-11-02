@@ -68,9 +68,13 @@
     box.append(node('h3','為什麼找到這個校系？'));item.departments.forEach(dept=>box.append(node('span',dept,'campus-dept')));box.append(node('p',item.reason));
     const facts=node('dl');[['示範直線距離',item.distance_km.toFixed(1)+' 公里'],['相關職務示例',item.related_roles.join('、')],['畢業生與學年','待接正式資料'],['官方合作窗口','待接正式資料']].forEach(([title,value])=>{facts.append(node('dt',title),node('dd',value));});box.append(facts,node('p','座標以企業選點為中心產生，並非真實校址。','campus-popup-note'));
     const add=node('button',basket.has(item.id)?'已加入候選・點擊移除':'＋ 加入合作候選','campus-add');add.type='button';add.addEventListener('click',()=>{if(basket.has(item.id))basket.delete(item.id);else basket.set(item.id,item);updateBasket();updateAddButton();status(basket.has(item.id)?`${item.name}已加入展示合作候選，尚未聯絡。`:`已移除${item.name}。`);});box.append(add);
-    popup=new maplibregl.Popup({closeButton:false,closeOnClick:false,anchor:'bottom',offset:23,maxWidth:'310px',focusAfterOpen:false}).setLngLat(item.coordinates).setDOMContent(box).addTo(map);
+    // Laid out off-screen first so the anchor is chosen from the card's real height.
+    Object.assign(box.style,{position:'absolute',visibility:'hidden',width:'310px'});$('city-stage').append(box);
+    const anchor=window.streetMap.popupAnchor(box,item.coordinates);
+    Object.assign(box.style,{position:'',visibility:'',width:''});
+    popup=new maplibregl.Popup({closeButton:false,closeOnClick:false,anchor,offset:23,maxWidth:'310px',focusAfterOpen:false}).setLngLat(item.coordinates).setDOMContent(box).addTo(map);
     $('city-stage').classList.add('campus-popup-open');popup.on('close',()=>{$('city-stage').classList.remove('campus-popup-open');});
-    map.easeTo({center:item.coordinates,offset:[0,Math.max(0,map.getContainer().clientHeight/2-65)],duration:reduced?0:450});close.focus({preventScroll:true});
+    close.focus({preventScroll:true});
   }
   function renderList(){
     const box=$('campus-results');box.replaceChildren();

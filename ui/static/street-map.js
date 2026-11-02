@@ -2,7 +2,7 @@
 (() => {
   let map, marker, revision = 0, currentLocation, mapReady = false;
   let animationFrame = 0;
-  let companyPopup = null;
+  let companyPopup = null, pinHeld = false;
   const $ = id => document.getElementById(id);
   const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
   function message(text, error = false) {
@@ -22,6 +22,7 @@
     map.addControl(new maplibregl.NavigationControl({visualizePitch:true}), 'top-right');
     map.addControl(new maplibregl.ScaleControl({unit:'metric'}), 'bottom-left');
     map.on('error',()=>message('部分地圖資料載入失敗；請確認網路後重試。',true));
+    map.on('pitch',tiltPin);
     map.on('load',()=>{
       mapReady=true;
       map.setLight({anchor:'viewport',color:'#ffffff',intensity:0.42,position:[1.5,160,45]});
@@ -47,16 +48,35 @@
     document.dispatchEvent(new CustomEvent('streetmap:company-open'));
     const card=$('company-card-popup');
     card.hidden=false;$('city-stage').classList.add('company-popup-open');
-    companyPopup=new maplibregl.Popup({closeButton:false,closeOnClick:false,anchor:'bottom',offset:25,maxWidth:'310px',focusAfterOpen:false})
+    const anchor=popupAnchor(card,map.project(data.coordinates));
+    companyPopup=new maplibregl.Popup({closeButton:false,closeOnClick:false,anchor,offset:25,maxWidth:'310px',focusAfterOpen:false})
       .setLngLat(data.coordinates).setDOMContent(card).addTo(map);
     marker.getElement().setAttribute('aria-expanded','true');
     companyPopup.on('close',()=>{
-      card.hidden=true;$('city-stage').classList.remove('company-popup-open');$('city-stage').append(card);companyPopup=null;
+      card.hidden=true;card.style.maxHeight='';$('city-stage').classList.remove('company-popup-open');$('city-stage').append(card);companyPopup=null;
       marker?.getElement().setAttribute('aria-expanded','false');
     });
-    // Place the selected point lower in the viewport so the window fits above it.
-    map.easeTo({center:data.coordinates,offset:[0,Math.max(0,map.getContainer().clientHeight/2-70)],duration:reduced?0:450});
     $('close-company-window').focus({preventScroll:true});
+  }
+  // Picks the first side with room so the map never has to move to make space for the card.
+  function popupAnchor(card,{x,y}) {
+    const {clientWidth:width,clientHeight:height}=map.getContainer();
+    const toolbar=document.querySelector('.map-toolbar');
+    const edge=12, top=toolbar.offsetTop+toolbar.offsetHeight+edge, gap=25, diagonal=18;
+    // Same cap as the popup's CSS max-height.
+    const w=Math.min(card.offsetWidth,310), h=Math.min(card.scrollHeight,480,innerHeight-230);
+    const spots={
+      bottom:[x-w/2,y-gap-h], left:[x+gap,y-h/2], right:[x-gap-w,y-h/2], top:[x-w/2,y+gap],
+      'bottom-left':[x+diagonal,y-diagonal-h], 'bottom-right':[x-diagonal-w,y-diagonal-h],
+      'top-left':[x+diagonal,y+diagonal], 'top-right':[x-diagonal-w,y+diagonal],
+    };
+    const fits=([left,up])=>left>=edge&&up>=top&&left+w<=width-edge&&up+h<=height-edge;
+    const anchor=Object.keys(spots).find(name=>fits(spots[name]));
+    if(anchor)return anchor;
+    // Nothing fits (common on phones): take the taller side and let the card scroll inside it.
+    const above=y-gap-top, below=height-edge-y-gap;
+    card.style.maxHeight=Math.max(above,below)+'px';
+    return above>=below?'bottom':'top';
   }
   function growBuildings() {
     cancelAnimationFrame(animationFrame);
@@ -69,14 +89,31 @@
     };
     animationFrame=requestAnimationFrame(tick);
   }
+  function dropPin(pin) {
+    if(!pin||pin!==marker)return;
+    const element=pin.getElement();
+    element.classList.remove('pin-waiting');element.classList.add('pin-drop');
+  }
+  // Ground effects tilt with the camera; the beam shortens to nothing when viewed from directly above.
+  function tiltPin() {
+    if(!marker)return;
+    const pitch=map.getPitch(), {style}=marker.getElement();
+    style.setProperty('--pitch',pitch+'deg');
+    style.setProperty('--beam',Math.sin(pitch*Math.PI/180).toFixed(3));
+  }
   function go(data) {
     if (!mapReady) return;
     closeCompany();
     marker?.remove();
     const dot=document.createElement('button');dot.className='real-map-pin';dot.type='button';dot.setAttribute('aria-label',data.label+'，開啟企業情境');dot.setAttribute('aria-expanded','false');dot.setAttribute('aria-controls','company-card-popup');
-    dot.innerHTML='<span class="real-map-pin-wave"></span><span class="real-map-pin-core"></span>';
+    dot.innerHTML='<span class="real-map-pin-grid"></span><span class="real-map-pin-ground"><span class="real-map-pin-wave"></span><span class="real-map-pin-wave"></span><span class="real-map-pin-wave"></span></span><span class="real-map-pin-beam"></span><svg class="real-map-pin-core" viewBox="0 0 36 36" aria-hidden="true"><circle cx="18" cy="18" r="10.5"/><path d="M18 2v9M18 25v9M2 18h9M25 18h9"/><circle class="real-map-pin-dot" cx="18" cy="18" r="2.6"/></svg>';
     dot.addEventListener('click',()=>openCompany(data));
-    marker=new maplibregl.Marker({element:dot,anchor:'center'}).setLngLat(data.coordinates).addTo(map);
+    const pin=marker=new maplibregl.Marker({element:dot,anchor:'center'}).setLngLat(data.coordinates).addTo(map);
+    tiltPin();
+    if(!reduced) {
+      dot.classList.add('pin-waiting');
+      if(!pinHeld)map.once('moveend',()=>dropPin(pin));
+    }
     map.flyTo({center:data.coordinates,zoom:16.7,pitch:58,bearing:-25,duration:reduced?0:1800,essential:false});
     growBuildings();
     message('已定位道路 · 拖曳移動，右鍵拖曳旋轉');
@@ -90,6 +127,18 @@
     closeCompany(restoreFocus=true){closeCompany(restoreFocus);},
     getMap(){return mapReady?map:null;},
     getLocation(){return currentLocation?{...currentLocation}:null;},
+    popupAnchor(card,coordinates){return popupAnchor(card,map.project(coordinates));},
+    // Keeps the map and pin hidden behind the radar until the entrance has faded away.
+    hold(){
+      if(reduced)return;
+      pinHeld=true;$('city-stage').classList.add('map-pending');
+    },
+    reveal(){
+      if(!pinHeld)return;
+      const stage=$('city-stage');
+      stage.classList.remove('map-pending');stage.classList.add('map-reveal');
+      setTimeout(()=>{stage.classList.remove('map-reveal');pinHeld=false;dropPin(marker);},1000);
+    },
     async locate(district,road) {
       this.selected=[district,road];
       const request=++revision;

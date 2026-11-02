@@ -77,18 +77,20 @@
           <div class="radar-aura"></div>
           <div class="radar-disc">
             <svg viewBox="0 0 500 500" class="radar-grid"><circle cx="250" cy="250" r="238"/><circle cx="250" cy="250" r="180"/><circle cx="250" cy="250" r="120"/><circle cx="250" cy="250" r="60"/><path d="M12 250H488M250 12V488"/><g class="radar-ticks"></g></svg>
-            <div class="radar-sweep"></div><div class="radar-targets"></div><i class="radar-center"></i>
+            <div class="radar-pulses"><i></i><i></i><i></i></div><div class="radar-sweep"></div><div class="radar-targets"></div><i class="radar-center"></i>
           </div>
         </div>
         <div class="radar-invitation"><span>點擊任意處，開始探索</span><small>或按任意一般按鍵</small></div>
+        <div class="radar-shock" aria-hidden="true"></div>
+      <button id="radar-sound" class="radar-motion radar-sound" type="button" aria-pressed="true">音效：開</button>
       <button id="radar-motion" class="radar-motion" type="button" aria-pressed="false">暫停動態</button>
     </div>
     <dialog class="explore-dialog" aria-labelledby="explore-dialog-title" aria-describedby="explore-dialog-description">
       <button id="explore-close" type="button" aria-label="關閉地點選擇，回到雷達">×</button>
       <h2 id="explore-dialog-title" tabindex="-1">你想從哪裡開始探索？</h2>
       <p id="explore-dialog-description">選一個地點，看看周邊的產業與招募環境。</p>
-      <form class="explore-form" id="intro-location">
-        <div class="location-fields"><div><label for="intro-district">臺中市行政區</label><select id="intro-district" name="district" autocomplete="off">${options}</select></div><div><label for="intro-road">道路／街道</label><select id="intro-road" name="road" autocomplete="off" required disabled><option value="">讀取道路中…</option></select></div></div>
+      <form class="explore-form roads-loading" id="intro-location">
+        <div class="location-fields"><div><label for="intro-district">臺中市行政區</label><select id="intro-district" name="district" autocomplete="off">${options}</select></div><div><label for="intro-road">道路／街道<i class="road-spinner" aria-hidden="true"></i></label><select id="intro-road" name="road" autocomplete="off" required disabled><option value="">讀取道路中…</option></select></div></div>
         <button id="intro-submit" type="submit" disabled>探索這個地點</button>
         <p id="intro-note" role="status">道路選項來自公司登記地址；定位與地圖資料來自 OpenStreetMap。</p>
       </form>
@@ -112,13 +114,21 @@
     $(prefix === 'intro' ? 'intro-submit' : 'city-update').disabled = !roads.length;
   }
   ['intro','city'].forEach(prefix => $(prefix + '-district').addEventListener('change', () => fillRoads(prefix)));
+  // Roads are already in memory, so this ring is only a visual cue and never delays the select.
+  let spinnerTimer;
+  $('intro-district').addEventListener('change', () => {
+    if (!Object.keys(roadIndex).length) return;
+    $('intro-location').classList.add('roads-loading');
+    clearTimeout(spinnerTimer);
+    spinnerTimer = setTimeout(() => $('intro-location').classList.remove('roads-loading'), 450);
+  });
   fetch('/static/road-index.json').then(response => {if (!response.ok) throw Error('道路資料讀取失敗'); return response.json();}).then(data => {
     roadIndex = data.districts;
     fillRoads('intro', '中清路三段'); fillRoads('city', '中清路三段');
   }).catch(() => {
     $('intro-note').textContent = '道路資料讀取失敗，請重新整理頁面後再試。';
     $('road-note').textContent = '道路資料讀取失敗，請重新整理頁面後再試。';
-  });
+  }).finally(() => $('intro-location').classList.remove('roads-loading'));
   function selectLocation(district,road) {
     selected={district,road};
     $('city-district').value=district;fillRoads('city',road);
@@ -138,8 +148,10 @@
   }
   $('intro-location').addEventListener('submit',e=>{
     e.preventDefault();if(!$('intro-road').value)return;
+    window.streetMap.hold();
     selectLocation($('intro-district').value,$('intro-road').value);
     entrance.leave(()=>{
+      window.streetMap.reveal();
       intro.inert=true;workspace.inert=false;$('expansion').inert=false;
       document.body.style.overflow='';$('city-heading').focus({preventScroll:true});
     });
