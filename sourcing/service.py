@@ -139,7 +139,7 @@ def stream(prep: Prepared, *, browser_factory: Optional[Callable[[], SourcingBro
             yield {"type": "candidate", "candidate": cand.as_dict()}
     if not browser_sites or len(candidates) >= prep.max_candidates or stopped():
         yield {"type": "done", "count": len(candidates), "plan": plan.as_dict(), "message": DONE_MESSAGE,
-               "usage": prep.usage.as_dict()}
+               "usage": prep.usage.as_dict(), "cancelled": stopped()}
         return
 
     try:
@@ -236,7 +236,7 @@ def stream(prep: Prepared, *, browser_factory: Optional[Callable[[], SourcingBro
         return
 
     yield {"type": "done", "count": len(candidates), "plan": plan.as_dict(), "message": DONE_MESSAGE,
-               "usage": prep.usage.as_dict()}
+               "usage": prep.usage.as_dict(), "cancelled": stopped()}
 
 
 _IDLE = object()

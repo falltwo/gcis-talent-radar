@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>找人 agent</title>
 <!--
-  即時版：POST /api/sourcing/search（live=true）回傳 SSE，frame 事件是 Chrome 的即時畫面，
-  其他事件（plan、decision、step、candidate…）由 handle() 畫到時間軸與候選人卡片。
+  即時版：POST /api/sourcing/runs 建立任務，再用 EventSource 訂閱 /api/sourcing/runs/{id}/events；
+  frame 事件是 Chrome 的即時畫面，其他事件（plan、decision、step、candidate…）由 handle() 畫到時間軸與卡片。
   gpt-6-luna 負責決策（decision 事件），Jev 負責操作瀏覽器（step 的 jev_* 動作）。
 -->
 <style>
@@ -141,7 +141,7 @@ const SITE_NAMES = {github: "GitHub", stackoverflow: "Stack Overflow", huggingfa
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"}[c]));
 const siteName = (id) => SITE_NAMES[id] || id;
-let state, controller = null, frameImg = null, started = 0;
+let state, frameImg = null, started = 0;
 
 function action(a) {
   if (a.startsWith("jev_")) {
@@ -284,54 +284,48 @@ function handle(ev) {
       break;
     case "done":
       window.lastDone = ev;
-      banner(`完成：找到 ${ev.count} 位候選人。${ev.message || ""}`, "ok");
+      banner(ev.cancelled ? `已停止：停止前找到 ${ev.count} 位候選人。` : `完成：找到 ${ev.count} 位候選人。${ev.message || ""}`,
+             ev.cancelled ? "" : "ok");
       if (ev.usage) {
         const u = ev.usage;
         banner(`本次用量：gpt-6-luna ${u.gpt_6_luna.calls} 次、${(u.gpt_6_luna.input_tokens + u.gpt_6_luna.output_tokens).toLocaleString()} token；` +
                `Jev ${u.jev.calls} 次、${(u.jev.input_tokens + u.jev.output_tokens).toLocaleString()} token；` +
                `合計 ${u.total_tokens.toLocaleString()} token，約 US$${u.total_cost_usd.toFixed(4)}`, "ok");
       }
-      finish(`<b>完成</b> · ${state.steps} 步 · ${ev.count} 位 · ${elapsed().toFixed(0)} 秒`);
+      finish(`<b>${ev.cancelled ? "已停止" : "完成"}</b> · ${state.steps} 步 · ${ev.count} 位 · ${elapsed().toFixed(0)} 秒`);
       break;
   }
 }
 
+const EVENT_TYPES = ["plan", "decision", "step", "frame", "candidate", "candidate_skipped", "site_skipped",
+                     "site_error", "notice", "rejected", "no_public_work", "error", "done"];
+let source = null, runId = null;
+
+/** 前端接法：POST 建立任務 → EventSource 訂閱 events_url → 停止時 DELETE。 */
 async function run(query, maxCandidates) {
   reset();
-  controller = new AbortController();
   started = performance.now();
   $("start").disabled = true; $("stop").disabled = false;
   $("status").innerHTML = "<b>準備中</b>";
-  try {
-    const res = await fetch("/api/sourcing/search", {
-      method: "POST", headers: {"Content-Type": "application/json"}, signal: controller.signal,
-      body: JSON.stringify({query, max_candidates: maxCandidates, live: true})});
-    if (!res.ok) {
-      const body = await res.json().catch(() => ({}));
-      handle({type: "error", reason: `HTTP ${res.status}：${typeof body.detail === "string" ? body.detail : "請確認輸入"}`});
-      return;
-    }
-    const reader = res.body.pipeThrough(new TextDecoderStream()).getReader();
-    let buf = "";
-    for (;;) {
-      const {value, done} = await reader.read();
-      if (done) break;
-      buf += value;
-      let i;
-      while ((i = buf.indexOf("\n\n")) >= 0) {
-        const frame = buf.slice(0, i); buf = buf.slice(i + 2);
-        const line = frame.split("\n").find((l) => l.startsWith("data: "));
-        if (line) handle(JSON.parse(line.slice(6)));
-      }
-    }
-  } catch (err) {
-    if (err.name === "AbortError") { banner("已停止。"); finish("<b>已停止</b>"); }
-    else handle({type: "error", reason: "連線中斷：" + err.message});
+  const res = await fetch("/api/sourcing/runs", {method: "POST", headers: {"Content-Type": "application/json"},
+                                                 body: JSON.stringify({query, max_candidates: maxCandidates})});
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    handle({type: "error", reason: `HTTP ${res.status}：${typeof body.detail === "string" ? body.detail : "請確認輸入"}`});
+    return;
   }
+  runId = body.run_id;
+  source = new EventSource(body.events_url);  // 斷線時瀏覽器會自動帶 Last-Event-ID 重連，不會漏事件
+  for (const type of EVENT_TYPES) source.addEventListener(type, (e) => handle(JSON.parse(e.data)));
+  source.addEventListener("end", () => { source.close(); source = null; });
 }
 
 $("form").onsubmit = (e) => { e.preventDefault(); run($("query").value.trim(), Number($("max").value)); };
-$("stop").onclick = () => controller && controller.abort();
+$("stop").onclick = async () => {
+  if (!runId) return;
+  await fetch(`/api/sourcing/runs/${runId}`, {method: "DELETE"});  // 背景流程會在下一步停下，最後送出 done
+  $("status").innerHTML = "<b>停止中</b>";
+};
 reset();
 $("plan").innerHTML = '<span class="label">搜尋計畫</span><span class="none">尚未開始</span>';
 $("viewport").innerHTML = '<div class="empty">這裡會直接顯示 agent 操作的 Chrome 畫面</div>';

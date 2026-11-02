@@ -52,47 +52,50 @@ pip install -r requirements-sourcing.txt   # typesafe-computer-use，需要 Pyth
 
 網站狀態是 2026-11-02 實測的結果。遇到機器人驗證或錯誤頁時，系統會跳過該網站，**不嘗試繞過**。
 
-## API
+## API（給前端）
 
-### `GET /api/sourcing/sites`
+找人 agent 是前端的一個功能，前端只要接下面的 API。完整欄位也可以看 FastAPI 自動產生的 `/docs`。建議用「任務」接口（`/api/sourcing/runs`）：
 
-回傳網站目錄：`{"sites": [{"id", "name", "categories", "available", "unavailable_reason"}, ...]}`。
+```js
+// 1. 建立任務
+const res = await fetch('/api/sourcing/runs', {method: 'POST', headers: {'Content-Type': 'application/json'},
+  body: JSON.stringify({query: '找會 Python 的軟體工程師，在台中', max_candidates: 5})});
+const {run_id, status, events_url} = await res.json();   // 被護欄拒絕時 status 是 rejected，事件裡有原因
 
-### `POST /api/sourcing/search`
+// 2. 訂閱事件（GET，可直接用 EventSource；斷線會自動帶 Last-Event-ID 重連，不會漏事件）
+const source = new EventSource(events_url);
+['plan', 'decision', 'step', 'frame', 'candidate', 'candidate_skipped', 'site_skipped', 'site_error',
+ 'notice', 'rejected', 'no_public_work', 'error', 'done']
+  .forEach(type => source.addEventListener(type, e => handle(JSON.parse(e.data))));
+source.addEventListener('end', () => source.close());     // 任務結束、事件送完
 
-```json
-{"query": "找會 Python 的後端工程師，在台中", "max_candidates": 5, "sites": ["github"], "screenshots": true}
+// 3. 取消
+await fetch(`/api/sourcing/runs/${run_id}`, {method: 'DELETE'});
 ```
+
+`ui/sourcing.html`（`/sourcing`）就是照這個寫法做的完整示範頁，畫面渲染都在 `handle(event)`。
+
+| 接口 | 說明 |
+|---|---|
+| `GET /api/sourcing/sites` | 網站目錄：`{"sites": [{"id", "name", "categories", "available", "unavailable_reason"}]}` |
+| `POST /api/sourcing/runs` | 建立任務，回 201：`{run_id, status, events_url, snapshot_url, message}`。同時執行的任務達上限回 429，寫不進稽核紀錄回 503，輸入不合規回 422 |
+| `GET /api/sourcing/runs/{id}/events` | SSE 事件串流。每個事件有 `id:`（從 1 起算，`frame` 沒有 id）、`event:` 和一行 `data: <JSON>`；結束時送 `event: end`。`?frames=false` 可關掉即時畫面 |
+| `GET /api/sourcing/runs/{id}` | 目前狀態：`status`、`plan`、`steps`、`candidates`、`skipped`、`message`、`usage`。前端重新整理頁面後可以用它還原畫面 |
+| `DELETE /api/sourcing/runs/{id}` | 取消。背景流程會在下一步停下、關掉 Chrome，最後送出 `done`（`cancelled: true`），狀態變 `cancelled` |
+| `POST /api/sourcing/search` | 一次性版本：發請求後直接串流，不能重連或取消；用 `fetch` 自己解析（`EventSource` 不支援 POST） |
+
+`POST /api/sourcing/runs` 的參數：
 
 | 欄位 | 說明 |
 |---|---|
 | `query` | 2～300 字 |
 | `max_candidates` | 1～20，預設 5 |
 | `sites` | 選填，只搜這些網站 id；不給就依職類自動挑 |
-| `live` | 預設 `true`，串流 Chrome 即時畫面（`frame` 事件，每秒最多約 6 張） |
-| `screenshots` | 預設 `false`，每一步另附截圖（不需要即時畫面時用） |
+| `screenshots` | 預設 `false`，每一步另附截圖；即時畫面由事件串流的 `frame` 提供 |
 
-回應是 **Server-Sent Events**（`text/event-stream`）。每個事件是 `event: <type>` 加一行 `data: <JSON>`。寫不進稽核紀錄時回 HTTP 503，輸入不合規回 422。
+任務 `status`：`running`、`done`、`cancelled`、`error`、`rejected`（公平招募護欄擋下）、`no_public_work`（職類網路上少有公開作品）。
 
-前端用 `fetch` 讀串流（`EventSource` 不支援 POST）：
-
-```js
-const res = await fetch('/api/sourcing/search', {method: 'POST', headers: {'Content-Type': 'application/json'},
-  body: JSON.stringify({query, max_candidates: 5})});
-const reader = res.body.pipeThrough(new TextDecoderStream()).getReader();
-let buf = '';
-for (;;) {
-  const {value, done} = await reader.read();
-  if (done) break;
-  buf += value;
-  let i;
-  while ((i = buf.indexOf('\n\n')) >= 0) {
-    const frame = buf.slice(0, i); buf = buf.slice(i + 2);
-    const data = JSON.parse(frame.split('\n').find(l => l.startsWith('data: ')).slice(6));
-    handle(data);   // data.type 同 event 名稱
-  }
-}
-```
+**部署注意**：任務存在後端行程的記憶體裡，結束 30 分鐘後清掉；多個 worker 或重啟後就查不到，正式部署要改成共用儲存。每個任務會開一個 Chrome，同時執行上限用 `SOURCING_MAX_RUNS` 設定（預設 2）。
 
 ### 事件
 
@@ -110,7 +113,7 @@ for (;;) {
 | `candidate` | 讀完一位候選人 | `candidate`，見下表 |
 | `site_error` | 網站跳驗證、沒找到候選人、API 失敗 | `site`、`reason` |
 | `error` | 瀏覽器或套件無法使用 | `reason` |
-| `done` | 結束 | `count`、`plan`、`message` |
+| `done` | 結束 | `count`、`plan`、`message`、`usage`（實際 token 與費用）、`cancelled` |
 
 `step.action`：`open_entry`（開網站入口頁）、`fallback`（Jev 沒完成，改用備案）、`read_api`（OpenAlex、Stack Exchange 官方 API）、`open_search`（開搜尋結果頁）、`jev_click`／`jev_type_text`／`jev_press_enter`／`jev_press_escape`／`jev_scroll_down`／`jev_done`／`jev_none`／`jev_refused`…（Jev 的動作；`jev_refused` 是被安全規則擋下的動作）、`open_profile`（點擊或開啟個人頁）。
 

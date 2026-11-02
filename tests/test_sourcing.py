@@ -556,3 +556,103 @@ def test_usage_is_metered_and_reported_in_done(monkeypatch):
     prep = service.prepare("Python 工程師", max_candidates=1, site_ids=["github"])
     done = list(service.stream(prep, browser_factory=lambda: FakeBrowser(_github_pages())))[-1]
     assert done["type"] == "done" and "total_cost_usd" in done["usage"]
+
+
+# ------------------------------------------------------------------ 給前端的任務接口
+import threading
+import time as _time
+
+from sourcing import runs
+
+
+def _wait(run, timeout=5):
+    deadline = _time.time() + timeout
+    while not run.finished and _time.time() < deadline:
+        _time.sleep(0.02)
+    return run
+
+
+class SlowBrowser(FakeBrowser):
+    """開搜尋頁時卡住，直到測試放行；用來測同時上限與取消。"""
+
+    def __init__(self, pages, gate):
+        super().__init__(pages)
+        self.gate = gate
+
+    def open(self, url):
+        self.gate.wait(5)
+        super().open(url)
+
+
+def test_run_finishes_in_background_and_replays_events():
+    registry = runs.RunRegistry(browser_factory=lambda: FakeBrowser(_github_pages()))
+    run = _wait(registry.start(service.prepare("Python 工程師", max_candidates=2, site_ids=["github"])))
+    snap = run.snapshot()
+    assert snap["status"] == "done" and len(snap["candidates"]) == 2 and snap["usage"] is not None
+    events = list(runs.follow(run, frames=False))
+    assert [i for i, _ in events] == list(range(1, len(run.events) + 1))
+    resumed = list(runs.follow(run, after=3, frames=False))
+    assert resumed[0][0] == 4 and resumed[-1][1]["type"] == "done"
+
+
+def test_rejected_request_creates_finished_run_without_browser():
+    registry = runs.RunRegistry(browser_factory=lambda: pytest.fail("不應開瀏覽器"))
+    run = registry.start(service.prepare("只找女生的設計師"))
+    assert run.status == "rejected" and run.snapshot()["message"]
+
+
+def test_concurrency_limit_and_cancel():
+    gate = threading.Event()
+    registry = runs.RunRegistry(max_running=1, browser_factory=lambda: SlowBrowser(_github_pages(), gate))
+    first = registry.start(service.prepare("Python 工程師", site_ids=["github"]))
+    with pytest.raises(runs.RunnerBusy):
+        registry.start(service.prepare("Python 工程師", site_ids=["github"]))
+    registry.cancel(first.id)
+    gate.set()
+    assert _wait(first).status == "cancelled" and first.events[-1].get("cancelled") is True
+    second = _wait(registry.start(service.prepare("Python 工程師", max_candidates=1, site_ids=["github"])))
+    assert second.status == "done"
+
+
+def _request(method, path, body=None, headers=()):
+    messages = []
+
+    async def exchange():
+        payload = json.dumps(body).encode() if body is not None else b""
+        sent = False
+
+        async def receive():
+            nonlocal sent
+            if not sent:
+                sent = True
+                return {"type": "http.request", "body": payload, "more_body": False}
+            await asyncio.Event().wait()
+
+        async def send(message):
+            messages.append(message)
+
+        await app({"type": "http", "asgi": {"version": "3.0"}, "http_version": "1.1", "method": method,
+                   "scheme": "http", "path": path, "raw_path": path.encode(), "root_path": "", "query_string": b"frames=false",
+                   "headers": [(b"content-type", b"application/json"), *headers], "client": ("test", 1), "server": ("test", 80)},
+                  receive, send)
+
+    asyncio.run(exchange())
+    status = next(m["status"] for m in messages if m["type"] == "http.response.start")
+    return status, b"".join(m.get("body", b"") for m in messages if m["type"] == "http.response.body").decode()
+
+
+def test_run_endpoints_for_frontend(monkeypatch):
+    monkeypatch.setattr(runs, "registry", runs.RunRegistry(browser_factory=lambda: FakeBrowser(_github_pages())))
+    status, body = _request("POST", "/api/sourcing/runs", {"query": "Python 工程師", "max_candidates": 1, "sites": ["github"]})
+    created = json.loads(body)
+    assert status == 201 and created["events_url"].endswith("/events")
+    _wait(runs.registry.get(created["run_id"]))
+    status, body = _request("GET", created["events_url"])
+    assert status == 200 and body.startswith("retry: 3000") and "id: 1\nevent: plan" in body and "event: end" in body
+    status, body = _request("GET", created["events_url"], headers=[(b"last-event-id", b"2")])
+    assert "id: 1\n" not in body and "id: 3\n" in body
+    status, body = _request("GET", created["snapshot_url"])
+    assert status == 200 and json.loads(body)["status"] == "done"
+    assert _request("GET", "/api/sourcing/runs/nope")[0] == 404
+    status, body = _request("POST", "/api/sourcing/runs", {"query": "找 30 歲以下的設計師"})
+    assert status == 201 and json.loads(body)["status"] == "rejected"

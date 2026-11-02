@@ -100,7 +100,8 @@ python -m pytest tests -q
 | `POST /api/agent/chat` | AI 問答 |
 | `GET /api/demo/expansion` | 擴廠情境的四個官方數字 |
 | `GET /api/official/job-demand`、`company-trend`、`wage-baseline` | 三個官方資料工具 |
-| `POST /api/sourcing/search`、`GET /api/sourcing/sites` | 找人 agent：依職類到公開作品網站，用 computer use 找候選人，SSE 串流回傳每一步與截圖（見 [docs/SOURCING.md](docs/SOURCING.md)） |
+| `/api/sourcing/runs`、`/api/sourcing/sites` | 找人 agent（前端功能之一）：依職類到公開作品網站，gpt-6-luna 決策、Jev 用 computer use 操作瀏覽器，SSE 串流即時畫面與候選人；接法見 [docs/SOURCING.md](docs/SOURCING.md) |
+| `/sourcing` | 找人 agent 示範頁 |
 | `/legacy` | 舊版原型，含模擬資料，不屬於展示內容 |
 
 ## 專案結構
