@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>招募環境比較報告｜產業人才雷達</title>
+  <link rel="stylesheet" href="/static/report-comparison.css">
+  <script src="/static/report-comparison.js" defer></script>
+</head>
+<body data-page="report">
+  <a class="skip-link" href="#main">跳到報告內容</a>
+  <header class="top"><div class="shell"><a class="brand" href="/">產業人才雷達</a><nav aria-label="主要導覽"><a href="/">問資料</a><a href="/compare">建立比較報告</a></nav></div></header>
+  <main class="shell" id="main">
+    <div id="report-status" class="status" role="status" aria-live="polite">正在讀取已保存的報告…</div>
+    <div id="report-error" class="error" role="alert" hidden></div>
+    <div id="report-recovery" class="form-actions" hidden><button id="retry-report" type="button" class="secondary">重新讀取</button><a class="button" href="/compare">建立新報告</a></div>
+    <article id="report" hidden>
+      <div class="page-heading report-heading"><h1>擴廠招募環境比較報告</h1><p id="report-scenario"></p><div id="report-badges" class="badges"></div><p id="report-meta" class="help"></p></div>
+      <div class="report-actions"><a id="edit-report" class="button secondary" href="/compare">修改條件，建立新版</a><a id="print-report" class="button secondary" target="_blank" rel="noopener noreferrer">列印／另存 PDF</a><a id="download-report" class="button secondary" download>下載 JSON</a></div>
+      <section aria-labelledby="periods-title" class="period-section"><h2 id="periods-title">資料期別</h2><dl id="report-periods" class="period-list"></dl><p id="historical-notice" class="notice" hidden></p></section>
+      <section aria-labelledby="summary-title" class="report-section"><h2 id="summary-title">這次能確認什麼</h2><div id="summary-blocks" class="blocks"></div></section>
+      <section aria-labelledby="comparison-title" class="report-section"><h2 id="comparison-title">行政區並排比較</h2><p class="help">數字只代表各自標示的資料範圍。至少、未知或不可比較的列不產生地點排名。</p><p class="mobile-hint">表格可左右捲動。</p><div id="metric-groups"></div></section>
+      <section aria-labelledby="context-title" class="report-section"><h2 id="context-title">全市共同背景</h2><p class="help">以下資料涵蓋臺中全市，不能下推成某一區的公司數或招募風險。</p><div id="city-context" class="blocks"></div></section>
+      <section aria-labelledby="plan-title" class="report-section"><h2 id="plan-title">你的每月到職目標</h2><p id="plan-summary"></p><p class="help">這是你設定的淨到職計畫，不代表預測可招到；尚未估計離職替補、招募漏斗與到職延遲。</p><div id="planning-months" class="plan-months"></div></section>
+      <section aria-labelledby="next-title" class="report-section"><h2 id="next-title">下一步查證</h2><div id="next-actions" class="blocks"></div></section>
+      <section aria-labelledby="disclosures-title" class="report-section"><h2 id="disclosures-title">閱讀限制與資料缺口</h2><div id="report-disclosures" class="blocks"></div></section>
+      <section aria-labelledby="evidence-title" class="report-section"><h2 id="evidence-title">查證紀錄</h2><p class="help">查看每項數字的來源、期別、轉換規則與資料版本。</p><div id="report-evidence"></div></section>
+      <section aria-labelledby="question-title" class="report-section question-section">
+        <h2 id="question-title">針對這份報告追問</h2><p class="help">解說只使用這份已保存的資料；修改條件會建立新報告。沒有模型服務時，仍可閱讀標準解說。</p>
+        <div class="suggestions"><button type="button" class="secondary suggestion">哪些差異可以直接比較？</button><button type="button" class="secondary suggestion">為什麼有些數字不能排名？</button><button type="button" class="secondary suggestion">擴廠前還需要確認什麼？</button></div>
+        <form id="question-form" class="question-form"><div><label for="question">你的問題</label><textarea id="question" name="question" rows="2" maxlength="300" required placeholder="例如：這份比較還有哪些資料缺口？"></textarea></div><button id="question-submit" type="submit">解釋這份報告</button></form>
+        <div id="question-status" class="status" role="status" aria-live="polite"></div><div id="question-error" class="error" role="alert" hidden></div>
+        <div id="question-answer" class="answer" hidden><p id="asked-question" class="asked-question"></p><div id="answer-badges" class="badges"></div><div id="answer-blocks" class="blocks"></div><p id="answer-meta" class="help"></p></div>
+      </section>
+    </article>
+  </main>
+  <footer class="foot"><div class="shell">同一報告使用固定資料版本。後續更新不改寫這份報告；如需最新資料，請建立新版。</div></footer>
+</body>
+</html>

@@ -11,14 +11,16 @@ OTHER_CITIES = (
 )
 
 
-def unsupported_geography(query):
+def unsupported_geography(query, *, hiring_context=False):
     """Detect an unsupported requested geography without treating brands as places.
 
     Bare place words such as ``台北富邦`` and ``新竹物流`` can be company names.
     When the query already identifies Taichung, only an explicit outside city/county
-    marker or an unsupported district is enough to reject it.
+    marker or an unsupported district is enough to reject it. Fixed-scope hiring
+    callers can supply hiring_context=True so short follow-ups are checked even
+    when they do not repeat a hiring keyword. General chat keeps its old gate.
     """
-    if not re.search(r"職缺|就業|薪資|缺工|人力|工廠|新設|行政區|vacanc|workforce|jobs", query, re.I):
+    if not hiring_context and not re.search(r"職缺|就業|薪資|缺工|人力|工廠|新設|行政區|vacanc|workforce|jobs", query, re.I):
         return False
     text = query.lower()
     taichung_requested = "台中" in text or "臺中" in text or any(

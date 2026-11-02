@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "mode": "demo",
+  "notice": "虛構校區展示資料，非真實學校或媒合結果。",
+  "campuses": [
+    {"id":"demo-campus-a","name":"候選學校 A","campus_name":"主校區（虛構）","offset_km":[3.2,2.4],"departments":["機械類相關科系"],"keywords":["cnc","技術","機械","品管"],"related_roles":["CNC 技術員","機械加工人員"],"reason":"示範機械加工職務與機械類科系的初步關聯，仍須確認課程與合作條件。","graduates":null,"academic_year":null,"contact_url":null},
+    {"id":"demo-campus-b","name":"候選學校 B","campus_name":"技術校區（虛構）","offset_km":[-3,5],"departments":["電機類相關科系"],"keywords":["技術","電機","設備","維修","機電"],"related_roles":["設備技術員","機電維修人員"],"reason":"示範設備技術職務與電機類科系的初步關聯，並非已驗證的技能適配。","graduates":null,"academic_year":null,"contact_url":null},
+    {"id":"demo-campus-c","name":"候選學校 C","campus_name":"工程校區（虛構）","offset_km":[7,-4],"departments":["工業工程相關科系"],"keywords":["品管","生產","工業","製造","管理"],"related_roles":["品管人員","生產管理人員"],"reason":"示範品質管理職務與工業工程類科系的初步關聯，相關性保留人工確認。","graduates":null,"academic_year":null,"contact_url":null}
+  ]
+}
