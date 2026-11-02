@@ -34,6 +34,23 @@ class DemoSessions:
         for key in expired:
             self.sessions.pop(key)["directory"].cleanup()
 
+    def start_empty(self):
+        """Allocate a blank, isolated demo store for the mock employer portal."""
+        with self.lock:
+            self.cleanup()
+            if len(self.sessions) >= 32:
+                raise HTTPException(503, "展示人數已達上限，請稍後重試。")
+            directory = TemporaryDirectory(prefix="mock-jobs-")
+            try:
+                service = RecruitmentService(Path(directory.name) / "demo.sqlite")
+            except Exception:
+                directory.cleanup()
+                raise
+            key = secrets.token_urlsafe(32)
+            self.sessions[key] = {"directory": directory, "service": service, "id": None,
+                                  "expires": time.monotonic() + 1200}
+            return key
+
     def start(self, previous, scenario):
         with self.lock:
             self.cleanup()
