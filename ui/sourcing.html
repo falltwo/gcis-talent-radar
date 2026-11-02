@@ -283,7 +283,14 @@ function handle(ev) {
       finish("<b>發生錯誤</b>");
       break;
     case "done":
+      window.lastDone = ev;
       banner(`完成：找到 ${ev.count} 位候選人。${ev.message || ""}`, "ok");
+      if (ev.usage) {
+        const u = ev.usage;
+        banner(`本次用量：gpt-6-luna ${u.gpt_6_luna.calls} 次、${(u.gpt_6_luna.input_tokens + u.gpt_6_luna.output_tokens).toLocaleString()} token；` +
+               `Jev ${u.jev.calls} 次、${(u.jev.input_tokens + u.jev.output_tokens).toLocaleString()} token；` +
+               `合計 ${u.total_tokens.toLocaleString()} token，約 US$${u.total_cost_usd.toFixed(4)}`, "ok");
+      }
       finish(`<b>完成</b> · ${state.steps} 步 · ${ev.count} 位 · ${elapsed().toFixed(0)} 秒`);
       break;
   }

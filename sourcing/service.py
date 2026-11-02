@@ -18,6 +18,7 @@ from typing import Any, Callable, Iterator, Optional
 from agent.audit_log import write_agent_audit
 from agent.prompt_guard import inspect_hiring_prompt
 from sourcing import decider, planner
+from sourcing import usage as usage_meter
 from sourcing.browser import BrowserUnavailable, SourcingBrowser
 from sourcing.extract import Candidate, from_openalex, from_stackoverflow_api, result_cards, summarize
 from sourcing.sites import Site, blocked_reason, sites_for
@@ -36,6 +37,7 @@ class Prepared:
     sites: list[Site] = field(default_factory=list)
     skipped: list[Site] = field(default_factory=list)
     final_event: Optional[dict[str, Any]] = None  # 不需要開瀏覽器就結束時的事件
+    usage: usage_meter.Usage = field(default_factory=usage_meter.Usage)
 
     @property
     def runnable(self) -> bool:
@@ -51,6 +53,7 @@ def prepare(query: str, *, max_candidates: int = 5, site_ids: Optional[list[str]
             screenshots: bool = True) -> Prepared:
     """守門與規劃。寫不進稽核紀錄時丟 AuditLogError，呼叫端應回 503。"""
     prep = Prepared(query.strip(), max(1, min(int(max_candidates), 20)), screenshots)
+    usage_meter.bind(prep.usage)
     # 找人一定是招募情境；補上「招募」讓「找 30 歲以下的…」這種寫法也會被公平招募護欄判斷
     guard = inspect_hiring_prompt("招募：" + prep.query)
     if guard["decision"] == "REJECT":
@@ -87,8 +90,9 @@ def stream(prep: Prepared, *, browser_factory: Optional[Callable[[], SourcingBro
            stop: Optional[threading.Event] = None) -> Iterator[dict]:
     browser_factory = browser_factory or SourcingBrowser
     stopped = lambda: stop is not None and stop.is_set()  # noqa: E731
+    usage_meter.bind(prep.usage)
     if not prep.runnable:
-        yield prep.final_event
+        yield {**prep.final_event, "usage": prep.usage.as_dict()}
         return
     plan = prep.plan
     yield {"type": "plan", "plan": plan.as_dict(), "sites": [{"id": s.id, "name": s.name} for s in prep.sites]}
@@ -134,7 +138,8 @@ def stream(prep: Prepared, *, browser_factory: Optional[Callable[[], SourcingBro
             candidates.append(cand)
             yield {"type": "candidate", "candidate": cand.as_dict()}
     if not browser_sites or len(candidates) >= prep.max_candidates or stopped():
-        yield {"type": "done", "count": len(candidates), "plan": plan.as_dict(), "message": DONE_MESSAGE}
+        yield {"type": "done", "count": len(candidates), "plan": plan.as_dict(), "message": DONE_MESSAGE,
+               "usage": prep.usage.as_dict()}
         return
 
     try:
@@ -230,7 +235,8 @@ def stream(prep: Prepared, *, browser_factory: Optional[Callable[[], SourcingBro
         yield {"type": "error", "reason": str(exc)}
         return
 
-    yield {"type": "done", "count": len(candidates), "plan": plan.as_dict(), "message": DONE_MESSAGE}
+    yield {"type": "done", "count": len(candidates), "plan": plan.as_dict(), "message": DONE_MESSAGE,
+               "usage": prep.usage.as_dict()}
 
 
 _IDLE = object()

@@ -330,7 +330,7 @@ class _Act:
 
 def _jev_browser(decisions, items):
     session = SimpleNamespace(href="https://orcid.org/search", previous="https://orcid.org/search")
-    session.evaluate = lambda expr: session.href
+    session.evaluate = lambda expr: "complete" if expr == "document.readyState" else session.href
     b = SourcingBrowser()
     b._client, b._session = object(), session
     b._act = _Act(session)
@@ -347,7 +347,7 @@ def _decision(kind, element=None, confidence=0.9, satisfied=0.0):
 
 def test_jev_dismisses_banner_then_stops_when_done(monkeypatch):
     monkeypatch.setattr("sourcing.browser.time.sleep", lambda s: None)
-    accept = SimpleNamespace(index=3, href="", in_view=True, covered=False)
+    accept = SimpleNamespace(index=3, href="", name="Accept cookies", tag="button", in_view=True, covered=False)
     b = _jev_browser([_decision("click", 3), _decision("done", satisfied=0.9)], [accept])
     steps = list(b.jev_goal("close banner", ("orcid.org",)))
     assert [s["action"] for s in steps] == ["click", "done"] and b.last_outcome == "done"
@@ -539,3 +539,20 @@ def test_jev_may_only_type_into_search_fields_and_enter_after_typing(monkeypatch
     b._act.type_text = lambda session, index, text: typed.append((index, text))
     steps = list(b.jev_goal("search", ("orcid.org",), text="python"))
     assert [s["action"] for s in steps] == ["type_text", "press_enter", "done"] and typed == [(2, "python")]
+
+
+def test_usage_is_metered_and_reported_in_done(monkeypatch):
+    from sourcing import usage
+
+    meter = usage.Usage()
+    usage.bind(meter)
+    jev = usage.MeteredJev(SimpleNamespace(system_one=lambda **kw: SimpleNamespace(usage=SimpleNamespace(input_tokens=5000, output_tokens=40))))
+    jev.system_one(state=[], questions={})
+    meter.add_luna(1000, 100, None)
+    d = meter.as_dict()
+    assert d["jev"]["calls"] == 1 and d["jev"]["input_tokens"] == 5000
+    assert d["gpt_6_luna"]["cost_usd"] == pytest.approx((1000 * 0.10 + 100 * 0.50) / 1e6)
+    assert d["total_tokens"] == 6140
+    prep = service.prepare("Python 工程師", max_candidates=1, site_ids=["github"])
+    done = list(service.stream(prep, browser_factory=lambda: FakeBrowser(_github_pages())))[-1]
+    assert done["type"] == "done" and "total_cost_usd" in done["usage"]

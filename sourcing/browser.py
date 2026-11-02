@@ -152,8 +152,10 @@ class SourcingBrowser:
         if key:
             from typesafe_sdk import TypeSafeClient
             # Jev 走 OpenRouter，沿用同一把 OPENROUTER_API_KEY
-            self._client = TypeSafeClient(api_key=key, base_url=os.environ.get(
-                "SOURCING_TYPESAFE_BASE_URL", "https://openrouter.ai/api"), timeout=20.0)
+            from sourcing.usage import MeteredJev
+
+            self._client = MeteredJev(TypeSafeClient(api_key=key, base_url=os.environ.get(
+                "SOURCING_TYPESAFE_BASE_URL", "https://openrouter.ai/api"), timeout=20.0))
         return self
 
     def __exit__(self, *exc: object) -> None:
@@ -211,8 +213,14 @@ class SourcingBrowser:
         return None
 
     # ------------------------------------------------------------ acting
-    def _settle(self) -> None:
-        self._act.wait_for_load(self._session)
+    def _settle(self, *, max_wait: float = 6.0) -> None:
+        """等頁面可以操作：DOM 載入後就繼續，不等廣告、追蹤碼等第三方內容（有些網站永遠載不完）。"""
+        start = time.monotonic()
+        while time.monotonic() - start < max_wait:
+            state = self._session.evaluate("document.readyState")
+            if state == "complete" or (state == "interactive" and time.monotonic() - start > 1.0):
+                break
+            time.sleep(0.1)
         time.sleep(float(os.environ.get("SOURCING_PAGE_DELAY", "1.5")))  # 給 JS 頁面渲染，也放慢節奏
 
     def open(self, url: str) -> str:
@@ -225,8 +233,7 @@ class SourcingBrowser:
 
     def back(self) -> None:
         self._act.go_back(self._session)
-        self._act.wait_for_load(self._session)
-        time.sleep(0.5)
+        self._settle(max_wait=4.0)
 
     def click_link(self, href: str) -> str:
         """點畫面上指向 href 的連結；找不到可點的元素才直接開網址。回傳 click 或 navigate。"""
@@ -278,7 +285,8 @@ class SourcingBrowser:
                 elif element.href and not _host_allowed(element.href, domains):
                     refused = "這個連結會離開網站"
                 else:
-                    detail = self._act.click(self._session, int(element.index), element, page)
+                    self._act.click(self._session, int(element.index), element, page)
+                    detail = f"點擊「{(element.name or element.tag)[:40]}」"
                     self._settle()
             elif kind == "type_text":
                 if not text or element is None or not element.field or element.secret:
@@ -293,20 +301,30 @@ class SourcingBrowser:
                 if not typed:
                     refused = "只有輸入搜尋字之後才能按 Enter"
                 else:
-                    detail = self._act.press(self._session, "enter")
+                    self._act.press(self._session, "enter")
+                    detail = "按 Enter 送出搜尋"
                     self._settle()
             elif kind == "navigate":
                 if not entry_url:
                     refused = "不允許自己開網址"
                 else:
-                    detail = self.open(entry_url)
+                    self.open(entry_url)
+                    detail = "回到網站入口頁"
             elif kind == "press_escape":
-                detail = self._act.press(self._session, "escape")
+                self._act.press(self._session, "escape")
+                detail = "按 Esc 關閉彈窗"
             elif kind in ("scroll_down", "scroll_up"):
-                detail = self._act.scroll(self._session, 3 if kind == "scroll_down" else -3, page)
+                self._act.scroll(self._session, 3 if kind == "scroll_down" else -3, page)
+                detail = "往下捲動" if kind == "scroll_down" else "往上捲動"
             elif kind == "back":
                 self.back()
                 detail = "返回上一頁"
+            elif kind == "done":
+                detail = "Jev 判斷目標已完成"
+            elif kind == "none":
+                detail = "Jev 判斷這一頁無法繼續"
+            elif kind == "wait":
+                detail = "等待頁面"
             if refused:
                 noops += 1
                 kind, detail = "refused", f"拒絕 Jev 的動作：{refused}"
