@@ -67,3 +67,12 @@ data/raw/tax_registry/
 # Local immutable report storage and source-release caches.
 database/comparison_reports.sqlite3*
 reports/report_implementation_qa/
+
+# Cached public road geocoding responses
+/data/cache/radar-geocoding/
+
+node_modules/
+
+playwright-report/
+
+test-results/

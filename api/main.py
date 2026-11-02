@@ -23,6 +23,7 @@ from agent.audit_log import AuditLogError
 from agent.agent_service import OpenRouterError, agent_service
 from engine.gcis_live_verifier import verify_company_live
 from engine.expansion_demo import build_expansion_report
+from engine.street_geocoder import locate_road, StreetLookupError
 from engine.comparison_report import ComparisonReportService
 from engine.report_scenario import ReportError
 from engine.official_labor_market import (
@@ -461,6 +462,16 @@ def export_comparison_report(report_id: str, format: str = Query("html")):
         report = comparison_report_service.get(report_id)
         return JSONResponse(report, headers={"Content-Disposition": f'attachment; filename="{report["report_id"]}.json"', "Cache-Control": "no-store"})
     raise ReportError("UNSUPPORTED_EXPORT", "匯出僅提供html與json。")
+
+
+@app.get("/api/map/location")
+def get_map_location(district: str = Query(..., max_length=10), road: str = Query(..., max_length=40)):
+    try:
+        return locate_road(district, road)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except StreetLookupError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
 
 
 # ----------------- Frontend Web Serving -----------------

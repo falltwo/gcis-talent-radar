@@ -158,3 +158,7 @@ docs/       設計與資料文件
 程式碼以 [MIT](LICENSE) 授權釋出。上面的政府資料不適用 MIT，仍依各自的授權條款使用。
 
 本專案改造自 [DrChunChihChen/taichung-industry-talent-radar](https://github.com/DrChunChihChen/taichung-industry-talent-radar)。
+
+### 雷達與地圖首頁展示
+
+首頁新增雷達入口、臺中行政區／道路選擇、3D 街區地圖與企業情境浮窗。校園人才媒合目前使用明確標示的虛構校區展示資料。啟動、地圖來源與限制見 [前端說明](docs/RADAR_CITY_UI.md) 與 [校園媒合展示](docs/CAMPUS_MATCHING_DEMO.md)。
