@@ -14,16 +14,24 @@
       <button type="button" class="primary-feature-button" data-feature="刊登召募"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="6" width="16" height="15" rx="2"/><path d="M9 6V3h6v3M8 11h8M8 15h5M16 17v4M14 19h4"/></svg><span>刊登召募</span></button>
       <button type="button" class="primary-feature-button" data-feature="獵頭Agent"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10" cy="9" r="4"/><path d="M3 21v-2a7 7 0 0 1 11-5"/><circle cx="17" cy="17" r="4"/><path d="m20 20 2 2"/></svg><span>獵頭Agent</span></button>
     </nav>
-    <aside class="radar-sidebar" aria-label="資料助理與地點選擇">
+    <aside class="radar-sidebar" id="radar-sidebar" aria-label="資料助理與地點選擇">
       <div class="radar-brand"><span class="brand-symbol" aria-hidden="true">◎</span><div><strong>產業人才雷達</strong><small>TAICHUNG · TALENT RADAR</small></div></div>
       <div class="radar-chat" id="radar-chat"></div>
       <form class="radar-location" id="sidebar-location"><h3>探索範圍</h3><div class="location-fields"><div><label for="city-district">行政區</label><select id="city-district">${options}</select></div><div><label for="city-road">道路／街道</label><select id="city-road" required disabled><option value="">讀取道路中…</option></select></div></div><button type="submit" id="city-update" disabled>更新探索位置 ↗</button><p id="road-note">道路選單來自本地公司登記地址，並非完整道路名冊。</p></form>
     </aside>
     <div class="city-stage" id="city-stage">
+      <button class="sidebar-toggle" id="sidebar-toggle" type="button" aria-controls="radar-sidebar" aria-expanded="true" aria-label="收合側邊欄"><svg viewBox="0 0 10 16" aria-hidden="true"><path d="M8 2 2 8l6 6"/></svg></button>
       <div class="city-topbar"><div><p>EXPLORE YOUR NEXT LOCATION</p><h1 id="city-heading" tabindex="-1">從這裡，看見產業的可能。</h1><div class="city-address" id="city-address">臺中市 · 大雅區</div></div><button class="quiet-button" id="replay-intro" aria-label="重新開啟雷達與地點選擇" title="重新選擇地點">◎</button></div>
       <div id="city-map" role="region" aria-label="真實道路與立體建物地圖"></div>
       <div class="map-toolbar"><button id="map-rotate" type="button">旋轉 ↻</button><button id="map-flat" type="button">平面 2D</button><button id="map-home" type="button">回到選點</button></div>
       <div class="map-status-bar"><span id="map-status" role="status" aria-live="polite">選擇道路後載入地圖</span><button id="map-retry" type="button">重試</button></div>
+      <button class="district-toggle" id="map-districts" type="button" aria-pressed="false" aria-controls="district-panel" hidden>產業圖層</button>
+      <section class="district-panel" id="district-panel" aria-label="行政區產業圖層" hidden>
+        <label for="district-industry">圖層內容</label><select id="district-industry"></select>
+        <div class="district-legend" id="district-legend"><span id="district-low"></span><div id="district-scale"></div><span id="district-high"></span><i class="district-unknown">無資料</i></div>
+        <p id="district-readout" aria-live="polite"></p>
+        <small><span id="district-year"></span><br><a id="district-source" target="_blank" rel="noopener noreferrer"></a><br><a href="https://data.gov.tw/dataset/7441" target="_blank" rel="noopener noreferrer">行政區界線：內政部開放資料</a></small>
+      </section>
       <section class="city-callout company-card" id="company-card-popup" aria-labelledby="company-card-title" hidden>
         <div class="company-card-head"><h2 id="company-card-title">我的企業情境</h2><div class="company-head-actions"><span id="company-data-kind" class="company-data-kind">示範資料</span><button type="button" id="close-company-window" aria-label="關閉企業情境浮窗">×</button></div></div>
         <h3 id="company-name"></h3><div id="company-card-content"><p id="company-industry"></p>
@@ -102,6 +110,12 @@
   let roadIndex = {};
   let selected = {district: originalDistrict.value, road: ''};
   const entrance = window.createRadarEntrance(intro);
+  $('sidebar-toggle').addEventListener('click', event => {
+    const collapsed = workspace.classList.toggle('sidebar-collapsed');
+    $('radar-sidebar').inert = collapsed;
+    event.currentTarget.setAttribute('aria-expanded', String(!collapsed));
+    event.currentTarget.setAttribute('aria-label', collapsed ? '展開側邊欄' : '收合側邊欄');
+  });
 
   function fillRoads(prefix, preferred = '') {
     const select = $(prefix + '-road');

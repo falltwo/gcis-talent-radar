@@ -23,9 +23,12 @@
     map.addControl(new maplibregl.ScaleControl({unit:'metric'}), 'bottom-left');
     map.on('error',()=>message('部分地圖資料載入失敗；請確認網路後重試。',true));
     map.on('pitch',tiltPin);
+    // MapLibre only tracks window resizes; the sidebar changes the map's width on its own.
+    new ResizeObserver(()=>map.resize()).observe($('city-map'));
     map.on('load',()=>{
       mapReady=true;
       map.setLight({anchor:'viewport',color:'#ffffff',intensity:0.42,position:[1.5,160,45]});
+      document.dispatchEvent(new CustomEvent('streetmap:ready'));
       if (currentLocation) go(currentLocation);
     });
     $('map-rotate').addEventListener('click',()=>map.easeTo({bearing:map.getBearing()+45,duration:reduced?0:700}));
