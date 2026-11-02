@@ -24,7 +24,9 @@
     map.on('error',()=>message('部分地圖資料載入失敗；請確認網路後重試。',true));
     map.on('pitch',tiltPin);
     // MapLibre only tracks window resizes; the sidebar changes the map's width on its own.
-    new ResizeObserver(()=>map.resize()).observe($('city-map'));
+    // Debounced: resizing clears the canvas, so doing it every frame of a transition stutters.
+    let resizeTimer;
+    new ResizeObserver(()=>{clearTimeout(resizeTimer);resizeTimer=setTimeout(()=>map.resize(),80);}).observe($('city-map'));
     map.on('load',()=>{
       mapReady=true;
       map.setLight({anchor:'viewport',color:'#ffffff',intensity:0.42,position:[1.5,160,45]});
@@ -32,7 +34,7 @@
       if (currentLocation) go(currentLocation);
     });
     $('map-rotate').addEventListener('click',()=>map.easeTo({bearing:map.getBearing()+45,duration:reduced?0:700}));
-    $('map-home').addEventListener('click',()=>{if(currentLocation)go(currentLocation);});
+    $('map-home').addEventListener('click',()=>{if(currentLocation)go(currentLocation,false);});
     $('map-flat').addEventListener('click',()=>{
       const flat=map.getPitch()>10;map.easeTo({pitch:flat?0:58,duration:reduced?0:700});
       $('map-flat').textContent=flat?'立體 3D':'平面 2D';
@@ -128,7 +130,7 @@
     style.setProperty('--pitch',pitch+'deg');
     style.setProperty('--beam',Math.sin(pitch*Math.PI/180).toFixed(3));
   }
-  function go(data) {
+  function go(data,grow=true) {
     if (!mapReady) return;
     closeCompany();
     marker?.remove();
@@ -143,7 +145,7 @@
       if(!pinHeld)map.once('moveend',()=>dropPin(pin));
     }
     map.flyTo({center:data.coordinates,zoom:16.7,pitch:58,bearing:-25,duration:reduced?0:1800,essential:false});
-    growBuildings();
+    if(grow)growBuildings();
     message('已定位道路 · 拖曳移動，右鍵拖曳旋轉');
     $('map-coordinates').textContent=`${data.coordinates[1].toFixed(5)}° N, ${data.coordinates[0].toFixed(5)}° E`;
     $('map-source').href=data.source_url;$('map-source').hidden=false;

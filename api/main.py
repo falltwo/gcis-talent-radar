@@ -482,7 +482,8 @@ if STATIC_DIR.exists():
 
 @app.get("/")
 def serve_frontend():
-    return FileResponse(UI_DIR / "home.html")
+    # The versioned asset URLs live here, so a cached copy would pin every script to an old build.
+    return FileResponse(UI_DIR / "home.html", headers={"Cache-Control": "no-cache"})
 
 
 @app.get("/compare")
