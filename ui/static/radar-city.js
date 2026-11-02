@@ -17,9 +17,11 @@
     <aside class="radar-sidebar" id="radar-sidebar" aria-label="資料助理與地點選擇">
       <div class="radar-brand"><span class="brand-symbol" aria-hidden="true">◎</span><div><strong>產業人才雷達</strong><small>TAICHUNG · TALENT RADAR</small></div></div>
       <div class="radar-chat" id="radar-chat"></div>
-      <form class="radar-location" id="sidebar-location"><h3>探索範圍</h3><div class="location-fields"><div><label for="city-district">行政區</label><select id="city-district">${options}</select></div><div><label for="city-road">道路／街道</label><select id="city-road" required disabled><option value="">讀取道路中…</option></select></div></div><button type="submit" id="city-update" disabled>更新探索位置 ↗</button><p id="road-note">道路選單來自本地公司登記地址，並非完整道路名冊。</p></form>
+      <form class="radar-location" id="sidebar-location"><h3>探索範圍</h3><div class="location-fields"><div><label for="city-district">行政區</label><select id="city-district">${options}</select></div><div><label for="city-road">道路／街道</label><select id="city-road" required disabled><option value="">讀取道路中…</option></select></div></div><button type="submit" id="city-update" disabled><i class="radar-mini" aria-hidden="true"></i><span id="city-update-label">更新探索位置 ↗</span></button><p id="road-note">道路選單來自本地公司登記地址，並非完整道路名冊。</p></form>
     </aside>
     <div class="city-stage" id="city-stage">
+      <div class="map-hud" aria-hidden="true"><i></i><i></i><i></i><i></i><b></b><b></b><u></u><u></u><u></u></div>
+      <output class="map-hud-coords" id="map-hud-coords" hidden></output>
       <button class="sidebar-toggle" id="sidebar-toggle" type="button" aria-controls="radar-sidebar" aria-expanded="true" aria-label="收合側邊欄"><svg viewBox="0 0 10 16" aria-hidden="true"><path d="M8 2 2 8l6 6"/></svg></button>
       <div class="city-topbar"><div><p>EXPLORE YOUR NEXT LOCATION</p><h1 id="city-heading" tabindex="-1">從這裡，看見產業的可能。</h1><div class="city-address" id="city-address">臺中市 · 大雅區</div></div><button class="quiet-button" id="replay-intro" aria-label="重新開啟雷達與地點選擇" title="重新選擇地點">◎</button></div>
       <div id="city-map" role="region" aria-label="真實道路與立體建物地圖"></div>
@@ -170,7 +172,24 @@
       document.body.style.overflow='';$('city-heading').focus({preventScroll:true});
     });
   });
-  $('sidebar-location').addEventListener('submit',e=>{e.preventDefault();if($('city-road').value)selectLocation($('city-district').value,$('city-road').value);});
+  // Busy follows the real geocoding request; the minimum only keeps a cached answer visible.
+  let busySince=0,busyTimer;
+  function setLocating(busy) {
+    const button=$('city-update');
+    button.classList.toggle('is-busy',busy);button.setAttribute('aria-busy',String(busy));
+    button.disabled=busy||!$('city-road').value;
+    $('city-update-label').textContent=busy?'正在重新定位…':'更新探索位置 ↗';
+  }
+  ['streetmap:location','streetmap:location-error'].forEach(name=>document.addEventListener(name,()=>{
+    if(!busySince)return;
+    clearTimeout(busyTimer);
+    busyTimer=setTimeout(()=>{busySince=0;setLocating(false);},Math.max(0,450-(performance.now()-busySince)));
+  }));
+  $('sidebar-location').addEventListener('submit',e=>{
+    e.preventDefault();if(!$('city-road').value)return;
+    selectLocation($('city-district').value,$('city-road').value);
+    clearTimeout(busyTimer);busySince=performance.now();setLocating(true);
+  });
   $('replay-intro').addEventListener('click',()=>{
     window.campusMatching?.deactivate();
     entrance.show();

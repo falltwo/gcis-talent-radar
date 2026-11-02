@@ -32,6 +32,35 @@ body{background:#f5f6f8}a{color:#294a7b}button{background:#294a7b;border-color:#
 @keyframes pin-grid-burst{from{opacity:1;transform:rotateX(var(--pitch,0deg)) scale(.1)}to{opacity:0;transform:rotateX(var(--pitch,0deg)) scale(1)}}
 @keyframes toolbar-nudge{0%{transform:scale(1)}30%{transform:scale(1.06)}55%{transform:scale(.985)}78%{transform:scale(1.025)}100%{transform:scale(1)}}
 @media(prefers-reduced-motion:reduce){.map-toolbar button:hover{animation:none}}
+.city-stage .maplibregl-ctrl-group{display:flex;flex-direction:column;gap:6px;background:transparent;box-shadow:none}
+.city-stage .maplibregl-ctrl-group button{width:33px;height:33px;min-height:0;padding:0;background:#fff;border:1px solid #d6deea;border-radius:10px;box-shadow:0 2px 7px #2036500a;transition:background-color .12s ease-out,border-color .12s ease-out}
+.city-stage .maplibregl-ctrl-group button+button{border-top:1px solid #d6deea}
+.city-stage .maplibregl-ctrl-group button:hover{background:#dbe9fb;border-color:#8cb4e6;animation:toolbar-nudge .34s ease-out}
+.city-stage .maplibregl-ctrl-group button:focus-visible{outline:2px solid #1b5299;outline-offset:2px;box-shadow:none}
+.city-stage .maplibregl-ctrl-group .maplibregl-ctrl-icon{filter:invert(20%) sepia(60%) saturate(1100%) hue-rotate(185deg) brightness(90%)}
+@media(prefers-reduced-motion:reduce){.city-stage .maplibregl-ctrl-group button:hover{animation:none}}
+.radar-mini{display:none;width:13px;height:13px;margin-right:7px;vertical-align:-2px;border:1px solid #ffffffb3;border-radius:50%;background:conic-gradient(transparent 0 240deg,#fff 360deg);animation:road-spin .9s linear infinite}
+.is-busy .radar-mini{display:inline-block}#city-update.is-busy{opacity:1}
+@media(prefers-reduced-motion:reduce){.radar-mini{animation:none}}
+.map-hud{--hud:#3a6ea8;position:absolute;inset:8px;z-index:1;pointer-events:none}
+.map-hud i{position:absolute;width:18px;height:18px;border:1px solid var(--hud);opacity:.65}
+.map-hud i:nth-child(1){top:0;left:0;border-right:0;border-bottom:0}.map-hud i:nth-child(2){top:0;right:0;border-left:0;border-bottom:0}
+.map-hud i:nth-child(3){bottom:0;left:0;border-right:0;border-top:0}.map-hud i:nth-child(4){bottom:0;right:0;border-left:0;border-top:0}
+.map-hud b{position:absolute;opacity:.5;animation:hud-flow 1.8s linear infinite}
+.map-hud b:nth-of-type(1){left:28px;right:28px;bottom:0;height:1px;background:linear-gradient(90deg,var(--hud) 6px,transparent 6px) 0 0/14px 1px repeat-x}
+.map-hud b:nth-of-type(2){top:28px;bottom:28px;right:0;width:1px;background:linear-gradient(var(--hud) 6px,transparent 6px) 0 0/1px 14px repeat-y;animation-name:hud-flow-down}
+.map-hud u{position:absolute;width:9px;height:9px;opacity:.6;background:linear-gradient(var(--hud),var(--hud)) center/1px 100% no-repeat,linear-gradient(var(--hud),var(--hud)) center/100% 1px no-repeat}
+.map-hud u:nth-of-type(1){left:25%;bottom:-4px}.map-hud u:nth-of-type(2){left:75%;bottom:-4px}.map-hud u:nth-of-type(3){top:50%;right:-4px}
+.map-hud-coords{position:absolute;top:82px;right:56px;z-index:2;padding:4px 9px;border:1px solid #cfd8e5;border-radius:6px;background:#fffffff0;color:#2d4c74;font-size:11px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.map-hud-coords[hidden]{display:none}
+.radar-location{position:relative}
+.radar-location:before{content:"";position:absolute;top:0;left:0;right:0;height:1px;opacity:.55;background:linear-gradient(90deg,#3a6ea8 6px,transparent 6px) 0 0/14px 1px repeat-x;animation:hud-flow 1.8s linear infinite}
+.radar-location:after{content:"";position:absolute;top:-4px;right:14px;width:9px;height:9px;opacity:.6;background:linear-gradient(#3a6ea8,#3a6ea8) center/1px 100% no-repeat,linear-gradient(#3a6ea8,#3a6ea8) center/100% 1px no-repeat}
+@keyframes hud-flow{to{background-position-x:14px}}@keyframes hud-flow-down{to{background-position-y:14px}}
+@media(prefers-reduced-motion:reduce){.map-hud b,.radar-location:before{animation:none}}
+.company-popup-open .map-hud-coords,.campus-popup-open .map-hud-coords{display:none}
+.campus-active .map-hud-coords{top:112px}
+@media(max-width:720px){.map-hud-coords{top:auto;bottom:96px;left:12px;right:auto}.campus-active .map-hud-coords{top:auto}}
 .radar-workspace{transition:grid-template-columns .28s cubic-bezier(.2,.8,.2,1)}.radar-sidebar{min-width:0;overflow:hidden;transition:visibility 0s}
 .radar-workspace.sidebar-collapsed{grid-template-columns:0px minmax(0,1fr)}
 .sidebar-collapsed .radar-sidebar{visibility:hidden;border-right:0;transition:visibility 0s .28s}

@@ -2,7 +2,7 @@
 (() => {
   let map, marker, revision = 0, currentLocation, mapReady = false;
   let animationFrame = 0;
-  let companyPopup = null, pinHeld = false;
+  let companyPopup = null, pinHeld = false, tickFrame = 0;
   const $ = id => document.getElementById(id);
   const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
   function message(text, error = false) {
@@ -13,7 +13,7 @@
     if (map) return map;
     if (!window.maplibregl) throw Error('此瀏覽器無法啟用 3D 地圖，請使用支援 WebGL 的瀏覽器。');
     map = new maplibregl.Map({
-      container: 'city-map', style: '/static/street-map-style.json?v=20261102-3',
+      container: 'city-map', style: '/static/street-map-style.json?v=20261103-minimal',
       center: [120.64735,24.22105], zoom: 14.8, pitch: 58, bearing: -25,
       maxPitch: 75, attributionControl: false,
       localIdeographFontFamily: 'sans-serif',
@@ -65,7 +65,8 @@
   function popupAnchor(card,{x,y}) {
     const {clientWidth:width,clientHeight:height}=map.getContainer();
     const toolbar=document.querySelector('.map-toolbar');
-    const edge=12, top=toolbar.offsetTop+toolbar.offsetHeight+edge, gap=25, diagonal=18;
+    // bottom keeps the scale and the required map attribution uncovered.
+    const edge=12, bottom=52, top=toolbar.offsetTop+toolbar.offsetHeight+edge, gap=25, diagonal=18;
     // Same cap as the popup's CSS max-height.
     const w=Math.min(card.offsetWidth,310), h=Math.min(card.scrollHeight,480,innerHeight-230);
     const spots={
@@ -73,11 +74,11 @@
       'bottom-left':[x+diagonal,y-diagonal-h], 'bottom-right':[x-diagonal-w,y-diagonal-h],
       'top-left':[x+diagonal,y+diagonal], 'top-right':[x-diagonal-w,y+diagonal],
     };
-    const fits=([left,up])=>left>=edge&&up>=top&&left+w<=width-edge&&up+h<=height-edge;
+    const fits=([left,up])=>left>=edge&&up>=top&&left+w<=width-edge&&up+h<=height-bottom;
     const anchor=Object.keys(spots).find(name=>fits(spots[name]));
     if(anchor)return anchor;
     // Nothing fits (common on phones): take the taller side and let the card scroll inside it.
-    const above=y-gap-top, below=height-edge-y-gap;
+    const above=y-gap-top, below=height-bottom-y-gap;
     card.style.maxHeight=Math.max(above,below)+'px';
     return above>=below?'bottom':'top';
   }
@@ -96,6 +97,29 @@
     if(!pin||pin!==marker)return;
     const element=pin.getElement();
     element.classList.remove('pin-waiting');element.classList.add('pin-drop');
+    showReadouts();
+  }
+  function coordinateText(lat,lng) { return `${lat.toFixed(5)}° N, ${lng.toFixed(5)}° E`; }
+  // Both readouts count up once and always finish on the real value.
+  function showReadouts() {
+    if(!currentLocation)return;
+    const [lng,lat]=currentLocation.coordinates, chip=$('map-hud-coords');
+    chip.hidden=false;
+    cancelAnimationFrame(tickFrame);
+    if(reduced){chip.textContent=coordinateText(lat,lng);return;}
+    const scale=map.getContainer().querySelector('.maplibregl-ctrl-scale');
+    const reading=scale?.textContent.match(/^([\d.]+)\s*(\S+)/);
+    // Moving the map rewrites the scale, so hand it straight back to MapLibre.
+    let scaleLive=Boolean(reading);
+    map.once('movestart',()=>{scaleLive=false;});
+    const started=performance.now();
+    const step=now=>{
+      const fraction=Math.min(1,(now-started)/900), eased=1-Math.pow(1-fraction,3);
+      chip.textContent=coordinateText(lat*eased,lng*eased);
+      if(scaleLive)scale.textContent=fraction<1?`${Math.round(reading[1]*eased)} ${reading[2]}`:reading[0];
+      if(fraction<1)tickFrame=requestAnimationFrame(step);
+    };
+    tickFrame=requestAnimationFrame(step);
   }
   // Ground effects tilt with the camera; the beam shortens to nothing when viewed from directly above.
   function tiltPin() {
@@ -113,7 +137,8 @@
     dot.addEventListener('click',()=>openCompany(data));
     const pin=marker=new maplibregl.Marker({element:dot,anchor:'center'}).setLngLat(data.coordinates).addTo(map);
     tiltPin();
-    if(!reduced) {
+    if(reduced)showReadouts();
+    else {
       dot.classList.add('pin-waiting');
       if(!pinHeld)map.once('moveend',()=>dropPin(pin));
     }
@@ -147,6 +172,7 @@
       const request=++revision;
       document.dispatchEvent(new CustomEvent('streetmap:location-changing'));
       currentLocation=null;closeCompany();marker?.remove();$('map-source').hidden=true;
+      cancelAnimationFrame(tickFrame);$('map-hud-coords').hidden=true;
       $('map-coordinates').textContent='定位中';
       $('pin-precision').textContent='正在查詢相符的行政區與道路座標…';
       message('正在定位道路…');
