@@ -110,7 +110,7 @@ def answer_report_question(report: dict, question: str, *, provider=None) -> dic
         blocked = "請輸入本報告的問題，長度需為1至1000字。"
     elif inspect_hiring_prompt(question)["decision"] == "REJECT":
         blocked = "本報告不協助依受保護個人特徵篩選或決定錄用；請改以職務能力及一致條件規劃招募。"
-    elif unsupported_geography(question):
+    elif unsupported_geography(question, hiring_context=True):
         blocked = "你詢問的地區不在本報告涵蓋範圍；本次不會用臺中或其他行政區的數字替代。請修改條件建立新報告。"
     else:
         selected = set(report.get("scenario", {}).get("districts", [])) or {f["subject"]["district"] for f in facts.values() if f["subject"]["district"]}
