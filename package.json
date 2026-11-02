@@ -12,9 +12,11 @@
     "maplibre-gl": "6.16.0"
   },
   "devDependencies": {
+    "@axe-core/playwright": "4.14.0",
     "@playwright/test": "1.64.1",
     "@upstash/context7-mcp": "4.4.4",
-    "esbuild": "0.28.1"
+    "esbuild": "0.28.1",
+    "geowright": "0.1.1"
   },
   "overrides": {
     "@hono/node-server": "2.1.5"
