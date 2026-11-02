@@ -107,7 +107,8 @@ def test_profile_work_and_personal_site_links():
     links = [Link("https://github.com/alice", "Alice"), Link("https://github.com/alice?tab=x", "dup"),
              Link("https://github.com/pricing", "Pricing"), Link("https://github.com/bob", "Bob")]
     assert [l.href for l in extract.profile_links(gh, links)] == ["https://github.com/alice", "https://github.com/bob"]
-    page = [Link("https://github.com/alice/radar", "radar"), Link("https://github.com/alice/followers"),
+    page = [Link("https://github.com/alice/alice", "alice"), Link("https://github.com/alice/radar", "radar"),
+            Link("https://github.com/alice/followers"),
             Link("https://twitter.com/alice", rel="me"), Link("https://tw.linkedin.com/in/a", rel="me"),
             Link("https://alice.dev/", rel="nofollow me")]
     assert [w.href for w in extract.work_links(gh, "https://github.com/alice", page)] == ["https://github.com/alice/radar"]

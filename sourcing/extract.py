@@ -68,11 +68,13 @@ def profile_links(site: Site, links: Iterable[Link], *, limit: int = 20) -> list
 def work_links(site: Site, profile_url: str, links: Iterable[Link], *, limit: int = 3) -> list[Link]:
     """個人頁底下同一位作者的作品頁，例如 github.com/<user>/<repo>。"""
     prefix = profile_url.rstrip("/") + "/"
+    handle = profile_url.rstrip("/").rsplit("/", 1)[-1]
     out: dict[str, Link] = {}
     for link in links:
         href = link.href.split("#")[0].split("?")[0].rstrip("/")
         rest = href[len(prefix):] if href.startswith(prefix) else ""
-        if rest and "/" not in rest and rest not in {"followers", "following", "repositories", "projects",
+        # 和帳號同名的 repo 是 GitHub 個人頁的 README，不算作品
+        if rest and "/" not in rest and rest != handle and rest not in {"followers", "following", "repositories", "projects",
                                                       "packages", "stars", "sponsoring", "activity"}:
             out.setdefault(href, Link(href, clean_text(link.text).strip()[:60] or rest))
         if len(out) >= limit:
