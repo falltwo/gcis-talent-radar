@@ -6,7 +6,8 @@ from fastapi import APIRouter, Depends, Query
 from config import DB_PATH
 from recruitment.auth import Principal, authenticate
 from recruitment.models import (CandidateEvidence, CandidateImport, Delivery, DraftInput, InvitationApproval,
-                                InvitationDraft, Publication, Reply, RequestApproval, Requirement, StageChange)
+                                InvitationDraft, Publication, Reply, RequestApproval, Requirement,
+                                SimulationCreate, SimulationRetry, StageChange)
 from recruitment.service import RecruitmentService
 
 
@@ -28,9 +29,47 @@ def context(principal: Principal = Depends(authenticate)):
 def platforms(ctx=Depends(context)):
     return {"mode": "MANUAL", "platforms": [
         {"name": name, "automated_publication": False, "automated_talent_search": False,
-         "automated_invitation": False, "automated_reply_sync": False}
+         "automated_invitation": False, "automated_reply_sync": False, "simulated_publication": name == "104"}
         for name in ("104", "1111")
-    ], "notice": "This API records authorized manual operations; it does not send messages or call platform APIs."}
+    ], "supported_modes": ["MANUAL", "SIMULATION"],
+       "notice": "Manual records and isolated 104 simulation only; no messages are sent and no platform APIs are called."}
+
+
+@router.post("/requests/{request_id}/simulated-publications", status_code=201)
+def create_simulation(request_id: str, body: SimulationCreate, ctx=Depends(context)):
+    principal, service = ctx
+    return service.create_simulation(principal, request_id, body)
+
+
+@router.get("/simulated-publications")
+def list_simulations(request_id: str | None = None, limit: int = Query(50, ge=1, le=200),
+                     offset: int = Query(0, ge=0), ctx=Depends(context)):
+    principal, service = ctx
+    return service.list_simulations(principal, limit, offset, request_id)
+
+
+@router.get("/simulated-publications/{simulation_id}")
+def get_simulation(simulation_id: str, ctx=Depends(context)):
+    principal, service = ctx
+    return service.simulation(principal, simulation_id)
+
+
+@router.post("/simulated-publications/{simulation_id}/approve")
+def approve_simulation(simulation_id: str, ctx=Depends(context)):
+    principal, service = ctx
+    return service.approve_simulation(principal, simulation_id)
+
+
+@router.post("/simulated-publications/{simulation_id}/complete")
+def complete_simulation(simulation_id: str, ctx=Depends(context)):
+    principal, service = ctx
+    return service.complete_simulation(principal, simulation_id)
+
+
+@router.post("/simulated-publications/{simulation_id}/retry")
+def retry_simulation(simulation_id: str, body: SimulationRetry, ctx=Depends(context)):
+    principal, service = ctx
+    return service.retry_simulation(principal, simulation_id, body)
 
 
 @router.post("/requests", status_code=201)

@@ -2,30 +2,18 @@
 import json
 import sqlite3
 from contextlib import contextmanager
-from datetime import datetime, timezone
 from pathlib import Path
-from uuid import uuid4
 
 from fastapi import HTTPException
 
 from agent.prompt_guard import PROTECTED_TRAITS
 from recruitment.auth import require_hr
 from recruitment.drafting import prepare_requirement
+from recruitment.simulation import SimulationWorkflow
+from recruitment.workflow import fail, now, uid
 
 
-def now():
-    return datetime.now(timezone.utc).isoformat()
-
-
-def uid():
-    return str(uuid4())
-
-
-def fail(message):
-    raise HTTPException(409, message)
-
-
-class RecruitmentService:
+class RecruitmentService(SimulationWorkflow):
     def __init__(self, db_path):
         self.db_path = str(db_path)
         with self.connection() as conn:
@@ -309,6 +297,10 @@ class RecruitmentService:
             ts = now()
             conn.execute("UPDATE recruitment_requests SET status='CLOSED',updated_at=? WHERE id=?", (ts, identifier))
             conn.execute("UPDATE recruitment_jobs SET status='CLOSED' WHERE request_id=?", (identifier,))
+            simulations = conn.execute("SELECT id FROM recruitment_simulated_publications WHERE request_id=? AND status IN ('PENDING_APPROVAL','PROCESSING','FAILED')", (identifier,)).fetchall()
+            conn.execute("UPDATE recruitment_simulated_publications SET status='CANCELLED',updated_at=? WHERE request_id=? AND status IN ('PENDING_APPROVAL','PROCESSING','FAILED')", (ts, identifier))
+            for simulation in simulations:
+                self.event(conn, principal, simulation["id"], "SIMULATION_104_CANCELLED")
             for row in conn.execute("SELECT id FROM recruitment_applications WHERE request_id=?", (identifier,)).fetchall():
                 self.cancel(conn, "application_id", row["id"])
             self.event(conn, principal, identifier, "REQUEST_CLOSED")
@@ -374,4 +366,7 @@ class RecruitmentService:
             for table, field in (("requests", "status"), ("applications", "stage"), ("invitations", "status")):
                 rows = conn.execute(f"SELECT {field},COUNT(*) AS count FROM recruitment_{table} WHERE tenant_id=? GROUP BY {field}", (principal.tenant_id,)).fetchall()
                 result[table] = {r[field]: r["count"] for r in rows}
+            rows = conn.execute("SELECT status,COUNT(*) AS count FROM recruitment_simulated_publications WHERE tenant_id=? GROUP BY status", (principal.tenant_id,)).fetchall()
+            result["simulated_publications"] = {"mode": "SIMULATION", "is_simulated": True,
+                                                "sent_to_platform": False, "counts": {r["status"]: r["count"] for r in rows}}
             return result

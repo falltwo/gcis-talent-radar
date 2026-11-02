@@ -68,3 +68,25 @@ CREATE TABLE IF NOT EXISTS recruitment_events (
 CREATE INDEX IF NOT EXISTS recruitment_applications_tenant ON recruitment_applications(tenant_id, request_id);
 CREATE INDEX IF NOT EXISTS recruitment_candidates_expiry ON recruitment_candidates(tenant_id, expires_at);
 CREATE INDEX IF NOT EXISTS recruitment_events_tenant ON recruitment_events(tenant_id, id);
+
+-- Isolated simulation records: never inserted into real/manual publications.
+CREATE TABLE IF NOT EXISTS recruitment_simulated_publications (
+    id TEXT PRIMARY KEY,
+    tenant_id TEXT NOT NULL,
+    request_id TEXT NOT NULL REFERENCES recruitment_requests(id),
+    request_revision INTEGER NOT NULL,
+    snapshot TEXT NOT NULL,
+    idempotency_key TEXT NOT NULL,
+    initial_scenario TEXT NOT NULL CHECK(initial_scenario IN ('SUCCESS','FAILURE')),
+    scenario TEXT NOT NULL CHECK(scenario IN ('SUCCESS','FAILURE')),
+    status TEXT NOT NULL CHECK(status IN ('PENDING_APPROVAL','PROCESSING','SUCCEEDED','FAILED','CANCELLED')),
+    approved_by TEXT,
+    attempts INTEGER NOT NULL DEFAULT 0,
+    simulated_job_id TEXT,
+    error_code TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    UNIQUE(tenant_id, request_id, idempotency_key)
+);
+CREATE INDEX IF NOT EXISTS recruitment_simulated_publications_tenant
+    ON recruitment_simulated_publications(tenant_id, request_id);

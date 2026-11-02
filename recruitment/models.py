@@ -76,6 +76,15 @@ class Publication(StrictModel):
     external_id: str = Field(min_length=1, max_length=160)
 
 
+class SimulationCreate(StrictModel):
+    idempotency_key: str = Field(min_length=1, max_length=100)
+    scenario: Literal["SUCCESS", "FAILURE"] = "SUCCESS"
+
+
+class SimulationRetry(StrictModel):
+    scenario: Literal["SUCCESS", "FAILURE"] = "SUCCESS"
+
+
 class InvitationDraft(StrictModel):
     message: str = Field(min_length=1, max_length=2000)
 

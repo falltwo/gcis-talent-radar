@@ -4,7 +4,7 @@
 
 ## 執行與權限
 
-沿用 `python server.py`、FastAPI 及 `database/mismatch_system.db`。第一次通過驗證的招募 API 呼叫會執行 `database/recruitment.sql` 的 additive migration，新增六張 `recruitment_*` 表，不變更官方資料表。部署前先備份資料庫；舊版程式可忽略新增的表，不需刪表回滾。
+沿用 `python server.py`、FastAPI 及 `database/mismatch_system.db`。第一次通過驗證的招募 API 呼叫會執行 `database/recruitment.sql` 的 additive migration，新增七張 `recruitment_*` 表（含獨立的模擬刊登表），不變更官方資料表。部署前先備份資料庫；舊版程式可忽略新增的表，不需刪表回滾。
 
 在私有 `.env` 設定 `RECRUITMENT_API_TOKENS_JSON`。未設定或格式錯誤時，招募 API 回傳 503；其他原有功能不受影響。
 
@@ -47,6 +47,49 @@ RECRUITMENT_API_TOKENS_JSON={"<hr-random-token>":{"tenant_id":"company-a","actor
 | 到期清理 | `POST /retention/purge` | HR 清除所屬企業到期履歷及其關聯資料 |
 
 查詢：`GET /requests`、`/applications`、`/publications`、`/invitations`、`/events`，支援 `limit`（1–200）、`offset`；applications/publications/invitations 可加 `request_id`。`GET /candidates/{id}` 讀取單一人選；`GET /dashboard` 彙整需求、應徵與邀請的各狀態筆數；`GET /platforms` 明確標示人工模式與未建置的平台自動化能力。
+
+## 104 模擬刊登
+
+不需要實際公司、104 帳號、104 金鑰或 OpenRouter 金鑰。這是本系統自己的模擬器，**不是104提供的 sandbox**。模組不使用任何 HTTP client，不對外連線，也不會把模擬成功紀錄放進人工刊登表。
+
+狀態流程：`PENDING_APPROVAL`（待核准）→ `PROCESSING`（處理中）→ `SUCCEEDED`（成功）或 `FAILED`（失敗）。關閉招募需求時，尚待核准、處理中或失敗待重試的模擬會改成 `CANCELLED`。
+
+| 操作 | 路徑與輸入 | 顯示結果 |
+|---|---|---|
+| 建立模擬 | `POST /requests/{id}/simulated-publications`，`{"idempotency_key":"demo-001","scenario":"SUCCESS"}` | 模擬刊登：待核准 |
+| HR 核准並啟動 | `POST /simulated-publications/{id}/approve` | 模擬刊登：處理中 |
+| 完成本次模擬 | `POST /simulated-publications/{id}/complete` | SUCCESS 情境成功；FAILURE 情境失敗 |
+| 失敗後申請重試 | `POST /simulated-publications/{id}/retry`，`{"scenario":"SUCCESS"}` | 回到待核准；HR 必須再次核准 |
+| 查詢狀態 | `GET /simulated-publications/{id}` | 狀態、中文標籤、核准人、嘗試數、模擬編號或錯誤碼 |
+| 列表 | `GET /simulated-publications?request_id={id}` | 分頁列表，明確標示模擬 |
+
+需求本身須先經 HR 核准。recruiter 可建立模擬，但核准、完成與重試限 HR。沒有背景排程；`complete` 是手動推進模擬工作的一步，故處理中狀態能穩定留在畫面供展示，程序重啟後也能繼續。
+
+建立時以 `scenario` 指定結果；只有 FAILURE 可重試，每筆最多三次執行。同 key 重複建立回傳原紀錄，不同 key 不允許為同一需求產生第二筆模擬；請用 retry。重複核准處理中紀錄、重複完成終態紀錄，都不增加嘗試數或重複寫事件。
+
+所有模擬紀錄回應固定包含：
+
+```json
+{
+  "platform": "104",
+  "mode": "SIMULATION",
+  "is_simulated": true,
+  "sent_to_platform": false,
+  "status": "SUCCEEDED",
+  "status_label": "模擬刊登：成功",
+  "notice": "僅為104刊登流程模擬，未送至104，未建立真實職缺。"
+}
+```
+
+成功時只有 `sim104-...` 模擬編號，沒有真實104職缺網址。前端應持續顯示 `notice` 與 `status_label`，不可只顯示「已刊登到104」。看板另以 `simulated_publications` 欄位統計，不與真實人工刊登混合。
+
+可直接執行離線展示，不必先設定服務憑證或啟動伺服器：
+
+```bash
+python -X utf8 -m recruitment.demo
+```
+
+這個指令使用獨立暫存 SQLite、虛構職缺及示範 HR，印出成功與失敗兩條流程。結束後刪除暫存資料庫，不修改正式資料庫。這次仍只實作後端與命令列展示，未新增招募前端頁面。
 
 ## 最小資料範例
 
