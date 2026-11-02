@@ -92,6 +92,8 @@ python -m pytest tests -q
 
 ## 頁面與 API
 
+招募流程後端（需求整理、HR 核准、授權履歷匯入、比對、邀請與回覆追蹤）位於 `/api/recruitment/*`。需另外設定企業服務憑證；104／1111 目前採人工操作登記模式。設定與完整操作流程見 [docs/RECRUITMENT_BACKEND.md](docs/RECRUITMENT_BACKEND.md)。
+
 | 路徑 | 內容 |
 |---|---|
 | `/` | 首頁：直接問答＋擴廠情境（預設大雅區、招募 10 人） |

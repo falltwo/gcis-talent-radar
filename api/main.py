@@ -14,6 +14,7 @@ from pydantic import BaseModel
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from api.recruitment import router as recruitment_router
 from config import (
     BASE_DIR, TARGET_CITY, TAICHUNG_DISTRICTS, TARGET_INDUSTRIES,
     HISTORICAL_YEARS, BASE_ACADEMIC_YEAR, TARGET_PROJECTION_YEAR
@@ -36,6 +37,8 @@ app = FastAPI(
     description="台中市區域產業動能 × 高教人才供給結構性錯配預警系統 (System Spec v1.0)",
     version="1.0.0"
 )
+
+app.include_router(recruitment_router)
 
 app.add_middleware(
     CORSMiddleware,
