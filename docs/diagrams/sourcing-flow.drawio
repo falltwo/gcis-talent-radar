@@ -1,0 +1,151 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxfile host="drawio" version="26.0.0">
+  <diagram id="src" name="找人流程">
+    <mxGraphModel grid="1" gridSize="10" page="1" pageScale="1" pageWidth="2620" pageHeight="1010" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="src-title" value="HR 透過 agent 找人才（依職類到不同網站找）" style="text;html=1;align=left;verticalAlign=top;whiteSpace=wrap;fontColor=#555555;fontSize=20;fontStyle=1;fontColor=#222222;" vertex="1" parent="1">
+          <mxGeometry x="40" y="10" width="1400" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="l-hr" value="HR" style="swimlane;horizontal=0;startSize=44;html=1;whiteSpace=wrap;fillColor=#fbfbfb;strokeColor=#999999;fontStyle=1;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="40" y="70" width="2520" height="170" as="geometry" />
+        </mxCell>
+        <mxCell id="l-ag" value="Agent" style="swimlane;horizontal=0;startSize=44;html=1;whiteSpace=wrap;fillColor=#fbfbfb;strokeColor=#999999;fontStyle=1;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="40" y="260" width="2520" height="280" as="geometry" />
+        </mxCell>
+        <mxCell id="l-web" value="網站" style="swimlane;horizontal=0;startSize=44;html=1;whiteSpace=wrap;fillColor=#fbfbfb;strokeColor=#999999;fontStyle=1;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="40" y="560" width="2520" height="240" as="geometry" />
+        </mxCell>
+        <mxCell id="l-scr" value="操作畫面" style="swimlane;horizontal=0;startSize=44;html=1;whiteSpace=wrap;fillColor=#fbfbfb;strokeColor=#999999;fontStyle=1;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="40" y="820" width="2520" height="150" as="geometry" />
+        </mxCell>
+        <mxCell id="h1" value="輸入需求&#xa;職缺、技能、地點&#xa;（例：軟體工程師、設計師）" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="l-hr">
+          <mxGeometry x="60" y="40" width="210" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="hn" value="收到建議：這類職缺網路上&#xa;少有公開作品，改用其他管道&#xa;（職缺刊登、職訓單位…）" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#d5e8d4;strokeColor=#82b366;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="l-hr">
+          <mxGeometry x="500" y="40" width="230" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="h3" value="收到候選人名單&#xa;每人的專長摘要＋連結" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#d5e8d4;strokeColor=#82b366;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="l-hr">
+          <mxGeometry x="2020" y="45" width="210" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="h4" value="點連結查看&#xa;個人頁、作品" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="l-hr">
+          <mxGeometry x="2260" y="45" width="210" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="a1" value="理解需求，轉成搜尋條件&#xa;技能標籤、工具、地點" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#d5e8d4;strokeColor=#82b366;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="l-ag">
+          <mxGeometry x="300" y="130" width="190" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="d0" value="這個職類網路上&#xa;有公開作品嗎？" style="rhombus;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="l-ag">
+          <mxGeometry x="515" y="120" width="200" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="a2" value="依職類挑網站" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#d5e8d4;strokeColor=#82b366;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="l-ag">
+          <mxGeometry x="780" y="130" width="210" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="cu" value="computer use：像人一樣操作瀏覽器" style="swimlane;startSize=30;html=1;whiteSpace=wrap;rounded=1;arcSize=4;fillColor=#fbfbfb;strokeColor=#999999;fontStyle=1;fillColor=#fffaf3;strokeColor=#d79b00;" vertex="1" parent="1">
+          <mxGeometry x="1040" y="280" width="960" height="240" as="geometry" />
+        </mxCell>
+        <mxCell id="a3" value="開啟網站並搜尋&#xa;用標籤、技能、地點篩選" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#d5e8d4;strokeColor=#82b366;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="cu">
+          <mxGeometry x="20" y="110" width="200" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="a4" value="點進候選人個人頁" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#d5e8d4;strokeColor=#82b366;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="cu">
+          <mxGeometry x="260" y="110" width="200" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="a5" value="讀取專業&#xa;作品、技能標籤、經歷、活躍度" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#d5e8d4;strokeColor=#82b366;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="cu">
+          <mxGeometry x="500" y="110" width="200" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="d1" value="人數夠了？" style="rhombus;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="cu">
+          <mxGeometry x="740" y="100" width="200" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="a6" value="整理每人的&#xa;專長摘要＋連結" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#d5e8d4;strokeColor=#82b366;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="l-ag">
+          <mxGeometry x="2020" y="130" width="210" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="cat" value="職類 → 網站" style="swimlane;startSize=30;html=1;whiteSpace=wrap;rounded=1;arcSize=4;fillColor=#fbfbfb;strokeColor=#999999;fontStyle=1;fillColor=#ffffff;strokeColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="520" y="590" width="450" height="200" as="geometry" />
+        </mxCell>
+        <mxCell id="cat0" value="軟體開發：GitHub、GitLab、Stack Overflow" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#d5e8d4;strokeColor=#82b366;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;align=left;spacingLeft=10;rounded=0;" vertex="1" parent="cat">
+          <mxGeometry x="10" y="36" width="430" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="cat1" value="AI／資料：Hugging Face、Kaggle" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#d5e8d4;strokeColor=#82b366;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;align=left;spacingLeft=10;rounded=0;" vertex="1" parent="cat">
+          <mxGeometry x="10" y="62" width="430" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="cat2" value="設計：Behance、Dribbble" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#d5e8d4;strokeColor=#82b366;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;align=left;spacingLeft=10;rounded=0;" vertex="1" parent="cat">
+          <mxGeometry x="10" y="88" width="430" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="cat3" value="研究：ORCID" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#d5e8d4;strokeColor=#82b366;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;align=left;spacingLeft=10;rounded=0;" vertex="1" parent="cat">
+          <mxGeometry x="10" y="114" width="430" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="cat4" value="所有職類：個人網站、部落格、作品集" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#d5e8d4;strokeColor=#82b366;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;align=left;spacingLeft=10;rounded=0;" vertex="1" parent="cat">
+          <mxGeometry x="10" y="140" width="430" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="cat-x" value="不碰：LinkedIn、Google Scholar、人力銀行履歷庫" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#f8cecc;strokeColor=#b85450;align=left;spacingLeft=10;rounded=0;" vertex="1" parent="cat">
+          <mxGeometry x="10" y="166" width="430" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="w1" value="搜尋結果頁" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#d5e8d4;strokeColor=#82b366;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;" vertex="1" parent="l-web">
+          <mxGeometry x="1020" y="75" width="200" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="w2" value="候選人個人頁、作品集" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#d5e8d4;strokeColor=#82b366;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;" vertex="1" parent="l-web">
+          <mxGeometry x="1300" y="75" width="360" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="s1" value="即時操作畫面：每一步截圖推給 HR 看&#xa;開網頁 → 輸入搜尋 → 點擊 → 讀內容" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#d5e8d4;strokeColor=#82b366;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="l-scr">
+          <mxGeometry x="1000" y="35" width="920" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="e1" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endSize=8;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="h1" target="a1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e2" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endSize=8;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="a1" target="d0">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e3" value="否" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endSize=8;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" edge="1" parent="1" source="d0" target="hn">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e4" value="是" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endSize=8;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="d0" target="a2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e5" value="查表" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endSize=8;startArrow=block;startSize=6;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.9;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="a2" target="cat">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e6" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endSize=8;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="a2" target="a3">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e7" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endSize=8;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="a3" target="a4">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e8" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endSize=8;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="a4" target="a5">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e9" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endSize=8;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="a5" target="d1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e10" value="還不夠：下一位，或換下一個網站" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endSize=8;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="d1" target="a4">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1880" y="330" />
+              <mxPoint x="1400" y="330" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e11" value="夠了" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endSize=8;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="d1" target="a6">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e12" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endSize=8;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" edge="1" parent="1" source="a6" target="h3">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e13" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endSize=8;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="h3" target="h4">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="w-e1" value="搜尋" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endSize=8;startArrow=block;startSize=6;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="a3" target="w1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="w-e2" value="開啟" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endSize=8;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.1667;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="a4" target="w2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="w-e3" value="讀內容" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endSize=8;exitX=0.8333;exitY=0;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" edge="1" parent="1" source="w2" target="a5">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="s-e1" value="每一步截圖" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endSize=8;dashed=1;exitX=0.875;exitY=1;exitDx=0;exitDy=0;entryX=0.913;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="cu" target="s1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
