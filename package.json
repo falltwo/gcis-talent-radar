@@ -1,0 +1,22 @@
+{
+  "name": "gcis-talent-radar-frontend",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Frontend dependencies for the existing FastAPI-served UI",
+  "scripts": {
+    "vendor:frontend": "node scripts/frontend/vendor-dependencies.mjs",
+    "test:ui:version": "playwright --version"
+  },
+  "dependencies": {
+    "gsap": "3.15.0",
+    "maplibre-gl": "6.16.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.64.1",
+    "@upstash/context7-mcp": "4.4.4",
+    "esbuild": "0.28.1"
+  },
+  "overrides": {
+    "@hono/node-server": "2.1.5"
+  }
+}
