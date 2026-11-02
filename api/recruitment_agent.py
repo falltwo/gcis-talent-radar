@@ -13,6 +13,8 @@ from api.mock104 import JobForm
 from recruitment.drafting import prepare_requirement
 from recruitment.models import ExtractedRequirement, StrictModel
 from recruitment.workflow import uid
+from recruitment.computer_use import launch, local_origin
+from recruitment.job_research import draft_job, has_template
 
 
 router = APIRouter(prefix="/api/mock104/agent", tags=["Recruitment Agent demo"])
@@ -21,12 +23,12 @@ model_calls = deque()
 
 
 class AgentPrepare(StrictModel):
-    company_name: str = Field(min_length=1, max_length=120)
+    company_name: str = Field(default="", max_length=120)
     company_intro: str = Field(default="", max_length=1000)
     district: str = Field(min_length=1, max_length=80)
     role: str = Field(min_length=1, max_length=120)
     needs: str = Field(min_length=5, max_length=2500)
-    mode: Literal["MODEL", "SAMPLE"] = "MODEL"
+    mode: Literal["AUTO", "MODEL", "SAMPLE"] = "AUTO"
 
 
 class JobExtraction(ExtractedRequirement):
@@ -59,40 +61,47 @@ def run_for(session, identifier):
     return run
 
 
+def reserve_model_call(session):
+    if os.environ.get("RECRUITMENT_AGENT_DEMO_AI_ENABLED") != "1":
+        raise HTTPException(503, "本機模型／網路搜尋尚未啟用；常見職位仍可使用職業範本。")
+    if session.get("prepare_calls", 0) >= 3:
+        raise HTTPException(429, "本次展示的模型整理已達3次上限。")
+    with budget_lock:
+        while model_calls and model_calls[0] < time.monotonic() - 60:
+            model_calls.popleft()
+        if len(model_calls) >= 10:
+            raise HTTPException(429, "整理服務暫時繁忙，請稍後再試。")
+        model_calls.append(time.monotonic())
+    session["prepare_calls"] = session.get("prepare_calls", 0) + 1
+
+
 @router.post("/prepare")
 def prepare(body: AgentPrepare, request: Request, response: Response):
     portal.protect(request, response)
     with portal.get_session(request) as session:
-        if body.mode == "SAMPLE":
-            if body.role.strip() not in {"CNC 操作員", "CNC操作員"}:
-                raise HTTPException(422, "固定示範僅適用 CNC 操作員；自訂需求請使用 AI 整理。")
-            fields = {"title": "CNC 操作員", "district": body.district, "shift": "日班", "headcount": 3,
-                      "required_skills": ["cnc"], "trainable_skills": ["機械製圖"], "min_experience_months": 12,
-                      "salary_min": 35000, "salary_max": 45000, "work_hours": "08:00–17:00",
-                      "schedule_system": "固定班制", "employment_type": "全職",
-                      "description": "1. 操作 CNC 加工設備，依圖面完成工件加工。\n2. 檢查加工品質並填寫生產紀錄。\n3. 協助設備保養與現場整理。\n\n此為固定示範資料，非真實職缺。"}
-            source = "FIXED_SAMPLE"
-        else:
-            if os.environ.get("RECRUITMENT_AGENT_DEMO_AI_ENABLED") != "1":
-                raise HTTPException(503, "本機 AI 展示尚未啟用；可先使用固定範例展示完整填表流程。")
-            if session.get("prepare_calls", 0) >= 3:
-                raise HTTPException(429, "本次展示的 AI 整理已達3次上限。")
-            with budget_lock:
-                while model_calls and model_calls[0] < time.monotonic() - 60:
-                    model_calls.popleft()
-                if len(model_calls) >= 10:
-                    raise HTTPException(429, "AI 整理暫時繁忙，請稍後再試。")
-                model_calls.append(time.monotonic())
-            session["prepare_calls"] = session.get("prepare_calls", 0) + 1
-            context = (f"職位：{body.role}\n工作地點：{body.district}\nHR提供的招募需求：{body.needs}\n"
-                       "請另整理工作內容description、上班起迄時間work_hours、班制schedule_system、工作性質employment_type。"
-                       "沒有提及的欄位保留null，不得自行估薪、編造公司資訊或補充招募限制。")
-            fields = prepare_requirement(context, JobExtraction)["fields"]
-            source = "MODEL"
-        fields.update(company_name=body.company_name, company_intro=body.company_intro)
-        return {"job": fields, "source": source, "requires_hr_review": True,
-                "missing_fields": [key for key, value in fields.items() if value is None],
-                "notice": "公司資訊由HR提供。整理結果需HR確認；尚未填表或刊登。"}
+        if body.mode == "MODEL" or (body.mode == "AUTO" and not has_template(body.role)):
+            reserve_model_call(session)
+    # Long network/model work must not hold the browser/session registry lock.
+    if body.mode == "AUTO":
+        return draft_job(body)
+    if body.mode == "SAMPLE":
+        if body.role.strip() not in {"CNC 操作員", "CNC操作員"}:
+            raise HTTPException(422, "固定示範僅適用CNC操作員；其他職位請使用範本或網路整理。")
+        fields = {"title":"CNC 操作員","district":body.district,"shift":"日班","headcount":3,
+                  "required_skills":["cnc"],"trainable_skills":["機械製圖"],"min_experience_months":12,
+                  "salary_min":35000,"salary_max":45000,"work_hours":"08:00–17:00",
+                  "schedule_system":"固定班制","employment_type":"全職",
+                  "description":"操作CNC設備、檢查加工品質及協助保養。此為固定示範資料，非真實職缺。"}
+        source = "FIXED_SAMPLE"
+    else:
+        context = (f"職位：{body.role}\n工作地點：{body.district}\nHR招募需求：{body.needs}\n"
+                   "整理description、work_hours、schedule_system及employment_type；未提及欄位留null。")
+        fields = prepare_requirement(context, JobExtraction)["fields"]
+        source = "MODEL"
+    fields.update(company_name=body.company_name,company_intro=body.company_intro)
+    return {"job":fields,"source":source,"requires_hr_review":True,
+            "missing_fields":[key for key,value in fields.items() if value is None],
+            "notice":"整理結果需HR確認，尚未刊登。"}
 
 
 @router.post("/approve")
@@ -102,12 +111,12 @@ def approve(body: ApprovedHandoff, request: Request, response: Response):
         raise HTTPException(422, "請確認工作內容及上班起迄時間後再交給 Agent。")
     with portal.get_session(request) as session:
         previous = session.get("agent_run")
-        if previous and previous["phase"] in {"RUNNING", "AWAITING_CONFIRMATION", "READY_TO_PUBLISH", "SUBMITTED"}:
+        if previous and previous["phase"] in {"RUNNING", "COMPUTER_RUNNING", "COMPUTER_PUBLISHING", "AWAITING_CONFIRMATION", "READY_TO_PUBLISH", "SUBMITTED"}:
             raise HTTPException(409, "已有待完成的填表流程，請先完成或停止該流程。")
         run = {"run_id": uid(), "job": body.job.model_dump(), "phase": "READY", "job_id": None,
                "confirm_before_publish": body.confirm_before_publish, "scenario": body.scenario,
                "typing_speed": body.typing_speed,
-               "mode": "SIMULATION", "sent_to_platform": False}
+               "mode": "SIMULATION", "sent_to_platform": False,"driver":"COMPUTER_USE","steps":[],"screenshot":None}
         session["agent_run"] = run
         return run
 
@@ -154,4 +163,30 @@ def cancel(body: RunId, request: Request, response: Response):
         if run["phase"] in {"PUBLISHED", "CANCELLED"}:
             return run
         run["phase"] = "CANCELLED"
+        return run
+
+
+@router.post('/browser/start')
+def start_browser(body: RunId, request: Request, response: Response):
+    portal.protect(request,response)
+    if os.environ.get('RECRUITMENT_AGENT_DEMO_AI_ENABLED')!='1' or not os.environ.get('OPENROUTER_API_KEY','').strip():
+        raise HTTPException(503,'請先啟用本機模型與Computer Use，或手動使用一般求才網頁。')
+    if request.client.host not in {'127.0.0.1','::1','testclient'}:
+        raise HTTPException(403,'獨立瀏覽器只供本機展示。')
+    origin=local_origin(str(request.base_url).rstrip('/'))
+    with portal.get_session(request) as session:
+        run=run_for(session,body.run_id)
+        if run['phase']!='READY': raise HTTPException(409,'工作已開始或已結束。')
+        launch(portal.sessions,request.cookies.get(portal.COOKIE),origin,run['run_id'])
+        return {'started':True,'driver':'COMPUTER_USE','notice':'會另開獨立Chrome，以截圖及滑鼠鍵盤操作一般網頁。'}
+
+
+@router.post('/browser/resume')
+def resume_browser(body: RunId, request: Request, response: Response):
+    portal.protect(request,response)
+    with portal.get_session(request) as session:
+        run=run_for(session,body.run_id)
+        if run['phase']!='AWAITING_CONFIRMATION': raise HTTPException(409,'目前沒有等待HR確認的瀏覽器工作。')
+        run['phase']='COMPUTER_PUBLISHING'
+        run['message']='HR已確認，繼續透過一般網站模擬刊登。'
         return run

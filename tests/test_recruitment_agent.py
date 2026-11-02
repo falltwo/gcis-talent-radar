@@ -35,12 +35,14 @@ def test_hr_handoff_fill_verify_and_publish(client, policy):
     assert ready.status_code == 200,ready.text
     assert ready.json()['phase'] == ('AWAITING_CONFIRMATION' if policy else 'READY_TO_PUBLISH')
     if policy:
-        assert client.post(f'/api/mock104/jobs/{identifier}/submit',json={}).status_code == 409
-    assert client.post(f'/api/mock104/jobs/{identifier}/submit',json={'agent_confirmation':policy}).status_code == 200
+        assert client.post('/api/mock104/agent/browser/resume',json={'run_id':run['run_id']}).status_code == 200
+    assert client.post(f'/api/mock104/jobs/{identifier}/submit',json={}).status_code == 200
     assert client.post(f'/api/mock104/jobs/{identifier}/approve',json={}).status_code == 200
     assert client.post(f'/api/mock104/jobs/{identifier}/complete',json={}).status_code == 200
     result=client.get('/api/mock104/agent/run').json()
-    assert result['phase'] == 'PUBLISHED'
+    # The normal site does not update Agent state; the external observer does.
+    assert result['phase'] == ('COMPUTER_PUBLISHING' if policy else 'READY_TO_PUBLISH')
+    assert client.get('/api/mock104/state').json()['jobs'][0]['status'] == 'SUCCEEDED'
     assert result['sent_to_platform'] is False
 
 
@@ -60,9 +62,9 @@ def test_duplicate_claim_stale_id_and_cancel_block_publication(client):
     saved=client.post('/api/mock104/jobs',json=data).json()
     identifier=saved['selected_id']
     client.post('/api/mock104/agent/filled',json={'run_id':run['run_id'],'job_id':identifier})
-    assert client.put(f'/api/mock104/jobs/{identifier}',json=data).status_code == 409
+    assert client.put(f'/api/mock104/jobs/{identifier}',json=data).status_code == 200
     assert client.post('/api/mock104/agent/cancel',json={'run_id':run['run_id']}).json()['phase'] == 'CANCELLED'
-    assert client.post(f'/api/mock104/jobs/{identifier}/submit',json={'agent_confirmation':True}).status_code == 409
+    assert client.post('/api/mock104/agent/browser/resume',json={'run_id':run['run_id']}).status_code == 409
 
 
 def test_approval_needs_hr_confirmation_and_work_hours(client):
@@ -89,7 +91,10 @@ def test_public_demo_model_calls_are_opt_in_and_bounded(client,monkeypatch):
 def test_agent_page_and_scripts_are_served(client):
     assert 'HR 確認徵人條件' in client.get('/recruitment-agent').text
     assert client.get('/static/recruitment-agent.js').status_code == 200
-    assert client.get('/static/mock104-agent.js').status_code == 200
+    assert client.get('/static/mock104-agent.js').status_code == 404
+    page=client.get('/mock104').text
+    assert 'window.MockPortal' not in page
+    assert 'mockportal:detail' not in page
 
 
 def test_sample_does_not_claim_to_parse_arbitrary_roles(client):
@@ -100,3 +105,10 @@ def test_sample_does_not_claim_to_parse_arbitrary_roles(client):
 def test_cross_origin_cannot_approve_agent_work(client):
     data=prepare(client)
     assert client.post('/api/mock104/agent/approve',json={'job':data,'hr_confirmed':True},headers={'Origin':'https://other.example'}).status_code == 403
+
+
+def test_browser_model_execution_is_opt_in(client,monkeypatch):
+    _,run=handoff(client)
+    monkeypatch.setenv('RECRUITMENT_AGENT_DEMO_AI_ENABLED','0')
+    result=client.post('/api/mock104/agent/browser/start',json={'run_id':run['run_id']})
+    assert result.status_code==503

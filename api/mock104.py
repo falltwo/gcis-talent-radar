@@ -1,5 +1,4 @@
 """Mock job-board employer portal; all data stays in isolated demo SQLite."""
-import json
 from typing import Literal
 
 from fastapi import APIRouter, HTTPException, Request, Response
@@ -31,7 +30,6 @@ class JobForm(Requirement):
 
 class ReviewScenario(StrictModel):
     scenario: Literal["SUCCESS", "FAILURE"] = "SUCCESS"
-    agent_confirmation: bool = False
 
 
 def snapshot(session):
@@ -99,9 +97,6 @@ def save_job(request, response, body, identifier=None):
     protect(request, response)
     with get_session(request) as session:
         service = session["service"]
-        run = session.get("agent_run")
-        if identifier and run and run.get("job_id") == identifier and run["phase"] in {"AWAITING_CONFIRMATION", "READY_TO_PUBLISH"}:
-            raise HTTPException(409, "這份草稿正由Agent處理，請先停止該工作再編輯。")
         if identifier:
             # Check ownership and draft state before mutating either table.
             with service.connection() as conn:
@@ -139,20 +134,9 @@ def submit_job(identifier: str, body: ReviewScenario, request: Request, response
             details = conn.execute("SELECT * FROM mock_job_details WHERE request_id=?", (identifier,)).fetchone()
             if details is None or len(details["description"].strip()) < 10:
                 raise HTTPException(422, "請填寫至少10個字的工作內容後再送審。")
-        run = session.get("agent_run")
-        if run and run.get("job_id") == identifier:
-            if run["phase"] == "AWAITING_CONFIRMATION" and not body.agent_confirmation:
-                raise HTTPException(409, "等待HR第二次確認，尚未允許送出刊登。")
-            if run["phase"] not in {"AWAITING_CONFIRMATION", "READY_TO_PUBLISH", "SUBMITTED"}:
-                raise HTTPException(409, "Agent工作已停止或已完成，不能再自動送出。")
-            actual = {**json.loads(req["data"]), **{k: v for k, v in dict(details).items() if k != "request_id"}}
-            if actual != run["job"] or body.scenario != run["scenario"]:
-                raise HTTPException(409, "內容與HR核准版本不同，已停止送出。")
         if req["status"] == "DRAFT":
             service.approve(DEMO_HR, identifier, req["revision"])
         service.create_simulation(DEMO_HR, identifier, SimulationCreate(idempotency_key="mock-portal-submit", scenario=body.scenario))
-        if run and run.get("job_id") == identifier:
-            run["phase"] = "SUBMITTED"
         return {**snapshot(session), "selected_id": identifier}
 
 
@@ -162,9 +146,6 @@ def action(identifier: str, action: Literal["approve", "complete", "close", "ret
     protect(request, response)
     with get_session(request) as session:
         service = session["service"]
-        run = session.get("agent_run")
-        if run and run.get("job_id") == identifier and run["phase"] == "CANCELLED" and action != "close":
-            raise HTTPException(409, "Agent工作已停止，不能繼續自動刊登。")
         if action == "close":
             service.close(DEMO_HR, identifier)
         else:
@@ -179,10 +160,4 @@ def action(identifier: str, action: Literal["approve", "complete", "close", "ret
                 service.complete_simulation(DEMO_HR, row["id"])
             else:
                 service.retry_simulation(DEMO_HR, row["id"], SimulationRetry(scenario=body.scenario))
-        if run and run.get("job_id") == identifier:
-            if action == "close":
-                run["phase"] = "CANCELLED"
-            elif action == "complete":
-                publication = service.simulation(DEMO_HR, row["id"])
-                run["phase"] = "PUBLISHED" if publication["status"] == "SUCCEEDED" else "FAILED"
         return {**snapshot(session), "selected_id": identifier}

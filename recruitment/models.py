@@ -28,13 +28,20 @@ class Requirement(StrictModel):
     required_skills: list[str] = Field(default_factory=list, max_length=30)
     trainable_skills: list[str] = Field(default_factory=list, max_length=30)
     min_experience_months: int = Field(default=0, ge=0, le=600)
-    salary_min: int = Field(ge=1, le=10000000)
-    salary_max: int = Field(ge=1, le=10000000)
+    salary_mode: Literal["RANGE", "NEGOTIABLE"] = "RANGE"
+    salary_min: int | None = Field(default=None, ge=1, le=10000000)
+    salary_max: int | None = Field(default=None, ge=1, le=10000000)
 
     _skills = field_validator("required_skills", "trainable_skills")(terms)
 
     @model_validator(mode="after")
     def salary_range(self):
+        if self.salary_mode == "NEGOTIABLE":
+            if self.salary_min is not None or self.salary_max is not None:
+                raise ValueError("Negotiable salary must not include an invented range")
+            return self
+        if self.salary_min is None or self.salary_max is None:
+            raise ValueError("A salary range requires both minimum and maximum")
         if self.salary_max < self.salary_min:
             raise ValueError("salary_max must be >= salary_min")
         return self
