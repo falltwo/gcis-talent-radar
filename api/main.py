@@ -17,6 +17,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from api.recruitment import router as recruitment_router
 from api.recruitment_demo import router as recruitment_demo_router
 from api.mock104 import router as mock104_router
+from api.recruitment_agent import router as recruitment_agent_router
 from config import (
     BASE_DIR, TARGET_CITY, TAICHUNG_DISTRICTS, TARGET_INDUSTRIES,
     HISTORICAL_YEARS, BASE_ACADEMIC_YEAR, TARGET_PROJECTION_YEAR
@@ -43,6 +44,7 @@ app = FastAPI(
 app.include_router(recruitment_router)
 app.include_router(recruitment_demo_router)
 app.include_router(mock104_router)
+app.include_router(recruitment_agent_router)
 
 app.add_middleware(
     CORSMiddleware,
@@ -425,6 +427,11 @@ def serve_recruitment_demo():
 @app.get("/mock104")
 def serve_mock_job_board():
     return FileResponse(UI_DIR / "mock104.html", headers={"Cache-Control": "no-store"})
+
+
+@app.get("/recruitment-agent")
+def serve_recruitment_agent():
+    return FileResponse(UI_DIR / "recruitment-agent.html", headers={"Cache-Control": "no-store"})
 
 @app.get("/architecture")
 @app.get("/architecture/index.html")

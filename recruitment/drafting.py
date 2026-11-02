@@ -9,14 +9,14 @@ from agent.prompt_guard import inspect_hiring_prompt
 from recruitment.models import ExtractedRequirement, Requirement
 
 
-def prepare_requirement(needs):
+def prepare_requirement(needs, extraction_model=ExtractedRequirement):
     guard = inspect_hiring_prompt("招募需求：" + needs)
     if guard["decision"] != "ALLOW":
         raise HTTPException(422, "Recruitment criteria did not pass the fair-hiring guard")
     key = os.environ.get("OPENROUTER_API_KEY", "").strip()
     if not key:
         raise HTTPException(503, "Configure OPENROUTER_API_KEY to use Agent drafting; structured requests work without it")
-    schema = ExtractedRequirement.model_json_schema()
+    schema = extraction_model.model_json_schema()
     # All fields must be present for strict structured output. Missing scalar values are null.
     schema["required"] = list(schema["properties"])
     payload = {
@@ -46,14 +46,14 @@ def prepare_requirement(needs):
         raise HTTPException(502, "Requirement drafting provider rejected the request")
     try:
         content = response.json()["choices"][0]["message"]["content"]
-        fields = ExtractedRequirement.model_validate_json(content).model_dump()
+        fields = extraction_model.model_validate_json(content).model_dump()
     except (ValueError, TypeError, KeyError, IndexError, ValidationError):
         raise HTTPException(502, "Requirement drafting provider returned an invalid structure") from None
     missing = [k for k, v in fields.items() if v is None]
     valid = False
     if not missing:
         try:
-            Requirement.model_validate(fields)
+            Requirement.model_validate({key: value for key, value in fields.items() if key in Requirement.model_fields})
             valid = True
         except ValidationError:
             pass
