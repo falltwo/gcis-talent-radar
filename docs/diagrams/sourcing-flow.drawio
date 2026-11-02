@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <mxfile host="drawio" version="26.0.0">
   <diagram id="src" name="找人流程">
-    <mxGraphModel grid="1" gridSize="10" page="1" pageScale="1" pageWidth="2620" pageHeight="1010" math="0" shadow="0">
+    <mxGraphModel grid="1" gridSize="10" page="1" pageScale="1" pageWidth="2620" pageHeight="1030" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -15,10 +15,10 @@
           <mxGeometry x="40" y="260" width="2520" height="280" as="geometry" />
         </mxCell>
         <mxCell id="l-web" value="網站" style="swimlane;horizontal=0;startSize=44;html=1;whiteSpace=wrap;fillColor=#fbfbfb;strokeColor=#999999;fontStyle=1;fontSize=14;" vertex="1" parent="1">
-          <mxGeometry x="40" y="560" width="2520" height="240" as="geometry" />
+          <mxGeometry x="40" y="560" width="2520" height="260" as="geometry" />
         </mxCell>
         <mxCell id="l-scr" value="操作畫面" style="swimlane;horizontal=0;startSize=44;html=1;whiteSpace=wrap;fillColor=#fbfbfb;strokeColor=#999999;fontStyle=1;fontSize=14;" vertex="1" parent="1">
-          <mxGeometry x="40" y="820" width="2520" height="150" as="geometry" />
+          <mxGeometry x="40" y="840" width="2520" height="150" as="geometry" />
         </mxCell>
         <mxCell id="h1" value="輸入需求&#xa;職缺、技能、地點&#xa;（例：軟體工程師、設計師）" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="l-hr">
           <mxGeometry x="60" y="40" width="210" height="90" as="geometry" />
@@ -60,18 +60,18 @@
           <mxGeometry x="2020" y="130" width="210" height="80" as="geometry" />
         </mxCell>
         <mxCell id="cat" value="職類 → 網站" style="swimlane;startSize=30;html=1;whiteSpace=wrap;rounded=1;arcSize=4;fillColor=#fbfbfb;strokeColor=#999999;fontStyle=1;fillColor=#ffffff;strokeColor=#666666;" vertex="1" parent="1">
-          <mxGeometry x="520" y="590" width="450" height="200" as="geometry" />
+          <mxGeometry x="520" y="585" width="450" height="226" as="geometry" />
         </mxCell>
-        <mxCell id="cat0" value="軟體開發：GitHub、GitLab、Stack Overflow" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#d5e8d4;strokeColor=#82b366;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;align=left;spacingLeft=10;rounded=0;" vertex="1" parent="cat">
+        <mxCell id="cat0" value="軟體開發：GitHub、Stack Overflow" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#d5e8d4;strokeColor=#82b366;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;align=left;spacingLeft=10;rounded=0;" vertex="1" parent="cat">
           <mxGeometry x="10" y="36" width="430" height="22" as="geometry" />
         </mxCell>
         <mxCell id="cat1" value="AI／資料：Hugging Face、Kaggle" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#d5e8d4;strokeColor=#82b366;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;align=left;spacingLeft=10;rounded=0;" vertex="1" parent="cat">
           <mxGeometry x="10" y="62" width="430" height="22" as="geometry" />
         </mxCell>
-        <mxCell id="cat2" value="設計：Behance、Dribbble" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#d5e8d4;strokeColor=#82b366;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;align=left;spacingLeft=10;rounded=0;" vertex="1" parent="cat">
+        <mxCell id="cat2" value="設計：Dribbble" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#d5e8d4;strokeColor=#82b366;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;align=left;spacingLeft=10;rounded=0;" vertex="1" parent="cat">
           <mxGeometry x="10" y="88" width="430" height="22" as="geometry" />
         </mxCell>
-        <mxCell id="cat3" value="研究：ORCID" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#d5e8d4;strokeColor=#82b366;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;align=left;spacingLeft=10;rounded=0;" vertex="1" parent="cat">
+        <mxCell id="cat3" value="研究：ORCID、OpenAlex" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#d5e8d4;strokeColor=#82b366;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;align=left;spacingLeft=10;rounded=0;" vertex="1" parent="cat">
           <mxGeometry x="10" y="114" width="430" height="22" as="geometry" />
         </mxCell>
         <mxCell id="cat4" value="所有職類：個人網站、部落格、作品集" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#d5e8d4;strokeColor=#82b366;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;align=left;spacingLeft=10;rounded=0;" vertex="1" parent="cat">
@@ -79,6 +79,9 @@
         </mxCell>
         <mxCell id="cat-x" value="不碰：LinkedIn、Google Scholar、人力銀行履歷庫" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#f8cecc;strokeColor=#b85450;align=left;spacingLeft=10;rounded=0;" vertex="1" parent="cat">
           <mxGeometry x="10" y="166" width="430" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="cat-bot" value="會擋機器人，跳過：GitLab、Behance" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#f8cecc;strokeColor=#b85450;align=left;spacingLeft=10;rounded=0;" vertex="1" parent="cat">
+          <mxGeometry x="10" y="192" width="430" height="22" as="geometry" />
         </mxCell>
         <mxCell id="w1" value="搜尋結果頁" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#d5e8d4;strokeColor=#82b366;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;" vertex="1" parent="l-web">
           <mxGeometry x="1020" y="75" width="200" height="80" as="geometry" />

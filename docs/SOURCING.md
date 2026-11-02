@@ -32,8 +32,9 @@ pip install -r requirements-sourcing.txt   # typesafe-computer-use，需要 Pyth
 | 設計 | Dribbble | 可用（從作品搜尋找作者） |
 | 設計 | Behance | **不可用**：對自動瀏覽回應 HTTP 400 |
 | 研究 | ORCID | 可用（頁面較慢，常有 cookie 橫幅） |
+| 研究 | OpenAlex | 官方 API，不開瀏覽器（取代 Google Scholar）：依主題找近年論文的作者，再用作者**目前**所屬機構篩城市或國家 |
 | 所有職類 | 個人網站 | 不主動搜尋；只記錄候選人在個人頁用 `rel="me"` 留的網站 |
-| 不碰 | LinkedIn、Google Scholar、104／1111／518／yes123／CakeResume | 條款禁止自動化，或屬付費雇主帳號 |
+| 不碰 | LinkedIn、Google Scholar、104／1111／518／yes123／CakeResume | 條款禁止自動化（含登入後的帳號），或屬付費雇主帳號的履歷庫；不做 computer use。正式管道是 LinkedIn Recruiter System Connect、104 HR Max Open API 等官方合作 |
 
 網站狀態是 2026-11-02 實測的結果。遇到機器人驗證或錯誤頁時，系統會跳過該網站，**不嘗試繞過**。
 
@@ -93,7 +94,7 @@ for (;;) {
 | `error` | 瀏覽器或套件無法使用 | `reason` |
 | `done` | 結束 | `count`、`plan`、`message` |
 
-`step.action`：`open_search`（開搜尋頁）、`jev_click`／`jev_press_escape`／`jev_scroll_down`／`jev_done`／`jev_none`…（Jev 決定的動作）、`open_profile`（點擊或開啟個人頁）、`read_api`（改用官方 API）。
+`step.action`：`read_api`（OpenAlex、Stack Exchange 官方 API，`screenshot` 可能是 `null`）、`open_search`（開搜尋頁）、`jev_click`／`jev_press_escape`／`jev_scroll_down`／`jev_done`／`jev_none`…（Jev 決定的動作）、`open_profile`（點擊或開啟個人頁）。
 
 `candidate` 欄位：
 

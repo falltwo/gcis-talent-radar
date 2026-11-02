@@ -174,3 +174,31 @@ def from_stackoverflow_api(site: Site, profile_url: str, plan: Plan, *, fallback
         cand.personal_site = website
         cand.evidence.append({"label": "個人網站", "url": website})
     return cand
+
+
+def from_openalex(site: Site, plan: Plan, *, limit: int) -> Optional[list[Candidate]]:
+    """OpenAlex（取代 Google Scholar）：主題相關論文的作者，限定在需求的城市或國家。"""
+    authors = apis.openalex_authors(plan.terms.text(with_location=False), plan.terms.location, limit=limit)
+    if authors is None:
+        return None
+    out = []
+    for a in authors:
+        profile = f"https://openalex.org/authors/{a['id']}"
+        topics = [clean_text(t)[:60] for t in a["topics"]]
+        lower = " ".join(topics).lower()
+        bits = [clean_text(a["institution"])]
+        if isinstance(a.get("works_count"), int):
+            bits.append(f"論文 {a['works_count']:,} 篇")
+        if isinstance(a.get("cited_by_count"), int):
+            bits.append(f"被引用 {a['cited_by_count']:,} 次")
+        cand = Candidate(site.id, profile, clean_text(a["display_name"])[:80], "，".join(b for b in bits if b)[:120],
+                         topics, [s for s in plan.terms.skills if s.lower() in lower],
+                         summary=f"研究主題：{'、'.join(topics[:3])}" if topics else "", summary_source="api")
+        cand.evidence = [{"label": "OpenAlex 作者頁", "url": profile}]
+        if a.get("orcid"):
+            cand.evidence.append({"label": "ORCID", "url": a["orcid"]})
+        work = a.get("top_work") or {}
+        if work.get("url"):
+            cand.evidence.append({"label": f"代表論文：{clean_text(work.get('title', ''))[:50]}", "url": work["url"]})
+        out.append(cand)
+    return out

@@ -20,7 +20,7 @@ CATEGORIES = {
 # 條款禁止自動化，或屬於付費雇主帳號才能看的履歷庫：一律不開
 BLOCKED_DOMAINS = {
     "linkedin.com": "LinkedIn 使用條款禁止自動化存取",
-    "scholar.google.com": "Google Scholar 禁止自動化存取",
+    "scholar.google.com": "Google Scholar 禁止自動化存取；研究類改用 OpenAlex",
     "104.com.tw": "人力銀行履歷庫需付費雇主帳號，自動化操作違反條款",
     "1111.com.tw": "人力銀行履歷庫需付費雇主帳號，自動化操作違反條款",
     "518.com.tw": "人力銀行履歷庫需付費雇主帳號，自動化操作違反條款",
@@ -143,6 +143,9 @@ SITES: dict[str, Site] = {s.id: s for s in [
          re.compile(r"^https://dribbble\.com/([A-Za-z0-9_-]+)$"), _DRIBBBLE_RESERVED),
     Site("orcid", "ORCID", ("research",), ("orcid.org",), _orcid,
          re.compile(r"^https://orcid\.org/(\d{4}-\d{4}-\d{4}-\d{3}[\dX])$")),
+    # Google Scholar 沒有官方 API 且禁止自動化，研究類改用 OpenAlex 官方 API
+    Site("openalex", "OpenAlex", ("research",), ("openalex.org", "api.openalex.org"), None, None,
+         profile_api="openalex"),
     Site("gitlab", "GitLab", ("software",), ("gitlab.com",), None, None, available=False,
          unavailable_reason="使用 Cloudflare 機器人驗證，系統不繞過驗證"),
     Site("behance", "Behance", ("design",), ("www.behance.net", "behance.net"), None, None, available=False,

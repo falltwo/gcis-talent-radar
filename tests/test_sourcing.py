@@ -364,3 +364,67 @@ def test_jev_low_confidence_stops_and_missing_key_skips():
     assert len(steps) == 1 and steps[0]["action"] == "press_escape"
     b._client = None
     assert list(b.jev_steps("x", ("orcid.org",))) == []
+
+
+# ------------------------------------------------------------------ OpenAlex（取代 Google Scholar）
+from sourcing import apis
+
+
+def test_openalex_keeps_only_authors_from_target_city(monkeypatch):
+    def fake(path, params, timeout):
+        if path == "institutions":
+            return {"meta": {"count": 2}, "results": [
+                {"id": "https://openalex.org/I1", "geo": {"city": "Taichung"}},
+                {"id": "https://openalex.org/I2", "geo": {"city": "Taipei"}}]}
+        if path == "works":
+            assert "authorships.institutions.id:I1" in params["filter"]
+            return {"results": [{"id": "W1", "title": "Deep nets", "doi": "https://doi.org/10.1/x", "publication_year": 2024,
+                                 "authorships": [
+                                     {"author": {"id": "https://openalex.org/A9"}, "institutions": [{"id": "https://openalex.org/I2"}]},
+                                     {"author": {"id": "https://openalex.org/A1"}, "institutions": [{"id": "https://openalex.org/I1"}]}]}]}
+        assert params["filter"] == "openalex:A1"
+        return {"results": [{"id": "https://openalex.org/A1", "display_name": "Lin", "orcid": "https://orcid.org/0000-0001-2345-6789",
+                             "works_count": 40, "cited_by_count": 900,
+                             "last_known_institutions": [{"id": "https://openalex.org/I1",
+                                                          "display_name": "National Chung Hsing University"}],
+                             "topics": [{"display_name": "Machine Learning"}]}]}
+
+    monkeypatch.setattr(apis, "_openalex", fake)
+    authors = apis.openalex_authors("machine learning", "Taichung", limit=3)
+    assert [a["id"] for a in authors] == ["A1"] and authors[0]["top_work"]["url"] == "https://doi.org/10.1/x"
+
+
+def test_research_role_uses_openalex_without_opening_browser(monkeypatch):
+    monkeypatch.setattr(apis, "openalex_authors", lambda topic, location, limit: [{
+        "id": "A1", "display_name": "Lin", "orcid": "https://orcid.org/0000-0001-2345-6789", "works_count": 40,
+        "cited_by_count": 900, "institution": "National Chung Hsing University", "topics": ["Machine Learning"],
+        "top_work": {"title": "Deep nets", "url": "https://doi.org/10.1/x"}}])
+    prep = service.prepare("找台中的機器學習研究員", site_ids=["openalex"])
+    events = list(service.stream(prep, browser_factory=lambda: pytest.fail("不應開瀏覽器")))
+    cand = next(e["candidate"] for e in events if e["type"] == "candidate")
+    assert cand["profile_url"] == "https://openalex.org/authors/A1" and "被引用 900 次" in cand["headline"]
+    assert [e["label"] for e in cand["evidence"]][:2] == ["OpenAlex 作者頁", "ORCID"]
+    assert events[-1]["type"] == "done"
+
+
+def test_openalex_failure_is_reported_and_other_sites_continue(monkeypatch):
+    monkeypatch.setattr(apis, "openalex_authors", lambda *a, **k: None)
+    prep = service.prepare("找機器學習研究員", site_ids=["openalex", "orcid"])
+    browser = FakeBrowser({})
+    events = list(service.stream(prep, browser_factory=lambda: browser))
+    assert any(e["type"] == "site_error" and e["site"] == "openalex" for e in events)
+    assert any("orcid.org" in u for u in browser.opened)
+
+
+def test_openalex_drops_authors_who_moved_away(monkeypatch):
+    def fake(path, params, timeout):
+        if path == "institutions":
+            return {"meta": {"count": 1}, "results": [{"id": "https://openalex.org/I1", "geo": {"city": "Taichung"}}]}
+        if path == "works":
+            return {"results": [{"id": "W1", "title": "t", "authorships": [
+                {"author": {"id": "https://openalex.org/A1"}, "institutions": [{"id": "https://openalex.org/I1"}]}]}]}
+        return {"results": [{"id": "https://openalex.org/A1", "display_name": "Moved",
+                             "last_known_institutions": [{"id": "https://openalex.org/I7", "display_name": "Abroad Univ"}]}]}
+
+    monkeypatch.setattr(apis, "_openalex", fake)
+    assert apis.openalex_authors("x", "Taichung") == []

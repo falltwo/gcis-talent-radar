@@ -22,10 +22,10 @@ ROW = "align=left;spacingLeft=10;"
 
 # 職類 → 適合找人的網站（都要有公開作品或公開檔案）
 SITES = [
-    ("軟體開發", "GitHub、GitLab、Stack Overflow"),
+    ("軟體開發", "GitHub、Stack Overflow"),
     ("AI／資料", "Hugging Face、Kaggle"),
-    ("設計", "Behance、Dribbble"),
-    ("研究", "ORCID"),
+    ("設計", "Dribbble"),
+    ("研究", "ORCID、OpenAlex"),
     ("所有職類", "個人網站、部落格、作品集"),
 ]
 
@@ -43,8 +43,8 @@ def build() -> None:
     # 泳道：HR／Agent／網站／操作畫面。節點座標相對於泳道左上角
     lane(p, "l-hr", "HR", 70, 170)
     lane(p, "l-ag", "Agent", 260, 280)
-    lane(p, "l-web", "網站", 560, 240)
-    lane(p, "l-scr", "操作畫面", 820, 150)
+    lane(p, "l-web", "網站", 560, 260)
+    lane(p, "l-scr", "操作畫面", 840, 150)
 
     col = lambda i: 60 + i * 240  # noqa: E731
 
@@ -67,10 +67,12 @@ def build() -> None:
     p.node("a6", "整理每人的&#xa;專長摘要＋連結", col(8) + 40, 130, 210, 80, parent="l-ag", style=AGENT)
 
     # 網站對照表：一列一個職類，最後一列是不碰的網站
-    p.lane("cat", "職類 → 網站", 520, 590, 450, 200, style="fillColor=#ffffff;strokeColor=#666666;")
+    p.lane("cat", "職類 → 網站", 520, 585, 450, 226, style="fillColor=#ffffff;strokeColor=#666666;")
     for k, (job, sites) in enumerate(SITES):
         p.node(f"cat{k}", f"{job}：{sites}", 10, 36 + k * 26, 430, 22, parent="cat", style=SITE + ROW + "rounded=0;")
     p.node("cat-x", "不碰：LinkedIn、Google Scholar、人力銀行履歷庫", 10, 36 + len(SITES) * 26, 430, 22,
+           status="stop", parent="cat", style=ROW + "rounded=0;")
+    p.node("cat-bot", "會擋機器人，跳過：GitLab、Behance", 10, 36 + (len(SITES) + 1) * 26, 430, 22,
            status="stop", parent="cat", style=ROW + "rounded=0;")
     p.node("w1", "搜尋結果頁", 1020, 75, 200, 80, parent="l-web", style=SITE)
     p.node("w2", "候選人個人頁、作品集", 1300, 75, 360, 80, parent="l-web", style=SITE)
@@ -99,7 +101,7 @@ def build() -> None:
     mxfile = ET.Element("mxfile", host="drawio", version="26.0.0")
     d = ET.SubElement(mxfile, "diagram", id=p.name, name="找人流程")
     model = ET.SubElement(d, "mxGraphModel", grid="1", gridSize="10", page="1", pageScale="1",
-                          pageWidth="2620", pageHeight="1010", math="0", shadow="0")
+                          pageWidth="2620", pageHeight="1030", math="0", shadow="0")
     root = ET.SubElement(model, "root")
     ET.SubElement(root, "mxCell", id="0")
     ET.SubElement(root, "mxCell", id="1", parent="0")

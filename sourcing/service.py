@@ -14,9 +14,10 @@ from agent.audit_log import write_agent_audit
 from agent.prompt_guard import inspect_hiring_prompt
 from sourcing import planner
 from sourcing.browser import BrowserUnavailable, SourcingBrowser
-from sourcing.extract import Candidate, from_stackoverflow_api, profile_links, summarize
+from sourcing.extract import Candidate, from_openalex, from_stackoverflow_api, profile_links, summarize
 from sourcing.sites import Site, blocked_reason, sites_for
 
+DONE_MESSAGE = "只列出公開頁面的連結，未蒐集 Email 或電話；聯絡前請自行確認候選人的公開意願。"
 JEV_GOAL = ("Close any cookie banner, sign-in prompt or popup so that the list of search results "
             "(people, users or their work) is visible. Do not open any result and do not sign in.")
 
@@ -98,15 +99,39 @@ def stream(prep: Prepared, *, browser_factory: Optional[Callable[[], SourcingBro
                 event["screenshot"] = None
         return event
 
+    # 只走官方 API 的網站（OpenAlex）先跑，不需要開瀏覽器
+    api_sites = [s for s in prep.sites if s.search_url is None]
+    browser_sites = [s for s in prep.sites if s.search_url is not None]
+    for i, site in enumerate(api_sites):
+        remaining = prep.max_candidates - len(candidates)
+        if remaining <= 0:
+            break
+        quota = math.ceil(remaining / (len(prep.sites) - i))
+        step_no += 1
+        yield {"type": "step", "n": step_no, "site": site.id, "action": "read_api", "url": "https://api.openalex.org",
+               "detail": f"用 OpenAlex 官方 API 搜尋論文作者：{plan.terms.text()}", "screenshot": None}
+        found = from_openalex(site, plan, limit=quota)
+        if found is None:
+            yield {"type": "site_error", "site": site.id, "reason": "OpenAlex API 暫時無法使用"}
+            continue
+        if not found:
+            yield {"type": "site_error", "site": site.id, "reason": "OpenAlex 沒有找到符合地點的作者"}
+        for cand in found:
+            candidates.append(cand)
+            yield {"type": "candidate", "candidate": cand.as_dict()}
+    if not browser_sites or len(candidates) >= prep.max_candidates:
+        yield {"type": "done", "count": len(candidates), "plan": plan.as_dict(), "message": DONE_MESSAGE}
+        return
+
     try:
         with browser_factory() as browser:
             if not browser.jev_ready:
                 yield {"type": "notice", "message": "未設定 OPENROUTER_API_KEY：Jev 不會處理彈窗，摘要改用規則版。"}
-            for i, site in enumerate(prep.sites):
+            for i, site in enumerate(browser_sites):
                 remaining = prep.max_candidates - len(candidates)
                 if remaining <= 0:
                     break
-                quota = math.ceil(remaining / (len(prep.sites) - i))
+                quota = math.ceil(remaining / (len(browser_sites) - i))
                 search_url = site.search_url(plan.terms)
                 try:
                     browser.open(search_url)
@@ -157,5 +182,4 @@ def stream(prep: Prepared, *, browser_factory: Optional[Callable[[], SourcingBro
         yield {"type": "error", "reason": str(exc)}
         return
 
-    yield {"type": "done", "count": len(candidates), "plan": plan.as_dict(),
-           "message": "只列出公開頁面的連結，未蒐集 Email 或電話；聯絡前請自行確認候選人的公開意願。"}
+    yield {"type": "done", "count": len(candidates), "plan": plan.as_dict(), "message": DONE_MESSAGE}
