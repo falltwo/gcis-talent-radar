@@ -15,6 +15,7 @@ from pydantic import BaseModel
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from api.recruitment import router as recruitment_router
+from api.recruitment_demo import router as recruitment_demo_router
 from config import (
     BASE_DIR, TARGET_CITY, TAICHUNG_DISTRICTS, TARGET_INDUSTRIES,
     HISTORICAL_YEARS, BASE_ACADEMIC_YEAR, TARGET_PROJECTION_YEAR
@@ -39,6 +40,7 @@ app = FastAPI(
 )
 
 app.include_router(recruitment_router)
+app.include_router(recruitment_demo_router)
 
 app.add_middleware(
     CORSMiddleware,
@@ -411,6 +413,11 @@ def serve_legacy_prototype():
 @app.get("/demo")
 def serve_expansion_demo():
     return FileResponse(UI_DIR / "expansion-demo.html")
+
+
+@app.get("/recruitment-demo")
+def serve_recruitment_demo():
+    return FileResponse(UI_DIR / "recruitment-demo.html", headers={"Cache-Control": "no-store"})
 
 @app.get("/architecture")
 @app.get("/architecture/index.html")
