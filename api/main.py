@@ -9,8 +9,8 @@ from typing import Dict, Any, List, Optional
 from fastapi import FastAPI, Query, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse, JSONResponse
-from pydantic import BaseModel
+from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
+from pydantic import BaseModel, Field
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
@@ -22,6 +22,8 @@ from database.db_manager import db
 from agent.audit_log import AuditLogError
 from agent.agent_service import OpenRouterError, agent_service
 from engine.gcis_live_verifier import verify_company_live
+from sourcing import service as sourcing_service
+from sourcing.sites import catalog as sourcing_catalog
 from engine.expansion_demo import build_expansion_report
 from engine.official_labor_market import (
     get_gcis_new_company_trend,
@@ -51,6 +53,12 @@ class ChatRequest(BaseModel):
 
 class VerifyRequest(BaseModel):
     query: str
+
+class SourcingRequest(BaseModel):
+    query: str = Field(..., min_length=2, max_length=300)
+    max_candidates: int = Field(5, ge=1, le=20)
+    sites: Optional[List[str]] = None
+    screenshots: bool = True
 
 
 OFFICIAL_DATA_REFRESH_QUERIES = {
@@ -314,6 +322,27 @@ def agent_chat(req: ChatRequest) -> Dict[str, Any]:
         return agent_service.process_query(req.query)
     except (OpenRouterError, AuditLogError) as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+@app.get("/api/sourcing/sites")
+def sourcing_sites() -> Dict[str, Any]:
+    """找人 agent 的網站目錄：職類、可用與否、不可用原因。"""
+    return {"sites": sourcing_catalog()}
+
+@app.post("/api/sourcing/search")
+def sourcing_search(req: SourcingRequest) -> StreamingResponse:
+    """找人 agent：以 SSE 串流回傳每一步（含截圖）、候選人與結束事件。"""
+    try:
+        prepared = sourcing_service.prepare(req.query, max_candidates=req.max_candidates,
+                                            site_ids=req.sites, screenshots=req.screenshots)
+    except AuditLogError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+    def frames():
+        for event in sourcing_service.stream(prepared):
+            yield f"event: {event['type']}\ndata: {json.dumps(event, ensure_ascii=False)}\n\n"
+
+    return StreamingResponse(frames(), media_type="text/event-stream",
+                             headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
 
 @app.post("/api/agent/verify-company")
 def verify_company_api(req: VerifyRequest) -> Dict[str, Any]:

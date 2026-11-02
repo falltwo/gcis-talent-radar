@@ -100,12 +100,14 @@ python -m pytest tests -q
 | `POST /api/agent/chat` | AI 問答 |
 | `GET /api/demo/expansion` | 擴廠情境的四個官方數字 |
 | `GET /api/official/job-demand`、`company-trend`、`wage-baseline` | 三個官方資料工具 |
+| `POST /api/sourcing/search`、`GET /api/sourcing/sites` | 找人 agent：依職類到公開作品網站，用 computer use 找候選人，SSE 串流回傳每一步與截圖（見 [docs/SOURCING.md](docs/SOURCING.md)） |
 | `/legacy` | 舊版原型，含模擬資料，不屬於展示內容 |
 
 ## 專案結構
 
 ```
 agent/      問答流程：範圍檢查、公平護欄、工具呼叫、數字核對、稽核
+sourcing/   找人 agent：網站目錄、需求規劃、computer use 瀏覽器、候選人擷取
 engine/     資料工具（官方資料查詢）
 etl/        真實資料下載與整理（etl/sources/ 一個來源一個模組）
 forecast/   預測引擎與回測
