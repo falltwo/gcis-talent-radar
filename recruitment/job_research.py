@@ -6,6 +6,7 @@ import os
 import re
 import unicodedata
 from datetime import datetime, timezone
+from decimal import Decimal
 from urllib.parse import urlsplit
 
 import requests
@@ -91,8 +92,8 @@ def experience_months(text):
     number = r'(?:[0-9]{1,2}(?:\.5)?|[一二兩三四五六七八九十]{1,3})'
     duration = rf'(?:(?P<years>{number})\s*年\s*(?P<half>半)?|(?P<half_only>半)\s*年)'
     patterns = [
-        rf'(?:工作經驗|相關經驗|經驗|年資|工作)\s*[:：]?\s*(?:(?:至少|最少|需要|須要|需|須|具備|滿|達|超過|有)\s*)?{duration}',
-        rf'(?<![0-9.一二兩三四五六七八九十]){duration}\s*(?:以上)?\s*(?:的)?\s*(?:相關)?\s*(?:工作)?經驗',
+        rf'(?:工作經[驗歷]|相關經[驗歷]|經[驗歷]|年資|工作)\s*[:：]?\s*(?:(?:至少|最少|需要|須要|需|須|具備|滿|達|超過|有)\s*)?{duration}',
+        rf'(?<![0-9.一二兩三四五六七八九十]){duration}\s*(?:以上)?\s*(?:的)?\s*(?:相關)?\s*(?:工作)?經[驗歷]',
     ]
     matches = []
     for pattern in patterns:
@@ -106,9 +107,46 @@ def experience_months(text):
                 matches.append((match.start(), int(count * 12) + (6 if match['half'] else 0)))
     if matches:
         return min(matches)[1]
-    if '經驗不拘' in text or '經驗不限' in text:
+    if re.search(r'經[驗歷](?:不拘|不限)', text):
         return 0
     return None
+
+
+def salary_range(text):
+    """Read explicit monthly amounts, including mixed Arabic/Chinese 萬 notation."""
+    digits = {'零':0,'〇':0,'一':1,'二':2,'兩':2,'三':3,'四':4,'五':5,'六':6,'七':7,'八':8,'九':9}
+    def number(value):
+        if re.fullmatch(r'(?:\d+|\d{1,3}(?:,\d{3})+)(?:\.\d+)?', value):
+            return Decimal(value.replace(',', ''))
+        # Positional Chinese units must occur in decreasing order.
+        total, pending, last_unit = 0, None, 10000
+        for char in value:
+            if char in digits:
+                if pending is not None and pending != 0: return None
+                pending = digits[char]
+            else:
+                unit = {'十':10,'百':100,'千':1000}.get(char)
+                if unit is None or unit >= last_unit: return None
+                total += (pending if pending is not None else 1) * unit
+                pending, last_unit = None, unit
+        return Decimal(total + (pending or 0)) if value else None
+    def amount(value, inherited_unit=False):
+        if '萬' in value:
+            major, minor = value.split('萬')
+            left, right = number(major), number(minor) if minor else Decimal(0)
+            return None if left is None or right is None else left * 10000 + right
+        parsed = number(value)
+        return parsed * 10000 if parsed is not None and inherited_unit else parsed
+    numeral = r'(?:[0-9][0-9,]*(?:\.[0-9]+)?|[零〇一二兩三四五六七八九十百千]+)'
+    money = rf'{numeral}(?:\s*萬(?:\s*{numeral})?)?'
+    match = re.search(rf'(?:月薪|薪資)\s*[:：]?\s*(?:新臺幣|新台幣|NT\$)?\s*(?P<low>{money})\s*(?:元)?\s*(?:至|到|[-~～–])\s*(?P<high>{money})(?![0-9.,零〇一二兩三四五六七八九十百千萬])', text)
+    if not match: return None
+    low, high = (re.sub(r'\s+', '', match[key]) for key in ('low','high'))
+    # 「4到6萬」 shares the right-hand unit; do not scale a full amount like 40000.
+    lower = amount(low, '萬' not in low and '萬' in high and number(low) is not None and number(low) < 100)
+    upper = amount(high)
+    if lower is None or upper is None or any(v != v.to_integral_value() for v in (lower, upper)): return None
+    return int(lower), int(upper)
 
 
 def explicit_conditions(needs):
@@ -121,9 +159,9 @@ def explicit_conditions(needs):
     if re.search(r"面議|另議|negotiable", text, re.I):
         result.update(salary_mode="NEGOTIABLE", salary_min=None, salary_max=None)
     else:
-        salary = re.search(r"(?:月薪|薪資)\s*([0-9][0-9,]{2,8})\s*(?:元)?\s*(?:至|到|[-~～–])\s*([0-9][0-9,]{2,8})", text)
+        salary = salary_range(text)
         if salary:
-            result.update(salary_mode="RANGE", salary_min=int(salary[1].replace(",","")), salary_max=int(salary[2].replace(",","")))
+            result.update(salary_mode="RANGE", salary_min=salary[0], salary_max=salary[1])
     for word in ["輪班制", "排班制", "固定班制"]:
         if word in text: result["schedule_system"] = word
     for word in ["日班", "晚班", "大夜班"]:

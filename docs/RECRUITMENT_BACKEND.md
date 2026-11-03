@@ -160,6 +160,10 @@ API 使用獨立的 `/api/mock104/*` 及 HttpOnly／SameSite cookie；沿用暫�
 
 工作台的最低經驗改為以年顯示的下拉選單，與模擬求才網站的年資選項一致（經驗不拘、0.5年至50年，每半年一級），API仍使用月數。必要與可培訓技能欄位不再顯示換行編輯提示或範例佔位字。
 
+薪資區間支援「月薪4萬到六萬」、「月薪四萬至六萬」、「月薪4到6萬」、「月薪3.5萬～4.5萬」及完整元數；「經歷」與「經驗」均可辨識。使用者原文「月薪4萬到六萬 日班 兩年以上工作經歷」會帶入40000～60000元、日班、24個月，以上欄位均為`HR_INPUT`，歷史範本不會覆蓋。
+
+Computer Use失敗會回報`error_code`：`BROWSER_START_FAILED`、`BROWSER_CLOSED`、`BROWSER_TIMEOUT`、`BROWSER_NAVIGATION_FAILED`、`BROWSER_OPERATION_FAILED`或`COMPUTER_USE_ERROR`。後端日誌記錄失敗階段與例外；模型格式錯誤、網頁逾時與操作中斷不再一律提示重新安裝Chrome／Playwright。失敗後可再次確認需求重試；只操作本機模擬平台。
+
 本機安裝與設定：
 
 ```bash

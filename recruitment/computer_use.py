@@ -1,6 +1,7 @@
 """External screenshot → model → mouse/keyboard loop; no page hooks or DOM filling."""
 import base64
 import json
+import logging
 import os
 import threading
 import time
@@ -91,9 +92,29 @@ def decide(screenshot, job, goal, previous_error):
                   'messages':[{'role':'system','content':prompt},{'role':'user','content':[{'type':'text','text':'Observe this current screenshot and decide the next actions.'},{'type':'image_url','image_url':{'url':'data:image/jpeg;base64,'+base64.b64encode(screenshot).decode()}}]}],
                   'response_format':{'type':'json_object'},'max_completion_tokens':1300},timeout=(10,70))
         if not response.ok: raise RuntimeError('Computer Use 模型未接受截圖，請確認視覺模型設定。')
-        return json.loads(response.json()['choices'][0]['message']['content'])
+        decision = json.loads(response.json()['choices'][0]['message']['content'])
+        if not isinstance(decision, dict) or not isinstance(decision.get('actions'), list):
+            raise ValueError('Expected an action list')
+        return decision
     except requests.RequestException:
         raise RuntimeError('Computer Use 模型連線失敗。') from None
+    except (KeyError, IndexError, TypeError, ValueError):
+        raise RuntimeError('Computer Use 模型回傳的操作格式不完整，請重新確認需求後重試。') from None
+
+
+def failure_reason(exc, stage):
+    """Do not misreport every model/page/action error as a missing installation."""
+    if isinstance(exc, RuntimeError):
+        return 'COMPUTER_USE_ERROR', str(exc)[:250]
+    if type(exc).__name__ == 'TargetClosedError':
+        return 'BROWSER_CLOSED', '操作中的 Chrome 已關閉。請按「確認需求，啟動 Computer Use」重試。'
+    if isinstance(exc, TimeoutError) or type(exc).__name__ == 'TimeoutError':
+        return 'BROWSER_TIMEOUT', '瀏覽器等待網頁回應逾時。請確認本機網站仍在執行，再按「確認需求，啟動 Computer Use」重試。'
+    if stage == 'STARTING_BROWSER':
+        return 'BROWSER_START_FAILED', 'Chrome 啟動失敗。請確認 Chrome 與 requirements-recruitment-browser.txt 已安裝，並查看後端日誌。'
+    if stage == 'OPENING_PAGE':
+        return 'BROWSER_NAVIGATION_FAILED', 'Chrome 無法開啟本機模擬網站。請確認服務連線，再按「確認需求，啟動 Computer Use」重試。'
+    return 'BROWSER_OPERATION_FAILED', '瀏覽器操作中斷，詳細原因已記錄於後端日誌。請按「確認需求，啟動 Computer Use」重試。'
 
 
 def launch(registry, cookie, origin, run_id):
@@ -123,6 +144,7 @@ def operate(registry, cookie, origin, run_id):
             run=session.get('agent_run')
             if not run or run['run_id']!=run_id: raise RuntimeError('工作已被取代，已停止操作。')
             return dict(run)
+    stage = 'STARTING_BROWSER'
     try:
         run=update(phase='COMPUTER_RUNNING',driver='COMPUTER_USE',message='正在開啟獨立 Chrome 瀏覽器')
         with registry.session(cookie) as session:
@@ -133,6 +155,7 @@ def operate(registry, cookie, origin, run_id):
             context=browser.new_context(viewport={'width':1280,'height':900},locale='zh-TW')
             context.add_cookies([{'name':'mock104_demo','value':cookie,'domain':urlsplit(origin).hostname,'path':'/api/mock104','httpOnly':True,'sameSite':'Strict'}])
             page=context.new_page()
+            stage = 'OPENING_PAGE'
             def route(request_route):
                 request=request_route.request
                 parsed=urlsplit(request.url)
@@ -155,6 +178,7 @@ def operate(registry, cookie, origin, run_id):
             page.route('**/*',route)
             page.on('dialog',lambda dialog:dialog.dismiss())
             page.goto(origin+'/mock104',wait_until='networkidle')
+            stage = 'OPERATING'
             error=''
             for step in range(30):
                 state=current()
@@ -207,8 +231,11 @@ def operate(registry, cookie, origin, run_id):
                 page.wait_for_timeout(500)
             browser.close()
     except Exception as exc:
+        logging.getLogger(__name__).exception('Computer Use worker failed during %s (%s)', stage, type(exc).__name__)
         try:
-            if current()['phase'] not in {'CANCELLED','FAILED'}: update(phase='FAILED',message=str(exc)[:250] if isinstance(exc,RuntimeError) else '瀏覽器操作未完成，請確認Chrome與Playwright安裝。')
+            if current()['phase'] not in {'CANCELLED','FAILED'}:
+                code, message = failure_reason(exc, stage)
+                update(phase='FAILED',error_code=code,message=message)
         except Exception: pass
     finally:
         with active_lock: active.discard(cookie)

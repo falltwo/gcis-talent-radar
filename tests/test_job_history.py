@@ -41,13 +41,16 @@ def test_successful_search_is_reused_without_key_or_new_hr_data_leaking(client,m
     assert first['usage']['total_tokens']==150 and first['usage']['cost_usd']==0.007
     monkeypatch.setenv('RECRUITMENT_AGENT_DEMO_AI_ENABLED','0')
     monkeypatch.delenv('OPENROUTER_API_KEY')
-    second=client.post('/api/mock104/agent/prepare',json={'role':'專業　研究員','district':'西屯區','company_name':'乙公司','needs':'招募2人 月薪40000至50000元 晚班 工作經驗兩年以上'})
+    second=client.post('/api/mock104/agent/prepare',json={'role':'專業　研究員','district':'西屯區','company_name':'乙公司','needs':'招募2人 月薪4萬到六萬 晚班 兩年以上工作經歷'})
     assert second.status_code==200,second.text
     draft=second.json()
     assert len(calls)==1
     assert draft['source']=='HISTORICAL_TEMPLATE'
     assert draft['usage']==research.local_usage()
     assert draft['job']['headcount']==2 and draft['job']['salary_min']==40000
+    assert draft['job']['salary_max']==60000
+    assert draft['field_provenance']['salary_min']=='HR_INPUT'
+    assert draft['field_provenance']['salary_max']=='HR_INPUT'
     assert draft['job']['shift']=='晚班' and draft['job']['company_name']=='乙公司'
     assert draft['job']['min_experience_months']==24
     assert draft['field_provenance']['min_experience_months']=='HR_INPUT'

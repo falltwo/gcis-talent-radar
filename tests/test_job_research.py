@@ -69,6 +69,35 @@ def test_chinese_experience_is_preserved_as_hr_input(client):
     assert draft['field_provenance']['min_experience_months']=='HR_INPUT'
 
 
+@pytest.mark.parametrize(('needs','minimum','maximum'),[
+    ('月薪4萬到六萬',40000,60000),('月薪四萬至六萬',40000,60000),
+    ('月薪4到6萬',40000,60000),('月薪3.5萬～4.5萬',35000,45000),
+    ('薪資：40,000元至60,000元',40000,60000),('月薪四萬五千到六萬',45000,60000),
+    ('月薪40000到6萬',40000,60000),('月薪４萬到６萬',40000,60000),
+    ('月薪新臺幣四萬到六萬元',40000,60000),
+])
+def test_monthly_salary_supports_wan_and_mixed_numerals(needs,minimum,maximum):
+    fields=research.explicit_conditions(needs)
+    assert fields['salary_mode']=='RANGE'
+    assert (fields['salary_min'],fields['salary_max'])==(minimum,maximum)
+
+
+@pytest.mark.parametrize('needs',['兩年以上工作經歷','工作經歷兩年以上','需兩年相關經歷'])
+def test_work_history_wording_is_experience(needs):
+    assert research.explicit_conditions(needs)['min_experience_months']==24
+
+
+def test_user_reported_salary_and_experience_are_hr_input(client):
+    response=client.post('/api/mock104/agent/prepare',json={'role':'會計','district':'大雅區','needs':'月薪4萬到六萬 日班 兩年以上工作經歷'})
+    assert response.status_code==200,response.text
+    draft=response.json()
+    assert draft['job']['salary_mode']=='RANGE'
+    assert (draft['job']['salary_min'],draft['job']['salary_max'])==(40000,60000)
+    assert draft['job']['min_experience_months']==24
+    for field in ('salary_mode','salary_min','salary_max','min_experience_months','shift'):
+        assert draft['field_provenance'][field]=='HR_INPUT'
+
+
 def test_quantum_role_calls_live_search_and_requires_citations(monkeypatch):
     monkeypatch.setenv('OPENROUTER_API_KEY','test-only')
     observed=[]
