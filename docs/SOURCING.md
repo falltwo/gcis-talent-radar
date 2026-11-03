@@ -40,7 +40,7 @@ pip install -r requirements-sourcing.txt   # typesafe-computer-use，需要 Pyth
 | 職類 | 網站 | 狀態 |
 |---|---|---|
 | 軟體開發 | GitHub | 可用 |
-| 軟體開發 | Stack Overflow | 搜尋頁用瀏覽器；個人頁會跳 Cloudflare 驗證，改用官方 Stack Exchange API。排行不分地點、API 也不能依地點搜尋：排行上的人一次批次查完（1 次 API），自填地點在需求城市的列入，同國家其他城市列為部分符合，其他略過；指定城市時通常找不到人，會送 `notice` 說明 |
+| 軟體開發 | Stack Overflow | 官方 Stack Exchange API，不開瀏覽器（網頁版連排行頁都會跳 Cloudflare 驗證）：技能標籤的歷來與本月回答排行（最多 40 位）一次批次查公開資料。排行與 API 都不能依地點搜尋：自填地點在需求城市的列入，同國家其他城市列為部分符合，其他略過；指定城市時通常找不到人，會送 `notice` 說明 |
 | 軟體開發 | GitLab | **不可用**：Cloudflare 機器人驗證 |
 | AI／資料 | GitHub、Hugging Face、Kaggle | 可用（Hugging Face 從模型推回作者） |
 | 設計 | Dribbble | 可用（從作品搜尋找作者） |
@@ -106,7 +106,7 @@ await fetch(`/api/sourcing/runs/${run_id}`, {method: 'DELETE'});
 | `plan` | 開始搜尋前 | `plan`（職類、技能、地點、判斷來源）、`sites` |
 | `frame` | `live=true` 時，畫面有變化就送 | `data`（`data:image/jpeg;base64,…`），直接設成 `<img>` 的 `src` |
 | `decision` | gpt-6-luna（或規則）做決定時 | `site`、`what`（`search_text` 搜尋字、`pick` 挑人）、`detail`、`by`（`gpt-6-luna` 或 `rules`） |
-| `candidate_skipped` | gpt-6-luna 判斷不符合，或 Stack Overflow 自填地點不符（`reason` 以「地點不符」開頭） | `site`、`name`、`reason` |
+| `candidate_skipped` | gpt-6-luna 判斷不符合（瀏覽器與官方 API 來源都一樣） | `site`、`name`、`reason` |
 | `notice` | 沒有金鑰時提醒 | `message` |
 | `site_skipped` | 職類對到的網站不可用 | `site`、`reason` |
 | `step` | 瀏覽器每做一步 | `n`、`site`、`action`、`detail`、`url`、`screenshot`（`data:image/jpeg;base64,…`，可能是 `null`）、Jev 步驟另有 `confidence`；點擊與打字步驟另有 `geometry`（見下方） |
@@ -115,7 +115,7 @@ await fetch(`/api/sourcing/runs/${run_id}`, {method: 'DELETE'});
 | `error` | 瀏覽器或套件無法使用 | `reason` |
 | `done` | 結束 | `count`、`plan`、`message`、`usage`（實際 token 與費用）、`cancelled` |
 
-`step.action`：`open_entry`（開網站入口頁）、`fallback`（Jev 沒完成，改用備案）、`read_api`（OpenAlex、ORCID、Stack Exchange 官方 API）、`open_search`（開搜尋結果頁）、`jev_click`／`jev_type_text`／`jev_press_enter`／`jev_press_escape`／`jev_scroll_down`／`jev_done`／`jev_none`／`jev_refused`…（Jev 的動作；`jev_refused` 是被安全規則擋下的動作）、`open_profile`（點擊或開啟個人頁）。
+`step.action`：`open_entry`（開網站入口頁）、`next_page`（一頁不夠，換下一頁或往下捲動載入更多）、`fallback`（Jev 沒完成，改用備案）、`read_api`（OpenAlex、ORCID、Stack Exchange 官方 API）、`open_search`（開搜尋結果頁）、`jev_click`／`jev_type_text`／`jev_press_enter`／`jev_press_escape`／`jev_scroll_down`／`jev_done`／`jev_none`／`jev_refused`…（Jev 的動作；`jev_refused` 是被安全規則擋下的動作）、`open_profile`（點擊或開啟個人頁）。
 
 `candidate` 欄位：
 
@@ -160,5 +160,5 @@ await fetch(`/api/sourcing/runs/${run_id}`, {method: 'DELETE'});
 
 - 職類判斷是關鍵字規則，有金鑰時再由模型補強；寫得太模糊時會回 `no_public_work` 並請使用者寫明職缺或技能。
 - 搜尋品質取決於各網站自己的搜尋：Stack Overflow 依標籤排名，不能依地點篩選；Hugging Face 依模型名稱搜尋。
-- 只讀搜尋結果的第一頁；目前一次只開一個分頁，一位一位讀，5 位候選人大約要 30～60 秒。
+- 一頁不夠時，GitHub、Hugging Face 換下一頁，Kaggle、Dribbble 往下捲動載入更多，每個網站最多看 5 頁。一次只開一個分頁、一位一位讀：3 位約 20～80 秒，20 位約 3～4 分鐘（實測 208 秒、US$0.011）。
 - Jev 與 gpt-6-luna 要有金鑰才會執行；目前只用模擬資料驗證過邏輯，尚未用真金鑰實測。沒有金鑰的確定性版本已在真實網站跑過（含即時畫面）。

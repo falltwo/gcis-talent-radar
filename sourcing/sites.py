@@ -8,7 +8,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 from typing import Callable, Optional
-from urllib.parse import quote, quote_plus, urlsplit
+from urllib.parse import parse_qsl, quote, quote_plus, urlencode, urlsplit, urlunsplit
 
 CATEGORIES = {
     "software": "軟體開發",
@@ -100,6 +100,8 @@ class Site:
     # Jev 操作的起點：入口頁上有搜尋框，Jev 把 typed_query 打進去再送出；沒有就直接開 search_url
     entry_url: Optional[str] = None
     typed_query: Optional[Callable[[SearchTerms], str]] = None
+    # 搜尋結果怎麼看下一頁：(第一頁網址, 第幾頁) → 網址；None 表示往下捲動載入更多
+    page_url: Optional[Callable[[str, int], str]] = None
     available: bool = True
     unavailable_reason: str = ""
 
@@ -145,13 +147,16 @@ advertise places resources cookie-policy
 SITES: dict[str, Site] = {s.id: s for s in [
     Site("github", "GitHub", ("software", "ai_data"), ("github.com",), _github,
          re.compile(r"^https://github\.com/([A-Za-z0-9](?:[A-Za-z0-9-]{0,38}))$"), _GITHUB_RESERVED,
-         entry_url="https://github.com/search?type=users", typed_query=_github_typed),
-    Site("stackoverflow", "Stack Overflow", ("software",), ("stackoverflow.com",), _stackoverflow,
+         entry_url="https://github.com/search?type=users", typed_query=_github_typed,
+         page_url=lambda url, n: _with_param(url, "p", str(n))),
+    # 網頁版連排行頁都會跳 Cloudflare 驗證，排行與個人資料都改用官方 Stack Exchange API，不開瀏覽器
+    Site("stackoverflow", "Stack Overflow", ("software",), ("stackoverflow.com",), None,
          re.compile(r"^https://stackoverflow\.com/users/(\d+)/[^/]+$"), profile_api="stackexchange"),
     Site("huggingface", "Hugging Face", ("ai_data",), ("huggingface.co",), _huggingface,
          re.compile(r"^https://huggingface\.co/([A-Za-z0-9][A-Za-z0-9._-]*)$"), _HF_RESERVED,
          work_pattern=re.compile(r"^https://huggingface\.co/([A-Za-z0-9][A-Za-z0-9._-]*)/[A-Za-z0-9._-]+$"),
-         entry_url="https://huggingface.co/models", typed_query=lambda t: t.text(with_location=False)),
+         entry_url="https://huggingface.co/models", typed_query=lambda t: t.text(with_location=False),
+         page_url=lambda url, n: _with_param(url, "p", str(n - 1))),
     Site("kaggle", "Kaggle", ("ai_data",), ("www.kaggle.com", "kaggle.com"), _kaggle,
          re.compile(r"^https://www\.kaggle\.com/([A-Za-z0-9_-]+)$"), _KAGGLE_RESERVED,
          entry_url="https://www.kaggle.com/search", typed_query=lambda t: t.text()),
@@ -169,6 +174,13 @@ SITES: dict[str, Site] = {s.id: s for s in [
     Site("behance", "Behance", ("design",), ("www.behance.net", "behance.net"), None, None, available=False,
          unavailable_reason="對自動瀏覽回應 HTTP 400，系統不繞過"),
 ]}
+
+
+def _with_param(url: str, key: str, value: str) -> str:
+    """把網址的某個查詢參數設成指定值（沒有就加上）。"""
+    parts = urlsplit(url)
+    query = [(k, v) for k, v in parse_qsl(parts.query, keep_blank_values=True) if k != key] + [(key, value)]
+    return urlunsplit(parts._replace(query=urlencode(query)))
 
 
 def _host(url: str) -> str:

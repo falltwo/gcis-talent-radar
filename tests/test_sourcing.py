@@ -688,24 +688,23 @@ def test_unsafe_urls_never_reach_the_frontend(monkeypatch):
     assert "data:" not in json.dumps(cand.as_dict())
 
 
-def test_stackoverflow_batches_lookup_and_filters_location(monkeypatch):
+def test_stackoverflow_uses_api_only_and_filters_location(monkeypatch):
     users = {"1": ("UK Dev", "Cambridge, United Kingdom"), "2": ("TC Dev", "台中市"), "3": ("TP Dev", "Taipei, Taiwan")}
     calls = []
+    monkeypatch.setattr(apis, "stackoverflow_top_answerers", lambda tag: [(i, users[i][0]) for i in users])
 
     def batch(ids):
         calls.append(list(ids))
-        return {i: {"display_name": users[i][0], "reputation": 100, "location": users[i][1], "link": "", "website_url": ""}
-                for i in ids}
+        return {i: {"display_name": users[i][0], "reputation": 100, "location": users[i][1],
+                    "link": f"https://stackoverflow.com/users/{i}/u{i}", "website_url": ""} for i in ids}
 
     monkeypatch.setattr(apis, "stackoverflow_users", batch)
     monkeypatch.setattr(apis, "stackoverflow_top_tags", lambda uid: ["python", "django"])
-    url = SITES["stackoverflow"].search_url(SearchTerms(("python",), "Taichung"))
-    pages = {url: {"title": "top", "links": [(f"https://stackoverflow.com/users/{i}/u{i}", users[i][0]) for i in users]}}
     prep = service.prepare("找會 Python 的工程師，在台中", max_candidates=2, site_ids=["stackoverflow"])
-    events = list(service.stream(prep, browser_factory=lambda: FakeBrowser(pages)))
+    events = list(service.stream(prep, browser_factory=lambda: pytest.fail("Stack Overflow 不應開瀏覽器")))
     cands = {e["candidate"]["name"]: e["candidate"] for e in events if e["type"] == "candidate"}
     assert calls == [["1", "2", "3"]]  # 一次批次查完
-    assert set(cands) == {"TC Dev", "TP Dev"} and "UK Dev" not in cands
+    assert set(cands) == {"TC Dev", "TP Dev"}
     assert cands["TC Dev"]["fit"] == "部分符合" and cands["TP Dev"]["fit_reason"].startswith("在台灣其他城市")
     assert any(e["type"] == "notice" and "Stack Overflow" in e["message"] for e in events)
 
@@ -818,3 +817,71 @@ def test_orcid_uses_official_api_with_city_institutions(monkeypatch):
     assert cand["name"] == "Lin Chen" and cand["profile_url"] == "https://orcid.org/0000-0001-2345-6789"
     assert cand["skills"][:2] == ["machine learning", "computer vision"] and cand["fit"] == "部分符合"
     assert cand["personal_site"] == "https://lin.example.org" and "javascript" not in json.dumps(cand)
+
+
+
+def test_api_sources_skip_candidates_judged_not_fitting(monkeypatch):
+    people = [{"orcid": f"0000-0001-0000-000{i}", "name": f"R{i}", "institutions": ["Feng Chia University"],
+               "keywords": ["machine learning"], "biography": "", "urls": []} for i in range(4)]
+    monkeypatch.setattr(apis, "orcid_researchers", lambda topics, location, limit: people[:limit])
+    verdicts = iter([("不符合", "醫院行政"), ("符合", "ML"), ("不符合", "化學"), ("符合", "CV")])
+    monkeypatch.setattr(extract_mod, "judge_fit", lambda *a, **k: next(verdicts))
+    prep = service.prepare("找台中的機器學習研究員", max_candidates=2, site_ids=["orcid"])
+    events = list(service.stream(prep, browser_factory=lambda: pytest.fail("不應開瀏覽器")))
+    kept = [e["candidate"]["name"] for e in events if e["type"] == "candidate"]
+    skipped = [e["name"] for e in events if e["type"] == "candidate_skipped"]
+    assert kept == ["R1", "R3"] and skipped == ["R0", "R2"]
+
+
+# ------------------------------------------------------------------ 一頁不夠就換頁
+def _people(prefix, n, site="github"):
+    base = {"github": "https://github.com/", "kaggle": "https://www.kaggle.com/"}[site]
+    return [(f"{base}{prefix}{i}", f"{prefix}{i}") for i in range(n)]
+
+
+def _profiles(links):
+    return {href: {"title": name, "text": [f"{name} writes Python"], "links": []} for href, name in links}
+
+
+def test_github_moves_to_next_page_until_quota():
+    first = SITES["github"].search_url(SearchTerms(("python",), None))
+    page1, page2 = _people("a", 3), _people("b", 3)
+    pages = {first: {"title": "p1", "links": page1},
+             SITES["github"].page_url(first, 2): {"title": "p2", "links": page2},
+             **_profiles(page1 + page2)}
+    prep = service.prepare("Python 工程師", max_candidates=5, site_ids=["github"])
+    events = list(service.stream(prep, browser_factory=lambda: FakeBrowser(pages)))
+    names = [e["candidate"]["name"] for e in events if e["type"] == "candidate"]
+    assert len(names) == 5 and len(set(names)) == 5
+    assert any(e["type"] == "step" and e["action"] == "next_page" and "第 2 頁" in e["detail"] for e in events)
+
+
+def test_infinite_scroll_sites_scroll_for_more_and_stop_when_exhausted():
+    first = SITES["kaggle"].search_url(SearchTerms(("data science",), None))
+    batch1, batch2 = _people("k", 2, "kaggle"), _people("m", 2, "kaggle")
+
+    class ScrollBrowser(FakeBrowser):
+        scrolls = 0
+
+        def scroll_more(self):
+            self.scrolls += 1
+            if self.scrolls == 1:  # 第一次捲動載入下一批，之後就沒有了
+                self.pages[first]["links"] = batch1 + batch2
+
+    pages = {first: {"title": "k", "links": list(batch1)}, **_profiles(batch1 + batch2)}
+    browser = ScrollBrowser(pages)
+    prep = service.prepare("找資料科學家", max_candidates=10, site_ids=["kaggle"])
+    events = list(service.stream(prep, browser_factory=lambda: browser))
+    assert len([e for e in events if e["type"] == "candidate"]) == 4
+    assert browser.scrolls == 2 and events[-1]["type"] == "done"
+
+
+def test_bot_check_on_profile_stops_the_whole_site():
+    first = SITES["github"].search_url(SearchTerms(("python",), None))
+    links = _people("a", 3)
+    pages = {first: {"title": "p1", "links": links}, **_profiles(links)}
+    browser = FakeBrowser(pages, challenge_on=["https://github.com/a0"])
+    prep = service.prepare("Python 工程師", max_candidates=3, site_ids=["github"])
+    events = list(service.stream(prep, browser_factory=lambda: browser))
+    assert any(e["type"] == "site_error" and "機器人驗證" in e["reason"] for e in events)
+    assert not any(u.endswith("/a1") for u in browser.opened) and not any(e["type"] == "candidate" for e in events)

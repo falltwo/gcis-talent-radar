@@ -327,3 +327,43 @@ def from_orcid(site: Site, plan: Plan, *, limit: int) -> Optional[list[Candidate
                 cand.evidence.append({"label": "研究者網站", "url": url})
         out.append(cand)
     return out
+
+
+COUNTRY_OF = {city: "Taiwan" for city in set(LOCATIONS.values()) if city != "Taiwan"}
+COUNTRY_LABEL = {"Taiwan": "台灣"}
+
+
+def from_stackoverflow(site: Site, plan: Plan, *, limit: int) -> Optional[list[Candidate]]:
+    """Stack Overflow 官方 API：技能標籤的回答排行 → 一次批次查公開資料 → 篩地點 → 讀常答標籤並判斷。
+
+    排行與 API 都不能依地點搜尋：需求城市的列入，同國家其他城市列為部分符合，其他略過。
+    """
+    tag = (plan.terms.skills[0] if plan.terms.skills else "python").lower().replace(" ", "-")
+    ranked = apis.stackoverflow_top_answerers(tag)
+    if ranked is None:
+        return None
+    infos = apis.stackoverflow_users([uid for uid, _ in ranked])
+    if infos is None:
+        return None
+    wanted = plan.terms.location
+    country = COUNTRY_OF.get(wanted or "")
+    out: list[Candidate] = []
+    for uid, name in ranked:
+        info = infos.get(uid)
+        if not info:
+            continue
+        same_city = location_matches(wanted, info["location"])
+        same_country = bool(country) and location_matches(country, info["location"])
+        if wanted and not (same_city or same_country):
+            continue
+        cand = from_stackoverflow_api(site, info.get("link") or f"https://stackoverflow.com/users/{uid}", plan,
+                                      fallback_name=name, info=info)
+        if cand is None:
+            continue
+        if wanted and not same_city:
+            cand.fit = "部分符合" if cand.fit in ("符合", "未判斷") else cand.fit
+            cand.fit_reason = f"在{COUNTRY_LABEL.get(country, country)}其他城市（{cand.location}）。" + cand.fit_reason
+        out.append(cand)
+        if len(out) >= limit:
+            break
+    return out

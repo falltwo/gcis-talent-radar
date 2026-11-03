@@ -363,6 +363,11 @@ class SourcingBrowser:
         self._act.go_back(self._session)
         self._settle(max_wait=4.0)
 
+    def scroll_more(self) -> None:
+        """往下捲到底，讓無限捲動的網站載入下一批結果。"""
+        self._session.evaluate("window.scrollTo(0, document.body.scrollHeight); true")
+        time.sleep(float(os.environ.get("SOURCING_PAGE_DELAY", "1.5")))
+
     def visible_link(self, href: str) -> bool:
         """畫面上看得到、沒被擋住的連結有沒有指向 href；沒有就不必請 Jev 找（例如搜尋結果只列作品不列作者）。"""
         target = href.rstrip("/")

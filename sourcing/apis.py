@@ -26,6 +26,23 @@ def stackoverflow_users(user_ids: list[str], *, timeout: float = 15.0) -> Option
     } for i in items}
 
 
+def stackoverflow_top_answerers(tag: str, *, timeout: float = 15.0) -> Optional[list[tuple[str, str]]]:
+    """標籤的歷來與本月回答排行（各最多 20 位），回傳 [(user_id, 顯示名稱)]，不重複。"""
+    out: dict[str, str] = {}
+    try:
+        for period in ("all_time", "month"):
+            r = requests.get(f"{STACKEXCHANGE}/tags/{tag}/top-answerers/{period}",
+                             params={"site": "stackoverflow", "pagesize": 20}, timeout=timeout)
+            r.raise_for_status()
+            for item in r.json().get("items", []):
+                user = item.get("user") or {}
+                if user.get("user_id"):
+                    out.setdefault(str(user["user_id"]), user.get("display_name") or "")
+    except (requests.RequestException, ValueError):
+        return None
+    return list(out.items())
+
+
 def stackoverflow_top_tags(user_id: str, *, timeout: float = 15.0) -> Optional[list[str]]:
     try:
         r = requests.get(f"{STACKEXCHANGE}/users/{user_id}/top-tags", params={"site": "stackoverflow", "pagesize": 6},
