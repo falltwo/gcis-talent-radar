@@ -63,3 +63,10 @@ V4 completed: map-overlay layout and 950ms FLIP, same working/review geometry, r
 4. Node 測試、語法資產檢查及瀏覽器驗證導航順序、訊號停止／回傳、退出清理與原審核規則。
 
 V5 completed: navigation tests RED→GREEN, 11 pass. Local mock site HTTP 200 and inline JS checked. Browser confirms no entry signal, ordered navigation logs before first field, paused operation, review hides packet, completion return/wave, stop restores original pin x and clears signal. Independent reviewer identified standalone salary custom-validity dependency; reproduced then fixed and rechecked in browser (corrected minimum permits submit). No external API or push.
+
+## 第六版計畫
+- Archive 測試：未發布不能入列、重複回呼不重複入列、新紀錄在前、後續草稿編輯不影響已刊登快照。
+- 在 brief 版面右側實況下方呈現可捲動卡片與空狀態，成功後更新、同步地圖筆數；原生 dialog 查看只讀完整快照。
+- 程式語法與 Node 測試；瀏覽器實測發布→收回→卡片／詳細內容，保留單次確認。
+
+V6 completed: browser implementation explicitly deferred by user. Archive RED→GREEN, Node 13 pass. Read-only independent review no important findings. Browser confirms archive empty→published card→detail dialog→future input edits do not mutate snapshot. Initial right side remains mock browser above archive. No push.

@@ -39,6 +39,13 @@
     <div class="posting-finished" id="posting-finished" hidden><span>任務完成，已建立 1 個模擬職缺。</span><button type="button" id="posting-again">建立另一份</button></div>
   </section></div>`;
   $('city-stage').append(panel);
+  const archivePanel=document.createElement('section');archivePanel.className='posting-archive';archivePanel.setAttribute('aria-labelledby','posting-archive-title');
+  archivePanel.innerHTML='<header><h3 id="posting-archive-title">已刊登職缺 <span id="posting-archive-count">0</span></h3><span>本頁模擬紀錄</span></header><div id="posting-archive-list"></div><p class="posting-archive-note">僅保留目前頁面，尚未同步後端。</p>';
+  panel.querySelector('.posting-columns').append(archivePanel);
+  const detail=document.createElement('dialog');detail.className='posting-record-dialog';detail.setAttribute('aria-labelledby','posting-record-title');
+  detail.innerHTML='<header><span>已模擬刊登・職缺快照</span><button type="button" id="posting-record-close" aria-label="關閉刊登詳情">×</button></header><h2 id="posting-record-title"></h2><p id="posting-record-meta"></p><dl id="posting-record-facts"></dl><p class="posting-record-note">此為刊登當時的展示快照，未傳送至 104 或外部網站。</p>';
+  document.body.append(detail);let recordTrigger=null;
+  $('posting-record-close').addEventListener('click',()=>detail.close());detail.addEventListener('close',()=>recordTrigger?.focus({preventScroll:true}));
   const labels={company:'公司名稱',role:'職缺名稱',address:'工作地點',salary:'月薪範圍',hires:'招募人數',skills:'工作內容與技能'};
   const sourceNames={company:'企業情境',user:'使用者提供',template:'範本草稿',pending:'待確認',human:'人工修改'};
   const inputs={};
@@ -55,7 +62,7 @@
     const tick=document.createElement('span');tick.className='posting-field-complete';tick.textContent='✓ 已填寫';tick.hidden=true;row.append(head,display,edit,tick);$('posting-fields').append(row);
   });
   let active=false,collapsedByUs=false,timer=0,typingTimer=0,epoch=0,briefText='',reviewCarry=null,reviewView='all',focusAnimation=null,taskOrigin=null;
-  const publishedByLocation=new Map();
+  const archive=new RecruitmentFlow.PostingArchive();
   const mapEffects=window.createRecruitmentMapEffects($('city-stage'),panel);
   function setSidebar(collapsed){if(workspace.classList.contains('sidebar-collapsed')!==collapsed)$('sidebar-toggle').click();}
   function log(message){const li=document.createElement('li');li.textContent=message;$('posting-log').append(li);}
@@ -193,16 +200,33 @@
   });
   function renderMapResult(){
     document.querySelectorAll('.posting-map-result').forEach(el=>el.remove());
-    const key=window.streetMap.getLocation()?.coordinates?.join(','),count=key&&publishedByLocation.get(key),pin=document.querySelector('.real-map-pin');
+    const key=window.streetMap.getLocation()?.coordinates?.join(','),count=key&&archive.countForOrigin(key),pin=document.querySelector('.real-map-pin');
     if(!count||!pin)return;
     const label=document.createElement('span');label.className='posting-map-result';label.textContent=`已模擬刊登 ${count} 個職缺`;pin.append(label);
   }
-  function recordPublication(){if(taskOrigin)publishedByLocation.set(taskOrigin,(publishedByLocation.get(taskOrigin)||0)+1);renderMapResult();}
+  function formatTime(iso){return new Intl.DateTimeFormat('zh-TW',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hour12:false}).format(new Date(iso));}
+  function renderArchive(){
+    const records=archive.all(),box=$('posting-archive-list');box.replaceChildren();$('posting-archive-count').textContent=records.length;
+    if(!records.length){const p=document.createElement('p');p.className='posting-archive-empty';p.textContent='還沒有模擬刊登的職缺。審核通過後，會自動保留在這裡。';box.append(p);return;}
+    for(const record of records){const d=record.draft,card=document.createElement('article');card.className='posting-archive-card';
+      const head=document.createElement('div'),title=document.createElement('strong'),button=document.createElement('button');title.textContent=d.role;button.type='button';button.textContent='查看詳情';button.setAttribute('aria-label',`查看${d.role}刊登詳情`);button.addEventListener('click',()=>showRecord(record,button));head.append(title,button);
+      const meta=document.createElement('p');meta.textContent=`${d.company}・${d.hires} 人・${d.address}`;
+      const foot=document.createElement('div'),salary=document.createElement('span'),time=document.createElement('small');salary.textContent=`月薪 NT$ ${d.salaryMin.toLocaleString('zh-TW')}–${d.salaryMax.toLocaleString('zh-TW')}`;time.textContent=`已模擬刊登 ${formatTime(record.createdAt)}`;foot.append(salary,time);card.append(head,meta,foot);box.append(card);
+    }
+  }
+  function showRecord(record,trigger){
+    recordTrigger=trigger;const d=record.draft;$('posting-record-title').textContent=d.role;$('posting-record-meta').textContent=`刊登於 ${formatTime(record.createdAt)}・${record.id}`;
+    const box=$('posting-record-facts');box.replaceChildren();
+    for(const [title,value]of [['公司名稱',d.company],['招募人數',`${d.hires} 人`],['工作地點',d.address],['月薪範圍',`NT$ ${d.salaryMin.toLocaleString('zh-TW')}–${d.salaryMax.toLocaleString('zh-TW')}`],['工作內容與技能',d.skills]]){const dt=document.createElement('dt'),dd=document.createElement('dd');dt.textContent=title;dd.textContent=value;box.append(dt,dd);}
+    detail.showModal();
+  }
+  function recordPublication(){archive.add(flow,taskOrigin);renderMapResult();renderArchive();}
+  renderArchive();
   $('posting-task-detail').addEventListener('click',()=>{const open=panel.classList.toggle('posting-context-open');$('posting-task-detail').setAttribute('aria-expanded',String(open));$('posting-task-detail').textContent=open?'收起任務詳情':'查看任務詳情';});
   $('posting-map-dismiss').addEventListener('click',()=>{reset();renderMapResult();$('posting-role').focus({preventScroll:true});});
   document.addEventListener('streetmap:location',renderMapResult);
   function activate(){active=true;collapsedByUs=!workspace.classList.contains('sidebar-collapsed');setSidebar(true);window.streetMap.closeCompany(false);workspace.classList.add('posting-active');panel.hidden=false;window.radarFeatures.select('刊登召募');reviewCarry=null;reset();$('posting-company').value=$('company-name').textContent.trim()||'示範企業';$('posting-role').value=($('company-roles').textContent||'CNC 技術員').split(/[、,，]/)[0].trim();$('posting-hires').value=RecruitmentFlow.scenarioHires($('company-hires')?.textContent);$('posting-address').value=$('pin-address').textContent.trim();$('posting-brief').focus({preventScroll:true});}
-  function deactivate(){if(!active)return;active=false;reset();panel.hidden=true;workspace.classList.remove('posting-active');if(collapsedByUs)setSidebar(false);window.radarFeatures.select(null);}
+  function deactivate(){if(!active)return;if(detail.open)detail.close();active=false;reset();panel.hidden=true;workspace.classList.remove('posting-active');if(collapsedByUs)setSidebar(false);window.radarFeatures.select(null);}
   $('posting-exit').addEventListener('click',()=>{deactivate();document.querySelector('[data-feature="刊登召募"]').focus({preventScroll:true});});
   window.recruitment={toggle(){active?deactivate():activate();},deactivate};
 })();

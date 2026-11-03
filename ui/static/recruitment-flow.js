@@ -44,5 +44,17 @@
     ready(){if(this.state!=='loading')throw Error('模擬頁尚未開啟。');this.state='ready';}
     get canFill(){return this.state==='ready';}
   }
-  const api={PostingFlow,scenarioHires,needsReview,DemoNavigation};if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.RecruitmentFlow=api;
+  class PostingArchive{
+    constructor(){this.records=[];this.byDraft=new WeakMap();this.serial=0;}
+    add(flow,origin){
+      if(flow.state!=='published'||!flow.draft)throw Error('只有已完成審核刊登的職缺可加入紀錄。');
+      if(this.byDraft.has(flow.draft))return this.byDraft.get(flow.draft);
+      const record=Object.freeze({id:`posting-${++this.serial}`,origin:origin||null,createdAt:new Date().toISOString(),draft:Object.freeze({...flow.draft})});
+      this.records.unshift(record);this.byDraft.set(flow.draft,record);return record;
+    }
+    all(){return [...this.records];}
+    countForOrigin(origin){return this.records.filter(record=>record.origin===origin).length;}
+    get(id){return this.records.find(record=>record.id===id)||null;}
+  }
+  const api={PostingFlow,scenarioHires,needsReview,DemoNavigation,PostingArchive};if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.RecruitmentFlow=api;
 })(globalThis);
