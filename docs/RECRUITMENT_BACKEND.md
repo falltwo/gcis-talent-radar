@@ -123,8 +123,6 @@ API 使用獨立的 `/api/mock104/*` 及 HttpOnly／SameSite cookie；沿用暫�
 
 功能流程圖與例外處理：[招募功能流程](RECRUITMENT_FLOW.md)。另附[單頁圖解](recruitment-workflow.html)。
 
-前端交接：[PR22 API規格草稿](PR22_FRONTEND_API_DRAFT.md)，附OpenAPI與隔離實測範例。
-
 `/mock104` 是一般求才網頁。已移除頁內逐欄填表腳本、`window.MockPortal`、Agent 自訂DOM事件及Agent專用刊登旗標。手動使用或其他Computer Use工具均走相同的表單、預覽、送審流程；一般網站不會替Agent推進工作狀態。
 
 選單使用一般網頁內的 combobox／listbox，避免Windows原生選單彈出時阻擋瀏覽器截圖。支援滑鼠點選、方向鍵、Home／End、Enter確認、Esc取消及Tab離開；原表單仍負責提交資料。每次截圖最多等待10秒。已儲存但與核准資料不同的欄位會回饋給模型，要求返回編輯修正，不能跳過核對。工作台僅保留「產生招募建議（範本／網路）」入口，依輸入職位自動選擇範本或網路研究。
