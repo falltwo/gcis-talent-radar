@@ -3,15 +3,24 @@
  const $=id=>document.getElementById(id),first=$('needs-form'),review=$('review-form');
  let busy=false,runId=null,timer=null;
  function setBusy(value){busy=value;for(const id of ['prepare','approve'])$(id).disabled=value;}
- async function req(path,body,method='POST'){
-  const r=await fetch('/api/mock104/'+path,{method,credentials:'same-origin',cache:'no-store',headers:body?{'Content-Type':'application/json'}:{},body:body?JSON.stringify(body):undefined});
-  const d=await r.json();if(!r.ok)throw new Error(typeof d.detail==='string'?d.detail:'請確認欄位格式與薪資方式。');return d;
+ async function req(path,body,method='POST',timeoutMs=15000){
+  const controller=new AbortController(),deadline=setTimeout(()=>controller.abort(),timeoutMs);
+  try{
+   const r=await fetch('/api/mock104/'+path,{method,signal:controller.signal,credentials:'same-origin',cache:'no-store',headers:body?{'Content-Type':'application/json'}:{},body:body?JSON.stringify(body):undefined});
+   const d=await r.json();if(!r.ok)throw new Error(typeof d.detail==='string'?d.detail:'請確認欄位格式與薪資方式。');return d;
+  }catch(e){
+   if(controller.signal.aborted)throw new Error(path==='agent/prepare'&&timeoutMs>15000?'網路研究等待已超過60秒，請稍後重試，或填寫更明確的職稱。尚未產生新的招募建議。':'服務回應逾時，請重新整理頁面後再試。');
+   if(e instanceof TypeError)throw new Error('無法連線至招募服務，請確認本機網站仍在執行後重試。');
+   throw e;
+  }finally{clearTimeout(deadline);}
  }
  function salary(){const nego=$('r-salary-mode').value==='NEGOTIABLE';for(const id of ['r-min','r-max']){$(id).disabled=nego;$(id).required=!nego;$(id).closest('.field').hidden=nego;$(id).setCustomValidity('');if(nego)$(id).value='';}}
  function sources(result){const box=$('research-sources');box.replaceChildren();box.hidden=false;const title=document.createElement('strong');title.textContent='參考來源與待確認建議';box.append(title);const ul=document.createElement('ul');for(const item of result.sources||[]){if(!item.url?.startsWith('https://'))continue;const li=document.createElement('li'),a=document.createElement('a');a.href=item.url;a.target='_blank';a.rel='noopener noreferrer';a.textContent=item.title||item.url;li.append(a);if(item.status==='CURATED_REFERENCE')li.append('（已整理的職業範本，非本次即時搜尋）');ul.append(li);}for(const text of result.review_notes||[]){const li=document.createElement('li');li.textContent=text;ul.append(li);}box.append(ul);}
  async function prepare(){
-  if(busy||!first.reportValidity())return;setBusy(true);$('error').hidden=true;$('status').textContent='正在查找職業範本或網路資料，保留你已提供的條件…';
-  try{await req('start',{});const r=await req('agent/prepare',{company_name:$('company-name').value,company_intro:$('company-intro').value,district:$('district').value,role:$('role').value,needs:$('needs').value,mode:'AUTO'});
+  if(busy||!first.reportValidity())return;setBusy(true);review.hidden=true;$('research-sources').hidden=true;$('error').hidden=true;$('status').textContent='正在確認職稱與服務連線…';
+  try{await req('start',{});const strategy=await req('agent/strategy?role='+encodeURIComponent($('role').value),null,'GET');
+   $('status').textContent=strategy.source==='OCCUPATIONAL_TEMPLATE'?'正在套用「'+strategy.template_name+'」本機範本，不需網路搜尋…':'此職稱尚無本機範本，正在搜尋網路資料；最多等待60秒，請勿重複送出。';
+   const r=await req('agent/prepare',{company_name:$('company-name').value,company_intro:$('company-intro').value,district:$('district').value,role:$('role').value,needs:$('needs').value,mode:'AUTO'},'POST',strategy.max_wait_seconds*1000);
    for(const[name,value]of Object.entries(r.job)){const el=review.elements.namedItem(name);if(el){el.value=Array.isArray(value)?value.join('、'):value??'';el.closest('.field')?.classList.toggle('suggested',r.field_provenance?.[name]==='SUGGESTED');}}
    salary();sources(r);$('source').textContent=r.source==='LIVE_WEB_RESEARCH'?'即時網路搜尋建議':'具來源的職業範本';$('review-note').textContent='已保留你提供的人數與薪資方式。標示「建議／待確認」的內容由範本或網路補全，請核對公司的實際需求。';review.hidden=false;$('status').textContent='招募建議已產生，請確認或修改。';review.scrollIntoView({behavior:'smooth',block:'start'});
   }catch(e){$('error').textContent=e.message;$('error').hidden=false;$('status').textContent='尚未建立招募建議。';}finally{setBusy(false);}

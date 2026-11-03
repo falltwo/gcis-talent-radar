@@ -1,6 +1,6 @@
 # 常見職缺範本清單
 
-目前共32類，符合下列職稱或別名時使用本機範本，不呼叫搜尋模型。空格、全形字及英文大小寫會統一比對；未收錄的專業或複合職稱仍走網路搜尋。
+目前共35類，符合下列職稱或別名時使用本機範本，不呼叫搜尋模型。空格、全形字及英文大小寫會統一比對；未收錄的專業或複合職稱仍走網路搜尋。
 
 這是已整理的職業參考建議，並非本次即時搜尋。薪資、人數、班制與公司資訊仍以HR輸入及核准版本為準。醫事、駕駛及房仲等職位的專業資格與實際工作範圍，會列為HR待確認事項。
 
@@ -8,6 +8,9 @@
 |---|---|---|
 | 會計 | 會計、會計人員、會計助理、記帳人員、accountant | [O*NET：Accountants and Auditors](https://www.onetonline.org/link/summary/13-2011.00) |
 | CNC操作員 | CNC操作員、CNC 操作員、cnc operator | [O*NET：Computer Numerically Controlled Tool Operators](https://www.onetonline.org/link/summary/51-9161.00) |
+| 測試員 | 測試員、測試人員、測試助理、測試工程師、tester、test engineer | [O*NET：Inspectors and Testers（一般測試流程參考）](https://www.onetonline.org/link/summary/51-9061.00) |
+| 軟體測試工程師 | 軟體測試工程師、軟體測試員、軟體測試人員、軟體品保工程師、software tester、software QA engineer | [O*NET：Software Quality Assurance Analysts and Testers](https://www.onetonline.org/link/summary/15-1253.00) |
+| 品檢員 | 品檢員、品檢人員、品管人員、品管員、品質檢驗員、QC人員、quality inspector | [O*NET：Inspectors, Testers, Sorters, Samplers, and Weighers](https://www.onetonline.org/link/summary/51-9061.00) |
 | 企劃助理 | 企劃助理、企劃行政助理、專案助理、企劃支援人員、planning assistant、project assistant | [O*NET：Office Clerks, General（企劃行政支援參考）](https://www.onetonline.org/link/summary/43-9061.00) |
 | 行銷企劃 | 行銷企劃、行銷企劃助理、行銷企劃人員、行銷專員、marketing specialist、marketing assistant | [O*NET：Market Research Analysts and Marketing Specialists](https://www.onetonline.org/link/summary/13-1161.00) |
 | 行政助理 | 行政助理、行政助理／行政秘書、行政人員、行政專員、文書助理、行政文書、office assistant、administrative assistant | [O*NET：Office Clerks, General](https://www.onetonline.org/link/summary/43-9061.00) |
@@ -39,4 +42,4 @@
 | 數據分析師 | 數據分析師、資料分析師、數據分析人員、資料分析人員、data analyst、data scientist | [O*NET：Data Scientists（資料分析方向參考）](https://www.onetonline.org/link/summary/15-2051.00) |
 | 數據工程師 | 數據工程師、資料工程師、data engineer | [O*NET：Database Architects（資料工程方向參考）](https://www.onetonline.org/link/summary/15-1243.00) |
 
-內場與外場、業務與業務助理、資訊維護與軟體開發、護理與其他醫事職類使用不同範本。「醫事人員」只提供職群層級建議，必須由HR確認實際專業。
+內場與外場、業務與業務助理、資訊維護與軟體開發、護理與其他醫事職類使用不同範本。「醫事人員」只提供職群層級建議，必須由HR確認實際專業。「測試員」先提供一般測試流程；需要軟體測試時可輸入「軟體測試工程師」。

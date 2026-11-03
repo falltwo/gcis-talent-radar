@@ -130,3 +130,32 @@ def test_medical_family_requires_hr_to_identify_specialty():
     assert result['requires_hr_review']
     assert any('尚未指定實際專業' in note for note in result['review_notes'])
     assert not any('診斷' in skill or '處方' in skill for skill in result['job']['required_skills'])
+
+
+def test_strategy_reports_template_or_live_search_without_using_network(client, monkeypatch):
+    monkeypatch.setattr(research.requests,'post',lambda *a,**k:pytest.fail('Strategy must not perform research'))
+    result=client.get('/api/mock104/agent/strategy',params={'role':'測試員'})
+    assert result.json()=={'source':'OCCUPATIONAL_TEMPLATE','template_name':'測試員','max_wait_seconds':15}
+    result=client.get('/api/mock104/agent/strategy',params={'role':'量子研究師'})
+    assert result.json()=={'source':'LIVE_WEB_RESEARCH','template_name':None,'max_wait_seconds':60}
+    assert client.get('/api/mock104/agent/strategy',params={'role':'x'*121}).status_code==422
+
+
+def test_research_timeout_is_reported_without_returning_fake_suggestions(monkeypatch):
+    monkeypatch.setenv('OPENROUTER_API_KEY','test-only')
+    def timeout(*args,**kwargs):
+        assert kwargs['timeout']==(5,45)
+        raise research.requests.Timeout()
+    monkeypatch.setattr(research.requests,'post',timeout)
+    with pytest.raises(HTTPException) as error:
+        research.research_role('未知專業職位')
+    assert error.value.status_code==502
+    assert '逾時' in error.value.detail
+
+
+def test_general_tester_does_not_require_software_programming():
+    draft=research.draft_job(AgentPrepare(role='測試員',district='西屯區',needs='招募一人月薪面議'))
+    assert draft['source']=='OCCUPATIONAL_TEMPLATE'
+    assert draft['job']['headcount']==1 and draft['job']['salary_min'] is None
+    assert '程式設計' not in draft['job']['required_skills']
+    assert any('確認領域' in note for note in draft['review_notes'])

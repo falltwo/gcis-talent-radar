@@ -5,7 +5,7 @@ from collections import deque
 from threading import Lock
 from typing import Literal
 
-from fastapi import APIRouter, HTTPException, Request, Response
+from fastapi import APIRouter, HTTPException, Query, Request, Response
 from pydantic import Field
 
 import api.mock104 as portal
@@ -14,7 +14,7 @@ from recruitment.drafting import prepare_requirement
 from recruitment.models import ExtractedRequirement, StrictModel
 from recruitment.workflow import uid
 from recruitment.computer_use import launch, local_origin
-from recruitment.job_research import draft_job, has_template
+from recruitment.job_research import draft_job, find_template, has_template
 
 
 router = APIRouter(prefix="/api/mock104/agent", tags=["Recruitment Agent demo"])
@@ -73,6 +73,15 @@ def reserve_model_call(session):
             raise HTTPException(429, "整理服務暫時繁忙，請稍後再試。")
         model_calls.append(time.monotonic())
     session["prepare_calls"] = session.get("prepare_calls", 0) + 1
+
+
+@router.get('/strategy')
+def preparation_strategy(response: Response, role: str = Query(min_length=1, max_length=120)):
+    response.headers['Cache-Control']='no-store'
+    matched=find_template(role)
+    return {'source':'OCCUPATIONAL_TEMPLATE' if matched else 'LIVE_WEB_RESEARCH',
+            'template_name':matched[0] if matched else None,
+            'max_wait_seconds':15 if matched else 60}
 
 
 @router.post("/prepare")
