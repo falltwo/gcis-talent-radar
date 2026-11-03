@@ -40,3 +40,10 @@ Verification details: docs/RECRUITMENT_BROWSER_DEMO.md.
 3. 驗證 Node 測試與前端語法，瀏覽器操作整個流程與切換取消，保存截圖；不推送。
 
 V2 completed: minimal brief/state tests RED→GREEN (8/8); browser verifies one review, missing salary, pause/skip and review edits retained. Independent review findings reproduced in browser then fixed: return draft preservation, provenance explanation; pause label resets too. Syntax/diff and assets verified. No real model/search/publishing calls.
+
+## 第三版計畫
+- 加入審核重點判定測試（無效值／待確認／範本；人工修改有效時不突出）。
+- 分階段版面、明暗角色配色、進入審核標頭與篩選，游標移動／點擊／輸入／完成回饋。
+- Node 測試、語法檢查及瀏覽器實測初始、作業、審核篩選、薪資攔截與單次完成；截圖保存。
+
+V3 completed: focus helper RED→GREEN, 9 Node tests pass; Python 516 pass. Browser validated layout handoff, review filter returning salary/skills only, no active writing/cursor at review, hidden-field validation and inverted salaries blocked, single approval success. Independent read-only review found no important defects. Finished progress bar hidden on review to recover viewport space. No remote push.

@@ -34,5 +34,6 @@
     cancel(){this.state='idle';this.draft=null;this.sources={};this.index=0;}
   }
   function scenarioHires(text){const count=Number(String(text||'').replace(/,/g,'').replace(/\s*人\s*$/,'').trim());return Number.isInteger(count)&&count>=1&&count<=100000?count:2;}
-  const api={PostingFlow,scenarioHires};if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.RecruitmentFlow=api;
+  function needsReview(source,valid){return !valid||source==='pending'||source==='template';}
+  const api={PostingFlow,scenarioHires,needsReview};if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.RecruitmentFlow=api;
 })(globalThis);

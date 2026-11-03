@@ -6,7 +6,7 @@
   const panel=document.createElement('section');panel.className='posting-workspace';panel.hidden=true;panel.dataset.act='brief';panel.setAttribute('aria-label','刊登召募展示工作台');
   panel.innerHTML=`<header class="posting-header"><div><h2>刊登召募</h2><p>交代需求，觀看補齊，最後只審核一次。</p></div><div><span class="posting-demo">前端模擬・未連接後端</span><button type="button" id="posting-exit">退出</button></div></header>
   <ol class="posting-steps" aria-label="刊登流程"><li data-step="brief"><b>1</b>提出需求</li><li data-step="working"><b>2</b>Agent 補齊與填表</li><li data-step="review"><b>3</b>人工審核並刊登</li></ol>
-  <div class="posting-columns"><section class="posting-requirements" aria-label="任務需求與進度">
+  <div class="posting-columns"><section class="posting-requirements" aria-label="任務需求與進度"><div class="posting-left-heading" id="posting-left-heading">你的需求</div>
     <div id="posting-intake"><h3>你想找什麼樣的人？</h3><p class="posting-help">先給職稱與人數，其他內容交給展示流程補成草稿。</p>
       <label for="posting-brief">用一句話交代需求<textarea id="posting-brief" rows="3" maxlength="500" placeholder="例如：我想招 5 位 CNC 技術員，在大雅區工作"></textarea></label><button type="button" class="posting-quiet" id="posting-parse">帶入需求卡片</button><p class="posting-help" id="posting-parse-note">本機簡易解析示意，卡片內容可自行修改。</p>
       <form id="posting-form"><div class="posting-chips"><label for="posting-role">招募職稱<input id="posting-role" name="role" maxlength="80" required></label><label for="posting-hires">招募人數<input id="posting-hires" name="hires" type="number" min="1" max="100000" step="1" required></label></div>
@@ -23,7 +23,8 @@
     <div class="posting-review-hint" id="posting-review-hint" hidden><strong>現在輪到你確認</strong><p>直接點右側欄位編輯。薪資須填寫企業實際條件。</p><button type="button" id="posting-missing">跳到待補薪資</button></div>
     <details class="posting-log-box" id="posting-log-details"><summary>操作紀錄</summary><ol id="posting-log"></ol><p class="posting-help">固定前端事件示意，非真實模型、搜尋或 Computer Use。</p></details>
   </section>
-  <section class="posting-live" aria-labelledby="posting-live-title"><div class="posting-section-title"><span id="posting-phase-dot"></span><h3 id="posting-live-title">Agent 即時實況虛擬瀏覽器</h3><span class="posting-live-pill" id="posting-live-pill">等待任務</span></div>
+  <section class="posting-live" aria-labelledby="posting-live-title"><div class="posting-section-title"><span id="posting-phase-dot"></span><h3 id="posting-live-title">Agent 操作實況</h3><span class="posting-live-pill" id="posting-live-pill">等待任務</span></div>
+    <div class="posting-handoff" id="posting-handoff" hidden><div><span aria-hidden="true">✎</span><div><strong>現在輪到你</strong><p id="posting-focus-summary">請核對範本補寫與待補欄位。</p></div></div><div class="posting-review-filters" aria-label="審核顯示方式"><button type="button" data-review-view="all" aria-pressed="true">完整職缺</button><button type="button" data-review-view="focus" aria-pressed="false">只看待確認</button></div></div>
     <div class="posting-browser"><div class="posting-url"><i></i><i></i><i></i><span id="posting-url">demo.local / recruitment</span><b>自建模擬平台</b></div>
       <div class="posting-browser-screen" id="posting-screen"><div class="posting-platform-head"><strong>人才招募網 <small>自建展示站</small></strong><span>企業後台 / 職缺草稿</span></div>
         <div class="posting-page-top"><div><p id="posting-page-subtitle">從一個需求開始</p><h4 id="posting-page-title">準備建立下一個職缺</h4></div><span class="posting-demo">模擬 104 刊登流程</span></div>
@@ -50,22 +51,22 @@
     const display=document.createElement('p');display.className='posting-field-display';display.textContent='等待填寫';
     const edit=document.createElement('div');edit.className='posting-field-edit';edit.hidden=true;
     if(key==='salary'){const wrapper=document.createElement('div');wrapper.className='posting-salary';wrapper.append(makeInput('salaryMin','number'),makeInput('salaryMax','number'));inputs.salaryMin.placeholder='月薪下限';inputs.salaryMax.placeholder='月薪上限';edit.append(wrapper);}else edit.append(makeInput(key,key==='hires'?'number':'text'));
-    row.append(head,display,edit);$('posting-fields').append(row);
+    const tick=document.createElement('span');tick.className='posting-field-complete';tick.textContent='✓ 已填寫';tick.hidden=true;row.append(head,display,edit,tick);$('posting-fields').append(row);
   });
-  let active=false,collapsedByUs=false,timer=0,typingTimer=0,epoch=0,briefText='',reviewCarry=null;
+  let active=false,collapsedByUs=false,timer=0,typingTimer=0,epoch=0,briefText='',reviewCarry=null,reviewView='all';
   function setSidebar(collapsed){if(workspace.classList.contains('sidebar-collapsed')!==collapsed)$('sidebar-toggle').click();}
   function log(message){const li=document.createElement('li');li.textContent=message;$('posting-log').append(li);}
-  function stop(){clearTimeout(timer);clearTimeout(typingTimer);epoch++;$('posting-cursor').hidden=true;}
-  function act(name){panel.dataset.act=name;panel.querySelectorAll('[data-step]').forEach(el=>{const current=el.dataset.step===(name==='published'?'review':name);el.classList.toggle('is-current',current);if(current)el.setAttribute('aria-current','step');else el.removeAttribute('aria-current');});}
+  function stop(){clearTimeout(timer);clearTimeout(typingTimer);epoch++;$('posting-cursor').hidden=true;$('posting-cursor').classList.remove('is-clicking');panel.querySelectorAll('.is-targeting,.is-clicked').forEach(row=>row.classList.remove('is-targeting','is-clicked'));}
+  function act(name){panel.dataset.act=name;$('posting-left-heading').textContent=name==='brief'?'你的需求':'任務摘要';$('posting-live-title').textContent=name==='review'?'請你審核':name==='published'?'刊登結果':'Agent 操作實況';panel.querySelectorAll('[data-step]').forEach(el=>{const current=el.dataset.step===(name==='published'?'review':name);el.classList.toggle('is-current',current);if(current)el.setAttribute('aria-current','step');else el.removeAttribute('aria-current');});}
   function source(key){panel.querySelectorAll('.posting-source').forEach(el=>{const chosen=el.dataset.source===key;el.classList.toggle('is-active',chosen);el.setAttribute('aria-pressed',String(chosen));});}
   const notes={company:'來自目前企業情境，包含示範或自行填寫內容；不是官方企業查核。',template:'此版使用本機通用職缺範本。工作內容需人工核對，沒有使用大模型。',web:'尚未連接搜尋服務。本次沒有搜尋網路，也沒有引用網路資料。'};
   panel.querySelectorAll('.posting-source').forEach(el=>el.addEventListener('click',()=>{$('posting-source-detail').textContent=notes[el.dataset.source];}));
   function showProvenance(key){const s=panel.querySelector(`[data-field="${key}"]`).dataset.source||flow.sources[key];$('posting-source-detail').textContent=s==='pending'?'企業條件尚未提供，請由審核者補齊，不能以行情代填。':s==='template'?notes.template:s==='company'?notes.company:s==='human'?'這個欄位已由審核者修改。':'來自本次需求卡片或補充條件。';}
   function reset(){
-    stop();flow.cancel();$('posting-pause').textContent='暫停操作';act('brief');$('posting-intake').hidden=false;$('posting-task').hidden=true;$('posting-review-hint').hidden=true;
-    for(const id of ['posting-confirm','posting-finished','posting-success','posting-review-form','posting-run-actions'])$(id).hidden=true;
+    stop();flow.cancel();panel.dataset.paused='false';reviewView='all';panel.querySelectorAll('[data-review-view]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.reviewView==='all')));$('posting-pause').textContent='暫停操作';act('brief');$('posting-intake').hidden=false;$('posting-task').hidden=true;$('posting-review-hint').hidden=true;
+    for(const id of ['posting-confirm','posting-finished','posting-success','posting-review-form','posting-run-actions','posting-handoff'])$(id).hidden=true;
     $('posting-welcome').hidden=false;$('posting-state').textContent='等待提出招募需求';$('posting-progress').value=0;$('posting-count').textContent='0 / 6';$('posting-source-detail').textContent='點來源節點查看說明。';$('posting-log').replaceChildren();$('posting-error').textContent='';$('posting-url').textContent='demo.local / recruitment';$('posting-page-title').textContent='準備建立下一個職缺';$('posting-live-pill').textContent='等待任務';$('posting-screen').scrollTop=0;source(null);
-    panel.querySelectorAll('.posting-field').forEach(row=>{row.classList.remove('is-writing','is-filled','needs-review');row.querySelector('.posting-field-edit').hidden=true;row.querySelector('.posting-field-display').hidden=false;row.querySelector('.posting-field-display').textContent='等待填寫';row.querySelector('.posting-provenance').textContent='等待填寫';});
+    panel.querySelectorAll('.posting-field').forEach(row=>{row.classList.remove('is-writing','is-filled','needs-review','review-attention','review-confirmed');row.hidden=false;row.querySelector('.posting-field-complete').hidden=true;row.querySelector('.posting-field-edit').hidden=true;row.querySelector('.posting-field-display').hidden=false;row.querySelector('.posting-field-display').textContent='等待填寫';row.querySelector('.posting-provenance').textContent='等待填寫';});
   }
   function displayValue(key){const d=flow.draft;if(key==='salary')return d.salaryMin===null?'待確認：請補充企業實際月薪範圍':`NT$ ${d.salaryMin.toLocaleString('zh-TW')} – ${d.salaryMax.toLocaleString('zh-TW')} / 月`;return key==='hires'?`${d.hires} 人`:d[key];}
   function fillRow(key,animate=false,done=()=>{}){
@@ -77,22 +78,55 @@
   }
   function readyReview(){
     clearTimeout(timer);clearTimeout(typingTimer);flow.complete();act('review');source(null);$('posting-cursor').hidden=true;$('posting-run-actions').hidden=true;$('posting-live-pill').textContent='等待人工審核';$('posting-state').textContent='草稿完成・現在輪到你確認';$('posting-url').textContent='demo.local / recruitment / review';$('posting-page-title').textContent=flow.draft.role;$('posting-review-hint').hidden=false;
-    for(const key of Object.keys(labels)){fillRow(key);const row=panel.querySelector(`[data-field="${key}"]`);row.classList.remove('is-writing');row.querySelector('.posting-field-display').hidden=true;row.querySelector('.posting-field-edit').hidden=false;}
+    for(const key of Object.keys(labels)){fillRow(key);const row=panel.querySelector(`[data-field="${key}"]`);row.classList.remove('is-writing','is-targeting','is-clicked');row.querySelector('.posting-field-complete').hidden=true;row.querySelector('.posting-field-display').hidden=true;row.querySelector('.posting-field-edit').hidden=false;}
     for(const [key,input] of Object.entries(inputs))input.value=flow.draft[key]??'';
     if(reviewCarry){inputs.salaryMin.value=reviewCarry.salaryMin;inputs.salaryMax.value=reviewCarry.salaryMax;for(const input of [inputs.salaryMin,inputs.salaryMax])if(input.value){input.closest('.posting-field').dataset.source='human';input.closest('.posting-field').querySelector('.posting-provenance').textContent='人工修改';}}
-    $('posting-confirm').hidden=false;$('posting-progress').value=6;$('posting-count').textContent='6 / 6';$('posting-screen').scrollTop=0;
-    updateMissing();log('草稿已完成，停在唯一的人工審核關卡。');
+    $('posting-confirm').hidden=false;$('posting-handoff').hidden=false;$('posting-progress').value=6;$('posting-count').textContent='6 / 6';$('posting-screen').scrollTop=0;
+    updateMissing();updateReviewFocus();void $('posting-fields').offsetHeight;$('posting-screen').scrollTop=0;log('草稿已完成，停在唯一的人工審核關卡。');
   }
   function updateMissing(){const missing=!inputs.salaryMin.value||!inputs.salaryMax.value;inputs.salaryMin.closest('.posting-field').classList.toggle('needs-review',missing);$('posting-check-note').textContent=missing?'尚有月薪範圍待補充，填妥後即可一次審核刊登。':'請確認右側內容；按一次按鈕即完成審核並模擬刊登。';$('posting-missing').hidden=!missing;}
-  Object.entries(inputs).forEach(([key,input])=>input.addEventListener('input',()=>{const row=input.closest('.posting-field');row.dataset.source='human';row.querySelector('.posting-provenance').textContent='人工修改';row.classList.remove('needs-review');updateMissing();}));
+  function updateReviewFocus(applyFilter=true){
+    if(panel.dataset.act!=='review')return;
+    const min=Number(inputs.salaryMin.value),max=Number(inputs.salaryMax.value);
+    inputs.salaryMax.setCustomValidity(inputs.salaryMin.value&&inputs.salaryMax.value&&max<min?'月薪上限不可低於下限。':'');
+    let count=0;
+    panel.querySelectorAll('.posting-field').forEach(row=>{
+      const valid=[...row.querySelectorAll('input,textarea')].every(input=>input.checkValidity());
+      const attention=RecruitmentFlow.needsReview(row.dataset.source,valid);if(attention)count++;
+      row.classList.toggle('review-attention',attention);row.classList.toggle('review-confirmed',!attention);
+      if(applyFilter)row.hidden=reviewView==='focus'&&!attention;
+    });
+    $('posting-focus-summary').textContent=count?`${count} 項待確認，包含範本補寫或尚未填妥的欄位。`:'待補項目已處理，可查看完整職缺後一次審核刊登。';
+    let empty=$('posting-focus-empty');if(!empty){empty=document.createElement('p');empty.id='posting-focus-empty';empty.textContent='待確認項目已處理完成，可切回完整職缺查看。';$('posting-review-form').append(empty);}empty.hidden=reviewView!=='focus'||count>0;
+  }
+  panel.querySelectorAll('[data-review-view]').forEach(button=>button.addEventListener('click',()=>{reviewView=button.dataset.reviewView;panel.querySelectorAll('[data-review-view]').forEach(b=>b.setAttribute('aria-pressed',String(b===button)));updateReviewFocus();void $('posting-fields').offsetHeight;$('posting-screen').scrollTop=0;}));
+  Object.entries(inputs).forEach(([key,input])=>{
+    input.addEventListener('input',()=>{const row=input.closest('.posting-field');row.dataset.source='human';row.querySelector('.posting-provenance').textContent='人工修改';row.classList.remove('needs-review');updateMissing();updateReviewFocus(false);});
+    input.addEventListener('focusout',()=>{if(!input.closest('.posting-field').contains(document.activeElement))updateReviewFocus();});
+  });
+  function finishField(key,run){
+    if(!active||run!==epoch)return;
+    const row=panel.querySelector(`[data-field="${key}"]`);row.classList.remove('is-writing','is-targeting','is-clicked');row.querySelector('.posting-field-complete').hidden=false;$('posting-cursor').classList.remove('is-clicking');
+    log(`已填寫${labels[key]}・${sourceNames[flow.sources[key]]}`);
+    timer=setTimeout(()=>{if(!active||run!==epoch)return;flow.state==='preview'?readyReview():next(run);},reduced?100:550);
+  }
   function next(run){
     if(!active||run!==epoch||flow.state!=='filling')return;
     const key=flow.advance();if(!key)return;
-    panel.querySelectorAll('.is-writing').forEach(el=>el.classList.remove('is-writing'));const row=panel.querySelector(`[data-field="${key}"]`);row.classList.add('is-writing');source(flow.sources[key]==='template'?'template':'company');
-    $('posting-state').textContent=`正在填寫：${labels[key]}`;$('posting-progress').value=flow.index;$('posting-count').textContent=`${flow.index} / 6`;
-    row.scrollIntoView({block:'nearest',behavior:reduced?'instant':'smooth'});
-    if(!reduced){const r=row.getBoundingClientRect(),s=$('posting-screen').getBoundingClientRect();$('posting-cursor').hidden=false;$('posting-cursor').style.left=`${r.left-s.left+Math.min(r.width*.7,230)}px`;$('posting-cursor').style.top=`${r.top-s.top+28+$('posting-screen').scrollTop}px`;}
-    fillRow(key,true,()=>{if(!active||run!==epoch)return;log(`已填寫${labels[key]}・${sourceNames[flow.sources[key]]}`);timer=setTimeout(()=>{if(!active||run!==epoch)return;flow.state==='preview'?readyReview():next(run);},reduced?100:480);});
+    panel.querySelectorAll('.is-writing,.is-targeting,.is-clicked').forEach(el=>el.classList.remove('is-writing','is-targeting','is-clicked'));
+    const row=panel.querySelector(`[data-field="${key}"]`);row.classList.add('is-targeting');source(flow.sources[key]==='template'?'template':'company');
+    $('posting-state').textContent=`移動至${labels[key]}`;$('posting-progress').value=flow.index;$('posting-count').textContent=`${flow.index} / 6`;
+    row.scrollIntoView({block:'nearest',behavior:'instant'});
+    if(!reduced){const r=row.getBoundingClientRect(),s=$('posting-screen').getBoundingClientRect();$('posting-cursor').hidden=false;$('posting-cursor').style.left=`${r.left-s.left+Math.min(r.width*.55,190)}px`;$('posting-cursor').style.top=`${r.top-s.top+47+$('posting-screen').scrollTop}px`;}
+    timer=setTimeout(()=>{
+      if(!active||run!==epoch)return;
+      row.classList.add('is-clicked');$('posting-cursor').classList.add('is-clicking');$('posting-state').textContent=`點擊${labels[key]}`;
+      timer=setTimeout(()=>{
+        if(!active||run!==epoch)return;
+        row.classList.remove('is-targeting');row.classList.add('is-writing');$('posting-cursor').classList.remove('is-clicking');$('posting-state').textContent=`正在輸入：${labels[key]}`;
+        fillRow(key,true,()=>finishField(key,run));
+      },reduced?0:180);
+    },reduced?0:420);
   }
   $('posting-parse').addEventListener('click',()=>{
     const text=$('posting-brief').value.trim();if(!text)return;
@@ -107,11 +141,11 @@
     stop();act('working');$('posting-error').textContent='';$('posting-intake').hidden=true;$('posting-task').hidden=false;$('posting-welcome').hidden=true;$('posting-review-form').hidden=false;$('posting-run-actions').hidden=false;$('posting-live-pill').textContent='模擬操作中';$('posting-state').textContent='正在整理需求與範本…';$('posting-url').textContent='demo.local / recruitment / new';$('posting-page-title').textContent='正在建立職缺草稿';$('posting-task-role').textContent=flow.draft.role;$('posting-task-summary').textContent=`${flow.draft.hires} 人・${flow.draft.address}`;briefText=$('posting-brief').value.trim();$('posting-task-brief').textContent=briefText||'依需求卡片建立任務';$('posting-log').replaceChildren();log('接收需求，開始前端模擬。');log('網路搜尋尚未串接，本次僅使用企業情境與本機範本。');source('template');const run=epoch;timer=setTimeout(()=>next(run),reduced?100:700);
   });
   $('posting-pause').addEventListener('click',()=>{
-    if(flow.state==='paused'){flow.resume();$('posting-pause').textContent='暫停操作';$('posting-live-pill').textContent='模擬操作中';if(flow.index){const key=Object.keys(labels)[flow.index-1];fillRow(key);}timer=setTimeout(()=>{if(flow.index===6){flow.complete();readyReview();}else next(epoch);},250);}
-    else if(['filling','preview'].includes(flow.state)){stop();flow.pause();$('posting-pause').textContent='繼續操作';$('posting-live-pill').textContent='已暫停';$('posting-state').textContent='操作已暫停，可繼續或直接看草稿';}
+    if(flow.state==='paused'){flow.resume();panel.dataset.paused='false';$('posting-pause').textContent='暫停操作';$('posting-live-pill').textContent='模擬操作中';if(flow.index){const key=Object.keys(labels)[flow.index-1];fillRow(key);}timer=setTimeout(()=>{if(flow.index===6){flow.complete();readyReview();}else next(epoch);},250);}
+    else if(['filling','preview'].includes(flow.state)){stop();flow.pause();panel.dataset.paused='true';$('posting-pause').textContent='繼續操作';$('posting-live-pill').textContent='已暫停';$('posting-state').textContent='操作已暫停，可繼續或直接看草稿';}
   });
   $('posting-skip').addEventListener('click',()=>{stop();flow.complete();readyReview();});
-  $('posting-missing').addEventListener('click',()=>inputs.salaryMin.focus());
+  $('posting-missing').addEventListener('click',()=>{reviewView='all';panel.querySelectorAll('[data-review-view]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.reviewView==='all')));updateReviewFocus();inputs.salaryMin.focus();});
   function back(){
     if(flow.state==='preview'){for(const key of ['company','role','address','hires'])$(`posting-${key}`).value=inputs[key].value;$('posting-known').value=inputs.skills.value;reviewCarry={salaryMin:inputs.salaryMin.value,salaryMax:inputs.salaryMax.value};}
     else reviewCarry=null;
@@ -120,9 +154,9 @@
   $('posting-edit').addEventListener('click',back);$('posting-again').addEventListener('click',back);
   $('posting-review-form').addEventListener('submit',event=>event.preventDefault());
   $('posting-publish').addEventListener('click',()=>{
-    const form=$('posting-review-form');if(!form.reportValidity())return;
+    const form=$('posting-review-form');reviewView='all';panel.querySelectorAll('[data-review-view]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.reviewView==='all')));updateReviewFocus();if(!form.reportValidity())return;
     try{flow.revise(Object.fromEntries(new FormData(form)));flow.publish(true);}catch(error){$('posting-error').textContent=error.message;$('posting-state').textContent=error.message;return;}
-    stop();act('published');$('posting-confirm').hidden=true;$('posting-review-hint').hidden=true;$('posting-review-form').hidden=true;$('posting-success').hidden=false;$('posting-finished').hidden=false;$('posting-state').textContent='單次審核完成・已模擬刊登';$('posting-url').textContent='demo.local / recruitment / published';$('posting-live-pill').textContent='任務完成';$('posting-success-title').textContent=`${flow.draft.company}｜${flow.draft.role}・${flow.draft.hires} 人`;$('posting-screen').scrollTop=0;log('使用者一次審核通過，完成本機模擬刊登。');$('posting-again').focus({preventScroll:true});
+    stop();act('published');$('posting-confirm').hidden=true;$('posting-handoff').hidden=true;$('posting-review-hint').hidden=true;$('posting-review-form').hidden=true;$('posting-success').hidden=false;$('posting-finished').hidden=false;$('posting-state').textContent='單次審核完成・已模擬刊登';$('posting-url').textContent='demo.local / recruitment / published';$('posting-live-pill').textContent='任務完成';$('posting-success-title').textContent=`${flow.draft.company}｜${flow.draft.role}・${flow.draft.hires} 人`;$('posting-screen').scrollTop=0;log('使用者一次審核通過，完成本機模擬刊登。');$('posting-again').focus({preventScroll:true});
   });
   function activate(){active=true;collapsedByUs=!workspace.classList.contains('sidebar-collapsed');setSidebar(true);window.streetMap.closeCompany(false);workspace.classList.add('posting-active');panel.hidden=false;window.radarFeatures.select('刊登召募');reviewCarry=null;reset();$('posting-company').value=$('company-name').textContent.trim()||'示範企業';$('posting-role').value=($('company-roles').textContent||'CNC 技術員').split(/[、,，]/)[0].trim();$('posting-hires').value=RecruitmentFlow.scenarioHires($('company-hires')?.textContent);$('posting-address').value=$('pin-address').textContent.trim();$('posting-brief').focus({preventScroll:true});}
   function deactivate(){if(!active)return;active=false;reset();panel.hidden=true;workspace.classList.remove('posting-active');if(collapsedByUs)setSidebar(false);window.radarFeatures.select(null);}
