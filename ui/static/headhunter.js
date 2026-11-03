@@ -478,7 +478,7 @@
       case 'site_skipped':addLog(`[SKIP] ${where}${event.reason}`,'warn');markSite(event.site,true);break;
       case 'site_error':addLog(`[ERROR] ${where}${event.reason}`,'err');markSite(event.site,true);break;
       case 'notice':addLog(`[NOTICE] ${event.message}`,'warn');break;
-      case 'rejected':finishRun(`已拒絕：${event.reason}`,'err');break;
+      case 'rejected':finishRun(`已拒絕：${event.reason}`,'warn');break;
       case 'no_public_work':finishRun(event.advice || '這類職缺網路上少有公開作品，建議改用其他管道。','warn');break;
       case 'error':finishRun(`發生錯誤：${event.reason}`,'err');break;
       case 'done': {
