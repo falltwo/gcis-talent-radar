@@ -106,3 +106,27 @@ def test_planning_assistant_does_not_inherit_marketing_requirements():
     assert '廣告投放' not in '、'.join(draft['job']['required_skills'])
     assert any('確認方向' in note for note in draft['review_notes'])
     assert draft['field_provenance']['required_skills']=='SUGGESTED'
+
+
+def test_requested_common_titles_do_not_fall_through_to_search():
+    roles=['行政助理','行政秘書','會計','財務人員','資料輸入與文書人員',
+           '門市銷售人員','專櫃人員','餐飲服務人員（外場／內場）','內場人員','外場人員',
+           '房仲與不動產經紀人員','業務專員','業務助理','軟體工程師','資訊工程師',
+           '行銷企劃','數位行銷專員','護理師與醫事人員','護理師','醫事人員',
+           '產線作業員','倉儲物流與理貨人員','司機與配送員','配送員',
+           'AI工程師','數據分析師','數據工程師']
+    assert all(research.has_template(role) for role in roles)
+
+
+def test_different_job_scopes_keep_different_templates():
+    for first,second in [('內場人員','外場人員'),('業務專員','業務助理'),
+                         ('軟體工程師','資訊工程師'),('護理師','醫事人員'),
+                         ('數據分析師','數據工程師')]:
+        assert research.find_template(first)[0]!=research.find_template(second)[0]
+
+
+def test_medical_family_requires_hr_to_identify_specialty():
+    result=research.draft_job(AgentPrepare(role='醫事人員',district='西屯區',needs='招募三人，月薪面議'))
+    assert result['requires_hr_review']
+    assert any('尚未指定實際專業' in note for note in result['review_notes'])
+    assert not any('診斷' in skill or '處方' in skill for skill in result['job']['required_skills'])
