@@ -74,10 +74,11 @@
   $('hunter-feed').innerHTML = skeleton + skeleton;
   const frame = new Image();frame.className = 'hunter-frame';frame.alt = '';frame.hidden = true;
   $('hunter-screen').prepend(frame);
+  frame.addEventListener('load',() => $('hunter-screen').style.setProperty('--frame-ratio',`${frame.naturalWidth} / ${frame.naturalHeight}`));
   const rows = [...$('hunter-feed').children].slice(0,9);
   let sites = [...left.querySelectorAll('.hunter-site')];
   // live is null until probed, then true when the server exposes the sourcing API.
-  let live = null, source = null, runId = null, maxCandidates = 10, lostTimer = null;
+  let live = null, source = null, runId = null, maxCandidates = 10, lostTimer = null, shownUrl = '';
   const sweepSource = 'hunter-sweep', linkSource = 'hunter-links', radiusSource = 'hunter-radius';
   // Same dash stepping as campus matching: MapLibre has no dash offset to animate.
   const DASH_FRAMES = [[0,4,3],[.5,4,2.5],[1,4,2],[1.5,4,1.5],[2,4,1],[2.5,4,.5],[3,4,0],[0,.5,3,3.5],[0,1,3,3],[0,1.5,3,2.5],[0,2,3,2],[0,2.5,3,1.5],[0,3,3,1],[0,3.5,3,.5]];
@@ -414,6 +415,33 @@
     $('hunter-screen').classList.remove('running');left.classList.remove('is-hunting');$('hunter-start').disabled = false;
     sweepEnd = performance.now();
   }
+  // geometry is in frame pixels; the frame is drawn with object-fit: contain, so map through its letterbox.
+  function showGeometry(geometry,kind) {
+    if(!geometry || frame.hidden)return;
+    const screen = $('hunter-screen'), fw = geometry.frame?.w || 1280, fh = geometry.frame?.h || 800;
+    // A box measured below the fold would land outside the picture, so it is dropped rather than clipped.
+    const inside = ({x,y,w = 0,h = 0}) => x + w > 0 && y + h > 0 && x < fw && y < fh;
+    if(geometry.box && !inside(geometry.box))geometry = {...geometry,box:null};
+    if(geometry.click && !inside(geometry.click))geometry = {...geometry,click:null};
+    const scale = Math.min(screen.clientWidth / fw,screen.clientHeight / fh);
+    const left = (screen.clientWidth - fw * scale) / 2, top = (screen.clientHeight - fh * scale) / 2;
+    const at = (x,y) => [left + x * scale,top + y * scale];
+    if(geometry.box) {
+      const {x,y,w,h} = geometry.box, [bx,by] = at(x,y), box = piece('i',`hunter-box is-${kind}`);
+      Object.assign(box.style,{left:bx + 'px',top:by + 'px',width:w * scale + 'px',height:h * scale + 'px'});
+      screen.append(box);timers.push(setTimeout(() => box.remove(),1400));
+    }
+    if(geometry.click) {
+      const [cx,cy] = at(geometry.click.x,geometry.click.y), cursor = $('hunter-cursor');
+      cursor.classList.add('is-live');cursor.style.left = cx - 6 + 'px';cursor.style.top = cy - 6 + 'px';
+      if(reduced)return;
+      // The beacon lands once the cursor has glided over, then fades within the second the docs suggest.
+      timers.push(setTimeout(() => {
+        const beacon = piece('i','hunter-beacon');beacon.style.left = cx + 'px';beacon.style.top = cy + 'px';
+        screen.append(beacon);timers.push(setTimeout(() => beacon.remove(),900));
+      },reduced ? 0 : 450));
+    }
+  }
   const siteLabel = id => sites.find(site => site.dataset.site === id)?.textContent || id || '';
   // Maps one PR #24 event onto the same panels the mock drives.
   function handleLive(type,event) {
@@ -429,13 +457,19 @@
       case 'decision':addLog(`[${event.by === 'gpt-6-luna' ? 'LUNA' : 'RULE'}] ${where}${event.detail}`);break;
       case 'step':
         addLog(`[STEP] ${where}${event.detail}`,event.action === 'fallback' || event.action === 'jev_refused' ? 'warn' : undefined);
-        if(event.url)switchPage(event.url);
+        // Geometry is measured before the action, but the step arrives after it. When the action changed the
+        // page, the current frame already shows the next page and the marker would point at the wrong thing.
+        const sameShot = !event.url || event.url === shownUrl;
+        if(event.url){switchPage(event.url);shownUrl = event.url;}
         markSite(event.site);$('hunter-state').textContent = '目前狀態：' + where + event.detail;
         if(event.screenshot && frame.hidden){frame.src = event.screenshot;frame.hidden = false;}
+        if(sameShot)showGeometry(event.geometry,'click');
         break;
       case 'candidate': {
         const person = event.candidate;
-        addLog(`[FOUND] ${where}${person.name}（${person.fit}）`,'ok');
+        // The log line and the name's box on the page light up together.
+        addLog(`[FOUND] ${where}${person.name}（${person.fit}）`,event.geometry ? 'ok is-linked' : 'ok');
+        showGeometry(event.geometry,'found');
         addPerson({name:person.name,summary:person.headline || person.summary || '',fit:person.fit,reason:person.fit_reason,evidence:person.evidence});
         playCapture();setProgress(Math.min(95,5 + Math.round(captured.length / maxCandidates * 90)));
         break;
@@ -518,7 +552,7 @@
     } catch { live = false; }
   }
   function reset() {
-    clearTimeout(lostTimer);lostTimer = null;stopLive();setBig(false);$('hunter-track').classList.remove('is-done','is-failed');$('hunter-screen').querySelector('.hunter-done')?.remove();frame.hidden = true;frame.removeAttribute('src');
+    clearTimeout(lostTimer);lostTimer = null;shownUrl = '';stopLive();setBig(false);$('hunter-cursor').classList.remove('is-live');$('hunter-track').classList.remove('is-done','is-failed');$('hunter-screen').querySelector('.hunter-done')?.remove();frame.hidden = true;frame.removeAttribute('src');
     timers.forEach(clearTimeout);timers = [];scrolled = 0;run += 1;
     captured.forEach(item => item.marker?.remove());captured = [];clearLayers();left.classList.remove('is-hunting');
     $('hunter-count').textContent = '0 位';$('hunter-log').replaceChildren();

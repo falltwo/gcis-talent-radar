@@ -8,10 +8,10 @@
 /* The browser itself animates between the two spots, so the empty centre just switches off. */
 .hunter-active:not(.hunter-big) .hunter-center{visibility:hidden;transition:none}
 .hunter-browser{will-change:transform}
-/* Frames arrive at 16:10, so the enlarged screen keeps that shape instead of leaving blank bands. */
+/* Frames are usually about 16:10 (the real ratio is set from each frame), so the enlarged screen keeps that shape instead of leaving blank bands. */
 .hunter-center{justify-content:center}
 .hunter-center .hunter-browser{flex:0 1 auto;max-height:100%}
-.hunter-center .hunter-screen{flex:0 1 auto;aspect-ratio:16/10}
+.hunter-center .hunter-screen{flex:0 1 auto;aspect-ratio:var(--frame-ratio,16 / 10)}
 .hunter-zoom{margin-left:auto}
 .hunter-active .city-topbar,.hunter-active .map-toolbar,.hunter-active .map-status-bar,.hunter-active .district-toggle,.hunter-active .district-panel,.hunter-active .map-hud-coords,.hunter-active .maplibregl-ctrl-top-right,.hunter-active .sidebar-toggle{visibility:hidden}
 
@@ -75,6 +75,15 @@
 .hunter-cursor{position:absolute;left:14px;top:14px;width:13px;height:13px;border-radius:50%;background:#FF6B00;box-shadow:0 0 0 4px rgba(255,107,0,.25);transition:left .55s ease-in-out,top .55s ease-in-out}
 .hunter-ripple{position:absolute;width:56px;height:56px;margin:-22px 0 0 -22px;border:2px solid var(--blue);border-radius:50%;pointer-events:none;animation:hunter-ripple .7s ease-out forwards}
 @keyframes hunter-ripple{from{opacity:.9;transform:scale(.15)}to{opacity:0;transform:scale(1)}}
+/* Live geometry: the cursor sits above the frame only once a real click position has arrived. */
+.hunter-cursor.is-live{z-index:3}
+.hunter-frame:not([hidden]) ~ .hunter-cursor:not(.is-live){display:none}
+.hunter-beacon{position:absolute;z-index:3;width:56px;height:56px;margin:-28px 0 0 -28px;border:2px solid #FF6B00;border-radius:50%;pointer-events:none;box-shadow:0 0 12px rgba(255,107,0,.45);animation:hunter-ripple .8s ease-out forwards}
+.hunter-box{position:absolute;z-index:2;border:2px solid var(--blue);border-radius:4px;background:rgba(0,112,243,.08);pointer-events:none;animation:hunter-box 1.4s ease-out forwards}
+.hunter-box.is-found{border-color:var(--ok);background:rgba(22,163,74,.1);box-shadow:0 0 14px rgba(22,163,74,.35)}
+@keyframes hunter-box{from{opacity:0;transform:scale(1.08)}15%{opacity:1;transform:none}70%{opacity:1}to{opacity:0}}
+.hunter-log li.is-linked{border-radius:4px;animation:hunter-linked 1.4s ease-out}
+@keyframes hunter-linked{15%,60%{background:rgba(22,163,74,.14);box-shadow:inset 2px 0 0 var(--ok)}}
 .hunter-scan,.hunter-flag,.hunter-sim{display:none}
 .hunter-frame{position:absolute;inset:0;z-index:1;width:100%;height:100%;object-fit:contain;background:#fff}
 .hunter-frame[hidden]{display:none}
@@ -156,7 +165,7 @@
  .hunter-side,.hunter-active .hunter-side,.hunter-pane,.hunter-fill,.hunter-feed,.hunter-card,.hunter-cursor{transition:none}
  .hunter-mode:after,.hunter-site.is-active,.hunter-fill,.hunter-prompt:after,.running .hunter-flag,.hunter-card,.hunter-screen.glitch .hunter-feed{animation:none}
  .hunter-card:hover{transform:none}
- .hunter-done,.hunter-done *,.hunter-track.is-done,.hunter-card.is-cheer{animation:none}
+ .hunter-box,.hunter-log li.is-linked,.hunter-done,.hunter-done *,.hunter-track.is-done,.hunter-card.is-cheer{animation:none}
  .running .hunter-feed,.campus-node.is-focus i,.campus-node.is-focus i:first-child{animation:none}
  .running .hunter-scan,.hunter-ripple,.hunter-screen.glitch:after,.hunter-screen.wipe:after{display:none}
  .hunter-screen.wipe .hunter-frame{animation:none}
