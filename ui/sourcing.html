@@ -63,6 +63,13 @@
   .badge { padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; white-space: nowrap; }
   .viewport { position: relative; aspect-ratio: 1280 / 800; background: var(--bg); overflow: hidden; border-radius: 0 0 14px 14px; }
   .viewport img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; object-position: top; }
+  /* 點擊標記與方框：座標是即時畫面（frame）上的像素，換成百分比疊在畫面上 */
+  .marker { position: absolute; width: 26px; height: 26px; margin: -13px 0 0 -13px; border-radius: 50%;
+    border: 3px solid var(--jev); background: color-mix(in srgb, var(--jev) 25%, transparent); pointer-events: none;
+    animation: ping .9s ease-out forwards; }
+  @keyframes ping { from { transform: scale(.4); opacity: 1; } to { transform: scale(1.6); opacity: 0; } }
+  .hl { position: absolute; border: 2px solid var(--ok); border-radius: 6px; pointer-events: none;
+    box-shadow: 0 0 0 9999px rgba(0, 0, 0, .12); transition: opacity .3s; }
   .viewport .empty { position: absolute; inset: 0; display: grid; place-items: center; color: var(--muted); text-align: center; padding: 24px; }
   .caption { padding: 12px 16px; border-top: 1px solid var(--line); min-height: 48px; }
 
@@ -139,6 +146,7 @@
 const SITE_NAMES = {github: "GitHub", stackoverflow: "Stack Overflow", huggingface: "Hugging Face", kaggle: "Kaggle",
                     dribbble: "Dribbble", orcid: "ORCID", openalex: "OpenAlex"};
 const $ = (id) => document.getElementById(id);
+const safeUrl = (u) => (/^https?:\/\//i.test(String(u || "").trim()) ? String(u).trim() : null);  // 擋 javascript: 等網址
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"}[c]));
 const siteName = (id) => SITE_NAMES[id] || id;
 let state, frameImg = null, started = 0;
@@ -196,19 +204,44 @@ function showFrame(src) {
   $("live").classList.add("on");
 }
 
+/** 依 geometry（frame 座標）在即時畫面上畫點擊標記與方框。 */
+function overlay(geo, {marker = true, boxClass = "hl", hold = 1600} = {}) {
+  if (!geo || !geo.frame) return;
+  const vp = $("viewport");
+  const pct = (v, total) => `${(v / total) * 100}%`;
+  if (geo.box) {
+    vp.querySelectorAll(".hl").forEach((n) => n.remove());
+    const box = document.createElement("div");
+    box.className = boxClass;
+    Object.assign(box.style, {left: pct(geo.box.x, geo.frame.w), top: pct(geo.box.y, geo.frame.h),
+                              width: pct(geo.box.w, geo.frame.w), height: pct(geo.box.h, geo.frame.h)});
+    vp.append(box);
+    setTimeout(() => { box.style.opacity = 0; setTimeout(() => box.remove(), 300); }, hold);
+  }
+  if (marker && geo.click) {
+    const dot = document.createElement("div");
+    dot.className = "marker";
+    Object.assign(dot.style, {left: pct(geo.click.x, geo.frame.w), top: pct(geo.click.y, geo.frame.h)});
+    vp.append(dot);
+    setTimeout(() => dot.remove(), 1000);
+  }
+}
+
 function renderCandidate(c) {
   if (!state.candidates) $("cards").innerHTML = "";
   state.candidates += 1;
   $("cand-title").textContent = `候選人（${state.candidates}）`;
   const matched = new Set((c.matched_skills || []).map((s) => s.toLowerCase()));
   const skills = (c.skills || []).map((s) => `<span class="chip ${matched.has(s.toLowerCase()) ? "match" : ""}">${esc(s)}</span>`).join(" ");
-  const links = (c.evidence || []).map((e) => `<a href="${esc(e.url)}" target="_blank" rel="noopener noreferrer">${esc(e.label)} ↗</a>`).join("");
+  const links = (c.evidence || []).filter((e) => safeUrl(e.url))
+    .map((e) => `<a href="${esc(safeUrl(e.url))}" target="_blank" rel="noopener noreferrer">${esc(e.label)} ↗</a>`).join("");
   const fitClass = {"符合": "yes", "部分符合": "part"}[c.fit] || "unknown";
   const card = document.createElement("article");
   card.className = "card";
   card.innerHTML = `<div class="top"><span class="name">${esc(c.name)}</span><span class="site">${esc(siteName(c.site))}</span></div>
     <span class="fit ${fitClass}">${esc(c.fit || "未判斷")}</span>
     ${c.headline ? `<div class="headline">${esc(c.headline)}</div>` : ""}
+    ${c.location ? `<div class="headline">地點：${esc(c.location)}</div>` : ""}
     ${skills ? `<div>${skills}</div>` : ""}
     ${c.summary ? `<div>${esc(c.summary)}</div>` : ""}
     ${c.fit_reason ? `<div class="reason">判斷根據：${esc(c.fit_reason)}</div>` : ""}
@@ -252,14 +285,16 @@ function handle(ev) {
       $("badge").style.color = `var(--${a.color})`;
       $("caption").textContent = ev.detail;
       if (ev.screenshot && !state.frames) showFrame(ev.screenshot);
+      overlay(ev.geometry);
       break;
     }
     case "candidate":
       renderCandidate(ev.candidate);
+      overlay(ev.geometry, {marker: false, hold: 2200});
       addTimeline("👤", "ok", "找到候選人：" + ev.candidate.name, siteName(ev.candidate.site));
       break;
     case "candidate_skipped":
-      addTimeline("⏭️", "warn", `略過 ${ev.name}：${ev.reason || "不符合需求"}`, "gpt-6-luna 判斷 · " + siteName(ev.site));
+      addTimeline("⏭️", "warn", `略過 ${ev.name}：${ev.reason || "不符合需求"}`, (String(ev.reason).startsWith("地點不符") ? "地點篩選" : "gpt-6-luna 判斷") + " · " + siteName(ev.site));
       break;
     case "site_skipped":
       addTimeline("⏭️", "warn", `${ev.name} 已跳過：${ev.reason}`, "");

@@ -1,6 +1,7 @@
 """找人 agent：網站目錄、需求規劃、擷取、流程與 SSE API。瀏覽器一律用假的，不連網。"""
 import asyncio
 import json
+import os
 
 import pytest
 
@@ -656,3 +657,128 @@ def test_run_endpoints_for_frontend(monkeypatch):
     assert _request("GET", "/api/sourcing/runs/nope")[0] == 404
     status, body = _request("POST", "/api/sourcing/runs", {"query": "找 30 歲以下的設計師"})
     assert status == 201 and json.loads(body)["status"] == "rejected"
+
+
+# ------------------------------------------------------------------ PR #24 回饋
+import sys
+from types import ModuleType
+
+from sourcing import extract as extract_mod
+from sourcing.browser import cleanup_stale_chrome, element_geometry
+
+
+def _so_pages():
+    url = SITES["stackoverflow"].search_url(SearchTerms(("python",), "Taichung"))
+    return {url: {"title": "top", "links": [("https://stackoverflow.com/users/1/uk-dev", "UK Dev"),
+                                             ("https://stackoverflow.com/users/2/tc-dev", "TC Dev")]}}
+
+
+def test_unsafe_urls_never_reach_the_frontend(monkeypatch):
+    monkeypatch.setattr(apis, "stackoverflow_user", lambda uid: {
+        "display_name": "x", "reputation": 10, "location": "Taichung", "link": "",
+        "website_url": "javascript:alert(document.cookie)", "top_tags": ["python"]})
+    cand = extract_mod.from_stackoverflow_api(SITES["stackoverflow"], "https://stackoverflow.com/users/1/x",
+                                              planner.rule_plan("Python 工程師"))
+    data = cand.as_dict()
+    assert data["personal_site"] is None and all(e["url"].startswith("https://") for e in data["evidence"])
+    cand.evidence.append({"label": "壞連結", "url": "data:text/html,<script>"})
+    assert "data:" not in json.dumps(cand.as_dict())
+
+
+def test_stackoverflow_filters_location_and_judges_fit(monkeypatch):
+    users = {"1": ("UK Dev", "Cambridge, United Kingdom"), "2": ("TC Dev", "台中市")}
+    monkeypatch.setattr(apis, "stackoverflow_user", lambda uid: {
+        "display_name": users[uid][0], "reputation": 100, "location": users[uid][1], "link": "",
+        "website_url": "", "top_tags": ["python", "django"]})
+    prep = service.prepare("找會 Python 的工程師，在台中", max_candidates=1, site_ids=["stackoverflow"])
+    events = list(service.stream(prep, browser_factory=lambda: FakeBrowser(_so_pages())))
+    skipped = [e for e in events if e["type"] == "candidate_skipped"]
+    cands = [e["candidate"] for e in events if e["type"] == "candidate"]
+    assert skipped[0]["name"] == "UK Dev" and "Cambridge" in skipped[0]["reason"]
+    assert cands[0]["name"] == "TC Dev" and cands[0]["fit"] == "部分符合" and cands[0]["location"] == "台中市"
+
+
+def test_one_failing_site_does_not_end_the_run(monkeypatch):
+    class FlakyBrowser(FakeBrowser):
+        def open(self, url):
+            if "orcid.org/orcid-search" in url:
+                raise TimeoutError("WebSocketTimeoutException")
+            super().open(url)
+
+    monkeypatch.setattr(apis, "openalex_authors", lambda *a, **k: [])
+    pages = {SITES["kaggle"].search_url(SearchTerms(("machine learning",), None)): {
+        "title": "k", "links": [("https://www.kaggle.com/alice", "Alice")]},
+        "https://www.kaggle.com/alice": {"title": "Alice | Kaggle", "text": ["ML notebooks"], "links": []}}
+    prep = service.prepare("找機器學習研究員", max_candidates=2, site_ids=["orcid", "kaggle"])
+    events = list(service.stream(prep, browser_factory=lambda: FlakyBrowser(pages)))
+    errors = [e for e in events if e["type"] == "site_error" and e["site"] == "orcid"]
+    assert errors and "TimeoutError" in errors[0]["reason"]
+    assert events[-1]["type"] == "done" and any(e["type"] == "candidate" for e in events)
+
+
+def test_github_name_matches_between_step_and_card():
+    plan = planner.rule_plan("Python 工程師")
+    cand = extract_mod.summarize(SITES["github"], "https://github.com/hoochanlon", "hoochanlon · GitHub",
+                                 ["Working from home"], [], plan, fallback_name="123456")
+    assert cand.name == "123456 (@hoochanlon)"
+    orcid = extract_mod.summarize(SITES["orcid"], "https://orcid.org/0000-0002-1694-233X", "Lin Chen (0000-0002-1694-233X) - ORCID",
+                                  ["Machine learning"], [], plan, fallback_name="0000-0002-1694-233X")
+    assert orcid.name == "Lin Chen"
+
+
+def test_click_geometry_is_in_frame_coordinates():
+    page = SimpleNamespace(vw=1440, vh=900)
+    element = SimpleNamespace(x=720, y=450, w=200, h=40)
+    geo = element_geometry(element, page)
+    assert geo["frame"] == {"w": 1280, "h": 800} and geo["click"] == {"x": 640, "y": 400}
+    assert geo["box"] == {"x": 551, "y": 382, "w": 178, "h": 36}
+    assert element_geometry(SimpleNamespace(x=1), page) is None
+
+
+def test_steps_and_candidates_carry_geometry_for_the_frontend():
+    class GeoBrowser(FakeBrowser):
+        def click_link(self, href):
+            self.last_click = {"frame": {"w": 1280, "h": 800}, "click": {"x": 100, "y": 200},
+                               "box": {"x": 90, "y": 190, "w": 20, "h": 20}}
+            return super().click_link(href)
+
+        def card_box(self, href):
+            return {"frame": {"w": 1280, "h": 800}, "box": {"x": 50, "y": 150, "w": 600, "h": 90}}
+
+        def name_box(self, *names):
+            return {"frame": {"w": 1280, "h": 800}, "box": {"x": 20, "y": 300, "w": 300, "h": 30}}
+
+    prep = service.prepare("Python 工程師", max_candidates=1, site_ids=["github"])
+    events = list(service.stream(prep, browser_factory=lambda: GeoBrowser(_github_pages())))
+    opened = next(e for e in events if e["type"] == "step" and e["action"] == "open_profile")
+    assert opened["geometry"]["click"] == {"x": 100, "y": 200} and opened["geometry"]["box"]["w"] == 600
+    cand = next(e for e in events if e["type"] == "candidate")
+    assert cand["geometry"]["box"]["y"] == 300
+
+
+def test_cleanup_kills_only_leftover_agent_chrome(monkeypatch, tmp_path):
+    killed = []
+
+    class Proc:
+        def __init__(self, pid, cmdline, parents=(), name="chrome.exe"):
+            self.pid, self.info, self._parents = pid, {"pid": pid, "name": name, "cmdline": cmdline}, parents
+
+        def parents(self):
+            return [SimpleNamespace(pid=p) for p in self._parents]
+
+        def kill(self):
+            killed.append(self.pid)
+
+    agent = ["chrome.exe", "--remote-debugging-port=9222", "--user-data-dir=C:/Temp/tscu-chrome-abc"]
+    procs = [Proc(1, agent), Proc(2, agent, parents=(os.getpid(),)),
+             Proc(3, ["chrome.exe", "--user-data-dir=C:/Users/me/Chrome"]),
+             Proc(4, ["python", "-c", "'--remote-debugging-port tscu-chrome-'"], name="python.exe")]
+    fake = ModuleType("psutil")
+    fake.process_iter = lambda attrs: iter(procs)
+    fake.NoSuchProcess = fake.AccessDenied = RuntimeError
+    monkeypatch.setitem(sys.modules, "psutil", fake)
+    monkeypatch.setattr("sourcing.browser.tempfile.gettempdir", lambda: str(tmp_path))
+    monkeypatch.setattr("sourcing.browser.time.sleep", lambda s: None)
+    (tmp_path / "tscu-chrome-old").mkdir()
+    assert cleanup_stale_chrome() == 1 and killed == [1]
+    assert not (tmp_path / "tscu-chrome-old").exists()

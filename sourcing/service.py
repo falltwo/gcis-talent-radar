@@ -20,9 +20,11 @@ from agent.prompt_guard import inspect_hiring_prompt
 from sourcing import decider, planner
 from sourcing import usage as usage_meter
 from sourcing.browser import BrowserUnavailable, SourcingBrowser
-from sourcing.extract import Candidate, from_openalex, from_stackoverflow_api, result_cards, summarize
+from sourcing.extract import (Candidate, from_openalex, from_stackoverflow_api, location_matches, result_cards,
+                              summarize)
 from sourcing.sites import Site, blocked_reason, sites_for
 
+SO_MAX_LOOKUPS = 8  # Stack Overflow 篩地點時最多查幾位（每位 2 次官方 API）
 DONE_MESSAGE = "只列出公開頁面的連結，未蒐集 Email 或電話；聯絡前請自行確認候選人的公開意願。"
 POPUP_GOAL = ("Close any cookie banner, sign-in prompt or popup so that the list of search results "
             "(people, users or their work) is visible. Do not open any result and do not sign in.")
@@ -105,6 +107,8 @@ def stream(prep: Prepared, *, browser_factory: Optional[Callable[[], SourcingBro
     def step(site: Site, action: str, detail: str, browser: Optional[SourcingBrowser] = None, **extra: Any) -> dict:
         nonlocal step_no
         step_no += 1
+        if extra.get("geometry") is None:
+            extra.pop("geometry", None)
         event = {"type": "step", "n": step_no, "site": site.id, "action": action, "detail": detail,
                  "url": browser.url() if browser else extra.pop("url", ""), **extra}
         if prep.screenshots and browser is not None:
@@ -113,6 +117,17 @@ def stream(prep: Prepared, *, browser_factory: Optional[Callable[[], SourcingBro
             except Exception:
                 event["screenshot"] = None
         return event
+
+    def jev_step(site: Site, jev: dict, browser: SourcingBrowser) -> dict:
+        extra = {"confidence": jev["confidence"]}
+        if jev.get("geometry"):
+            extra["geometry"] = jev["geometry"]
+        return step(site, f"jev_{jev['action']}", jev["detail"], browser, **extra)
+
+    def browser_call(browser: SourcingBrowser, name: str, *args: Any) -> Optional[dict]:
+        """座標是給前端的加分資訊：假的或舊版瀏覽器沒有這些方法時就略過。"""
+        method = getattr(browser, name, None)
+        return method(*args) if method else None
 
     def decision(site: Site, what: str, detail: str, source: str) -> dict:
         return {"type": "decision", "site": site.id, "what": what, "detail": detail,
@@ -142,6 +157,105 @@ def stream(prep: Prepared, *, browser_factory: Optional[Callable[[], SourcingBro
                "usage": prep.usage.as_dict(), "cancelled": stopped()}
         return
 
+    def search_site(browser: SourcingBrowser, site: Site, quota: int) -> Iterator[dict]:
+        """單一網站：搜尋、挑人、逐一讀個人頁。這裡丟出的例外只會結束這個網站。"""
+        search_url = site.search_url(plan.terms)
+
+        # 1. 搜尋：gpt-6-luna 決定要打的字，Jev 在入口頁的搜尋框操作；沒完成就直接開搜尋結果頁
+        searched = False
+        try:
+            if browser.jev_ready and site.entry_url:
+                text, source = decider.search_text(site, plan)
+                yield decision(site, "search_text", f"在 {site.name} 搜尋：{text}", source)
+                browser.open(site.entry_url)
+                yield step(site, "open_entry", f"開啟 {site.name}", browser)
+                goal = (f"Search this website for: {text}. Click the main search box, type the text, and press "
+                        "Enter, until the search results are shown. Do not sign in.")
+                for jev in browser.jev_goal(goal, site.domains, text=text, entry_url=site.entry_url):
+                    yield jev_step(site, jev, browser)
+                    if stopped():
+                        return
+                searched = bool(result_cards(site, browser.result_cards()))
+                if not searched:
+                    yield step(site, "fallback", f"Jev 沒有完成搜尋（{browser.last_outcome}），改直接開搜尋結果頁")
+            if not searched:
+                browser.open(search_url)
+                yield step(site, "open_search", f"在 {site.name} 搜尋：{plan.terms.text()}", browser)
+        except PermissionError as exc:
+            yield {"type": "site_error", "site": site.id, "reason": str(exc)}
+            return
+        reason = browser.challenge()
+        if reason:
+            yield {"type": "site_error", "site": site.id, "reason": reason}
+            return
+        if not searched:
+            for jev in browser.jev_goal(POPUP_GOAL, site.domains, max_steps=3):
+                yield jev_step(site, jev, browser)
+
+        # 2. 挑人：gpt-6-luna 從搜尋結果卡片挑出最值得看的幾位
+        cards = result_cards(site, browser.result_cards())
+        if not cards:
+            yield {"type": "site_error", "site": site.id, "reason": "搜尋結果頁沒有找到候選人連結"}
+            return
+        # Stack Overflow 的排行不分地點，要多看幾位才篩得到需求地點的人
+        wanted = SO_MAX_LOOKUPS if site.profile_api == "stackexchange" and plan.terms.location else quota * 2
+        picked, source = decider.pick_candidates(site, plan, cards, k=min(len(cards), wanted))
+        yield decision(site, "pick", "先看：" + "、".join(c.name for c in picked), source)
+        results_url = browser.url()
+
+        # 3. 逐一讀個人頁：Jev 點擊，沒點到就直接點連結；gpt-6-luna 讀完判斷符不符合
+        taken = 0
+        for card in picked:
+            if taken >= quota or len(candidates) >= prep.max_candidates or stopped():
+                return
+            if blocked_reason(card.url):
+                continue
+            if site.profile_api == "stackexchange":
+                cand = from_stackoverflow_api(site, card.url, plan, fallback_name=card.name)
+                yield step(site, "read_api", f"用 Stack Exchange 官方 API 讀取：{card.name}", browser,
+                           geometry=browser_call(browser, "card_box", card.url))
+                if cand is None:
+                    yield {"type": "site_error", "site": site.id, "reason": "Stack Exchange API 暫時無法使用"}
+                    return
+                if plan.terms.location and not location_matches(plan.terms.location, cand.location):
+                    yield {"type": "candidate_skipped", "site": site.id, "name": cand.name,
+                           "reason": f"地點不符（{cand.location or '未填地點'}）"}
+                    continue
+            else:
+                card_geometry = browser_call(browser, "card_box", card.url)
+                if browser.jev_ready and browser_call(browser, "visible_link", card.url) is not False:
+                    goal = f"Open the profile page of {card.name}: click the link that goes to {card.url}."
+                    for jev in browser.jev_goal(goal, site.domains, max_steps=3):
+                        yield jev_step(site, jev, browser)
+                if not _same_page(browser.url(), card.url):
+                    how = browser.click_link(card.url)
+                    geometry = getattr(browser, "last_click", None) or card_geometry
+                    if geometry and card_geometry:
+                        geometry = {**geometry, "box": card_geometry["box"]}  # 方框用整張候選人卡片
+                    yield step(site, "open_profile", f"{'點擊' if how == 'click' else '開啟'}個人頁：{card.name}",
+                               browser, geometry=geometry)
+                if browser.challenge():
+                    yield {"type": "site_error", "site": site.id, "reason": "個人頁顯示機器人驗證，停止這個網站"}
+                    return
+                cand = summarize(site, card.url, browser.title(), browser.text(), browser.links(), plan,
+                                 fallback_name=card.name)
+            if cand.fit == "不符合":
+                yield {"type": "candidate_skipped", "site": site.id, "name": cand.name, "reason": cand.fit_reason}
+            else:
+                candidates.append(cand)
+                taken += 1
+                event = {"type": "candidate", "candidate": cand.as_dict()}
+                if site.profile_api != "stackexchange":
+                    handle = card.url.rstrip("/").rsplit("/", 1)[-1]
+                    box = browser_call(browser, "name_box", card.name, handle, cand.name)
+                    if box:
+                        event["geometry"] = box  # 個人頁上名字的位置，前端可以跟這筆紀錄一起亮起來
+                yield event
+            if site.profile_api != "stackexchange":
+                browser.back()
+                if not _same_page(browser.url(), results_url):
+                    browser.open(results_url)
+
     try:
         with browser_factory() as browser:
             if not browser.jev_ready:
@@ -151,86 +265,16 @@ def stream(prep: Prepared, *, browser_factory: Optional[Callable[[], SourcingBro
                 if remaining <= 0 or stopped():
                     break
                 quota = math.ceil(remaining / (len(browser_sites) - i))
-                search_url = site.search_url(plan.terms)
-
-                # 1. 搜尋：gpt-6-luna 決定要打的字，Jev 在入口頁的搜尋框操作；沒完成就直接開搜尋結果頁
-                searched = False
                 try:
-                    if browser.jev_ready and site.entry_url:
-                        text, source = decider.search_text(site, plan)
-                        yield decision(site, "search_text", f"在 {site.name} 搜尋：{text}", source)
-                        browser.open(site.entry_url)
-                        yield step(site, "open_entry", f"開啟 {site.name}", browser)
-                        goal = (f"Search this website for: {text}. Click the main search box, type the text, and press "
-                                "Enter, until the search results are shown. Do not sign in.")
-                        for jev in browser.jev_goal(goal, site.domains, text=text, entry_url=site.entry_url):
-                            yield step(site, f"jev_{jev['action']}", jev["detail"], browser, confidence=jev["confidence"])
-                            if stopped():
-                                break
-                        searched = bool(result_cards(site, browser.result_cards()))
-                        if not searched:
-                            yield step(site, "fallback", f"Jev 沒有完成搜尋（{browser.last_outcome}），改直接開搜尋結果頁")
-                    if not searched:
-                        browser.open(search_url)
-                        yield step(site, "open_search", f"在 {site.name} 搜尋：{plan.terms.text()}", browser)
-                except PermissionError as exc:
-                    yield {"type": "site_error", "site": site.id, "reason": str(exc)}
-                    continue
-                reason = browser.challenge()
-                if reason:
-                    yield {"type": "site_error", "site": site.id, "reason": reason}
-                    continue
-                if not searched:
-                    for jev in browser.jev_goal(POPUP_GOAL, site.domains, max_steps=3):
-                        yield step(site, f"jev_{jev['action']}", jev["detail"], browser, confidence=jev["confidence"])
-
-                # 2. 挑人：gpt-6-luna 從搜尋結果卡片挑出最值得看的幾位
-                cards = result_cards(site, browser.result_cards())
-                if not cards:
-                    yield {"type": "site_error", "site": site.id, "reason": "搜尋結果頁沒有找到候選人連結"}
-                    continue
-                picked, source = decider.pick_candidates(site, plan, cards, k=min(len(cards), quota * 2))
-                yield decision(site, "pick", "先看：" + "、".join(c.name for c in picked), source)
-                results_url = browser.url()
-
-                # 3. 逐一點進個人頁：Jev 點擊，沒點到就直接點連結；gpt-6-luna 讀完判斷符不符合
-                taken = 0
-                for card in picked:
-                    if taken >= quota or len(candidates) >= prep.max_candidates or stopped():
+                    yield from search_site(browser, site, quota)
+                except Exception as exc:  # 一個網站出錯不影響其他網站，例如 ORCID 頁面卡住造成 WebSocket 逾時
+                    yield {"type": "site_error", "site": site.id,
+                           "reason": f"{site.name} 發生錯誤（{type(exc).__name__}），已跳過這個網站"}
+                    try:
+                        browser.open("about:blank")
+                    except Exception:
+                        yield {"type": "error", "reason": "瀏覽器已無法使用，停止其餘網站"}
                         break
-                    if blocked_reason(card.url):
-                        continue
-                    if site.profile_api == "stackexchange":
-                        cand = from_stackoverflow_api(site, card.url, plan, fallback_name=card.name)
-                        yield step(site, "read_api", f"用 Stack Exchange 官方 API 讀取：{card.name}", browser)
-                        if cand is None:
-                            yield {"type": "site_error", "site": site.id, "reason": "Stack Exchange API 暫時無法使用"}
-                            break
-                        candidates.append(cand)
-                        taken += 1
-                        yield {"type": "candidate", "candidate": cand.as_dict()}
-                        continue
-                    if browser.jev_ready:
-                        goal = f"Open the profile page of {card.name}: click the link that goes to {card.url}."
-                        for jev in browser.jev_goal(goal, site.domains, max_steps=3):
-                            yield step(site, f"jev_{jev['action']}", jev["detail"], browser, confidence=jev["confidence"])
-                    if not _same_page(browser.url(), card.url):
-                        how = browser.click_link(card.url)
-                        yield step(site, "open_profile", f"{'點擊' if how == 'click' else '開啟'}個人頁：{card.name}", browser)
-                    if browser.challenge():
-                        yield {"type": "site_error", "site": site.id, "reason": "個人頁顯示機器人驗證，停止這個網站"}
-                        break
-                    cand = summarize(site, card.url, browser.title(), browser.text(), browser.links(), plan,
-                                     fallback_name=card.name)
-                    if cand.fit == "不符合":
-                        yield {"type": "candidate_skipped", "site": site.id, "name": cand.name, "reason": cand.fit_reason}
-                    else:
-                        candidates.append(cand)
-                        taken += 1
-                        yield {"type": "candidate", "candidate": cand.as_dict()}
-                    browser.back()
-                    if not _same_page(browser.url(), results_url):
-                        browser.open(results_url)
     except BrowserUnavailable as exc:
         yield {"type": "error", "reason": str(exc)}
         return

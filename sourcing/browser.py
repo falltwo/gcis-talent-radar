@@ -14,6 +14,7 @@ import json
 import os
 import re
 import shutil
+import tempfile
 import threading
 import time
 from pathlib import Path
@@ -47,6 +48,33 @@ CARDS_JS = """JSON.stringify([...document.querySelectorAll('a[href]')].map(a => 
   }
   return [a.href, (a.innerText || a.getAttribute('aria-label') || '').trim().slice(0, 80), ctx.slice(0, 400)];
 }))"""
+# 給前端畫點擊標記與方框：座標換算成即時畫面（最大 1280×800）上的像素
+FRAME_MAX = (1280, 800)
+# 搜尋結果上某個人的整張卡片（連結往外找到有足夠文字的區塊）
+CARD_BOX_JS = """((href) => {
+  const norm = (u) => u.split('#')[0].split('?')[0].replace(/\\/$/, '');
+  const a = [...document.querySelectorAll('a[href]')].find((x) => norm(x.href) === href);
+  if (!a) return null;
+  let el = a;
+  for (let i = 0; i < 6 && el.parentElement; i++) {
+    el = el.parentElement;
+    if ((el.innerText || '').trim().length >= 60) break;
+  }
+  const r = el.getBoundingClientRect();
+  return {x: r.left, y: r.top, w: r.width, h: r.height, vw: innerWidth, vh: innerHeight};
+})(%s)"""
+# 個人頁上候選人名字所在的區塊（標題或內容剛好是名字／帳號的元素）
+NAME_BOX_JS = """((names) => {
+  const want = names.map((n) => n.toLowerCase());
+  const els = [...document.querySelectorAll('h1, h2, [itemprop=name], [class*=name], [class*=Name]')];
+  const hit = els.find((e) => {
+    const r = e.getBoundingClientRect();
+    return r.width > 0 && r.bottom > 0 && r.top < innerHeight && want.includes((e.innerText || '').trim().toLowerCase());
+  });
+  if (!hit) return null;
+  const r = hit.getBoundingClientRect();
+  return {x: r.left, y: r.top, w: r.width, h: r.height, vw: innerWidth, vh: innerHeight};
+})(%s)"""
 SEARCH_FIELD = re.compile(r"search|filter|find|query|whattosearch|what type|搜尋|搜索|查詢|篩選", re.I)
 JEV_ACTIONS = {"click", "type_text", "press_enter", "navigate", "press_escape", "scroll_down", "scroll_up",
                "back", "wait", "done", "none"}
@@ -67,6 +95,81 @@ def find_chrome() -> str:
     if found:
         return found
     raise BrowserUnavailable("找不到 Chrome；請安裝 Chrome，或用環境變數 CHROME_PATH 指定路徑。")
+
+
+def frame_box(left: float, top: float, width: float, height: float, vw: float, vh: float) -> dict[str, Any]:
+    """網頁座標（CSS px）換算成即時畫面上的方框。"""
+    scale = min(FRAME_MAX[0] / vw, FRAME_MAX[1] / vh) if vw and vh else 1.0
+    return {"frame": {"w": round(vw * scale), "h": round(vh * scale)},
+            "box": {"x": round(left * scale), "y": round(top * scale), "w": round(width * scale), "h": round(height * scale)}}
+
+
+def element_geometry(element: Any, page: Any) -> Optional[dict[str, Any]]:
+    """被點的元素：點擊位置（元素中心）與元素方框，都換算成即時畫面座標；缺座標時回 None。"""
+    if not all(isinstance(getattr(o, k, None), (int, float)) for o, k in
+               ((element, "x"), (element, "y"), (element, "w"), (element, "h"), (page, "vw"), (page, "vh"))):
+        return None
+    width = min(element.w, 1400)
+    geo = frame_box(element.x - width / 2, element.y - element.h / 2, element.w, element.h, page.vw, page.vh)
+    scale = geo["frame"]["w"] / page.vw if page.vw else 1.0
+    geo["click"] = {"x": round(element.x * scale), "y": round(element.y * scale)}
+    return geo
+
+
+_JOB = None
+_CLEANED = False
+_CLEAN_LOCK = threading.Lock()
+
+
+def bind_to_server(pid: int) -> None:
+    """Windows：把 Chrome 放進「伺服器結束就一起結束」的 Job；伺服器被強制關閉或當掉也不會留下 Chrome。"""
+    global _JOB
+    if os.name != "nt":
+        return
+    try:
+        import win32api
+        import win32con
+        import win32job
+
+        if _JOB is None:
+            job = win32job.CreateJobObject(None, "")
+            info = win32job.QueryInformationJobObject(job, win32job.JobObjectExtendedLimitInformation)
+            info["BasicLimitInformation"]["LimitFlags"] |= win32job.JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE
+            win32job.SetInformationJobObject(job, win32job.JobObjectExtendedLimitInformation, info)
+            _JOB = job
+        handle = win32api.OpenProcess(win32con.PROCESS_SET_QUOTA | win32con.PROCESS_TERMINATE, False, pid)
+        win32job.AssignProcessToJobObject(_JOB, handle)
+    except Exception:
+        pass  # 綁不上時還有啟動時的 cleanup_stale_chrome
+
+
+def cleanup_stale_chrome() -> int:
+    """伺服器啟動時清掉上次殘留的 agent Chrome（只認 typesafe 的暫存設定檔 tscu-chrome-*，不碰使用者的 Chrome）。"""
+    try:
+        import psutil
+    except ImportError:
+        return 0
+    me = os.getpid()
+    killed = 0
+    for proc in psutil.process_iter(["pid", "name", "cmdline"]):
+        try:
+            name = (proc.info.get("name") or "").lower()
+            cmdline = " ".join(proc.info.get("cmdline") or [])
+            if not any(b in name for b in ("chrome", "chromium", "msedge")):
+                continue  # 只碰瀏覽器本身，指令列剛好含這些字的其他程式不算
+            if "tscu-chrome-" not in cmdline or "--remote-debugging-port" not in cmdline:
+                continue
+            if any(parent.pid == me for parent in proc.parents()):
+                continue  # 這個伺服器自己開的
+            proc.kill()
+            killed += 1
+        except (psutil.NoSuchProcess, psutil.AccessDenied):
+            continue
+    if killed:
+        time.sleep(1.0)
+    for profile in Path(tempfile.gettempdir()).glob("tscu-chrome-*"):
+        shutil.rmtree(profile, ignore_errors=True)  # 還在用的檔案刪不掉，會被略過
+    return killed
 
 
 def _host_allowed(url: str, domains: tuple[str, ...]) -> bool:
@@ -125,6 +228,7 @@ class SourcingBrowser:
         self.jev_model = jev_model or os.environ.get("SOURCING_JEV_MODEL", "typesafe/jev-1.13")
         self.want_screencast = screencast
         self.last_outcome = ""
+        self.last_click: Optional[dict[str, Any]] = None  # 最近一次 click_link 的座標，給前端畫點擊標記
         self._chrome = None
         self._session = None
         self._client = None
@@ -140,8 +244,15 @@ class SourcingBrowser:
             raise BrowserUnavailable("尚未安裝 typesafe-computer-use；請執行 pip install -r requirements-sourcing.txt。") from exc
         self._act, self._decide, self._perceive = act, decide, perceive
         cdp.find_chrome = find_chrome  # 原專案只找 macOS 路徑
+        global _CLEANED
+        with _CLEAN_LOCK:  # 這個伺服器第一次開 Chrome 前，先清掉上次被強制結束時留下的
+            if not _CLEANED:
+                cleanup_stale_chrome()
+                _CLEANED = True
         try:
             self._chrome = cdp.Chrome(headed=self.headed).start()
+            if self._chrome.proc is not None:
+                bind_to_server(self._chrome.proc.pid)
             self._session = self._chrome.attach()
             if self.want_screencast:
                 self._screencast = Screencast(self._chrome.page_target(), self._chrome.origin)
@@ -194,6 +305,23 @@ class SourcingBrowser:
         raw = json.loads(self._session.evaluate(CARDS_JS) or "[]")
         return [(href, clean_text(text), clean_text(ctx)) for href, text, ctx in raw if href.startswith("http")]
 
+    def _box(self, js: str, arg: Any) -> Optional[dict[str, Any]]:
+        try:
+            r = self._session.evaluate(js % json.dumps(arg))
+        except Exception:
+            return None
+        if not r or not r.get("w") or not r.get("h"):
+            return None
+        return frame_box(r["x"], r["y"], r["w"], r["h"], r["vw"], r["vh"])
+
+    def card_box(self, href: str) -> Optional[dict[str, Any]]:
+        """搜尋結果上這位候選人的卡片在即時畫面中的位置。"""
+        return self._box(CARD_BOX_JS, href.rstrip("/"))
+
+    def name_box(self, *names: str) -> Optional[dict[str, Any]]:
+        """個人頁上候選人名字所在的區塊。"""
+        return self._box(NAME_BOX_JS, [n for n in names if n])
+
     def text(self, limit: int = 80) -> list[str]:
         page = self._perceive(self._session)
         return [clean_text(t.text) for t in page.text[:limit]]
@@ -235,12 +363,21 @@ class SourcingBrowser:
         self._act.go_back(self._session)
         self._settle(max_wait=4.0)
 
+    def visible_link(self, href: str) -> bool:
+        """畫面上看得到、沒被擋住的連結有沒有指向 href；沒有就不必請 Jev 找（例如搜尋結果只列作品不列作者）。"""
+        target = href.rstrip("/")
+        page = self._perceive(self._session)
+        return any(e.href and e.href.split("?")[0].rstrip("/") == target and e.in_view and not e.covered
+                   for e in page.items)
+
     def click_link(self, href: str) -> str:
         """點畫面上指向 href 的連結；找不到可點的元素才直接開網址。回傳 click 或 navigate。"""
         page = self._perceive(self._session)
         target = href.rstrip("/")
+        self.last_click = None
         for element in page.items:
             if element.href and element.href.split("?")[0].rstrip("/") == target and element.in_view and not element.covered:
+                self.last_click = element_geometry(element, page)
                 self._act.click(self._session, int(element.index), element, page)
                 self._settle()
                 if self.url().split("?")[0].rstrip("/") == target:
@@ -277,6 +414,7 @@ class SourcingBrowser:
             element = next((e for e in page.items if e.index == decision.chosen_element), None)
             refused = ""
             detail = kind
+            geometry = None
             if kind not in JEV_ACTIONS:
                 refused = f"不允許的動作 {kind}"
             elif kind == "click":
@@ -285,6 +423,7 @@ class SourcingBrowser:
                 elif element.href and not _host_allowed(element.href, domains):
                     refused = "這個連結會離開網站"
                 else:
+                    geometry = element_geometry(element, page)
                     self._act.click(self._session, int(element.index), element, page)
                     detail = f"點擊「{(element.name or element.tag)[:40]}」"
                     self._settle()
@@ -294,6 +433,7 @@ class SourcingBrowser:
                 elif not SEARCH_FIELD.search(element.name or ""):
                     refused = f"「{element.name[:30]}」不是搜尋框"
                 else:
+                    geometry = element_geometry(element, page)
                     self._act.type_text(self._session, int(element.index), text)
                     typed = True
                     detail = f"在「{element.name[:30]}」輸入：{text}"
@@ -334,7 +474,10 @@ class SourcingBrowser:
                 yield {"action": kind, "detail": "離開允許的網站，已退回", "confidence": confidence}
                 return
             history.append(f"{kind}: {detail}")
-            yield {"action": kind, "detail": clean_text(str(detail))[:200], "confidence": confidence}
+            step: dict[str, Any] = {"action": kind, "detail": clean_text(str(detail))[:200], "confidence": confidence}
+            if geometry:
+                step["geometry"] = geometry
+            yield step
             if kind == "done" or decision.satisfied.noul >= 0.5:
                 self.last_outcome = "done"
                 return

@@ -40,7 +40,7 @@ pip install -r requirements-sourcing.txt   # typesafe-computer-use，需要 Pyth
 | 職類 | 網站 | 狀態 |
 |---|---|---|
 | 軟體開發 | GitHub | 可用 |
-| 軟體開發 | Stack Overflow | 搜尋頁用瀏覽器；個人頁會跳 Cloudflare 驗證，改用官方 Stack Exchange API 讀公開資料 |
+| 軟體開發 | Stack Overflow | 搜尋頁用瀏覽器；個人頁會跳 Cloudflare 驗證，改用官方 Stack Exchange API 讀公開資料。排行不分地點，有指定地點時最多查 8 位，自填地點不符的略過 |
 | 軟體開發 | GitLab | **不可用**：Cloudflare 機器人驗證 |
 | AI／資料 | GitHub、Hugging Face、Kaggle | 可用（Hugging Face 從模型推回作者） |
 | 設計 | Dribbble | 可用（從作品搜尋找作者） |
@@ -106,11 +106,11 @@ await fetch(`/api/sourcing/runs/${run_id}`, {method: 'DELETE'});
 | `plan` | 開始搜尋前 | `plan`（職類、技能、地點、判斷來源）、`sites` |
 | `frame` | `live=true` 時，畫面有變化就送 | `data`（`data:image/jpeg;base64,…`），直接設成 `<img>` 的 `src` |
 | `decision` | gpt-6-luna（或規則）做決定時 | `site`、`what`（`search_text` 搜尋字、`pick` 挑人）、`detail`、`by`（`gpt-6-luna` 或 `rules`） |
-| `candidate_skipped` | gpt-6-luna 讀完個人頁判斷不符合 | `site`、`name`、`reason` |
+| `candidate_skipped` | gpt-6-luna 判斷不符合，或 Stack Overflow 自填地點不符（`reason` 以「地點不符」開頭） | `site`、`name`、`reason` |
 | `notice` | 沒有金鑰時提醒 | `message` |
 | `site_skipped` | 職類對到的網站不可用 | `site`、`reason` |
-| `step` | 瀏覽器每做一步 | `n`、`site`、`action`、`detail`、`url`、`screenshot`（`data:image/jpeg;base64,…`，可能是 `null`）、Jev 步驟另有 `confidence` |
-| `candidate` | 讀完一位候選人 | `candidate`，見下表 |
+| `step` | 瀏覽器每做一步 | `n`、`site`、`action`、`detail`、`url`、`screenshot`（`data:image/jpeg;base64,…`，可能是 `null`）、Jev 步驟另有 `confidence`；點擊與打字步驟另有 `geometry`（見下方） |
+| `candidate` | 讀完一位候選人 | `candidate`（見下表）；讀個人頁時另有 `geometry`，`box` 是名字在個人頁上的位置 |
 | `site_error` | 網站跳驗證、沒找到候選人、API 失敗 | `site`、`reason` |
 | `error` | 瀏覽器或套件無法使用 | `reason` |
 | `done` | 結束 | `count`、`plan`、`message`、`usage`（實際 token 與費用）、`cancelled` |
@@ -125,11 +125,30 @@ await fetch(`/api/sourcing/runs/${run_id}`, {method: 'DELETE'});
 | `name`、`headline` | 顯示名稱、一句話介紹 |
 | `skills`、`matched_skills` | 頁面上的技能；其中符合需求的 |
 | `summary`、`summary_source` | 專長摘要；`llm`、`rules` 或 `api` |
-| `fit`、`fit_reason` | gpt-6-luna 判斷：`符合`、`部分符合`、`未判斷`；判斷根據 |
+| `fit`、`fit_reason` | gpt-6-luna 判斷：`符合`、`部分符合`、`未判斷`；判斷根據。官方 API 來的候選人（Stack Overflow、OpenAlex）用 API 給的標籤、研究主題判斷 |
+| `location` | 候選人自己公開填的地點（目前只有 Stack Overflow），沒有就是空字串 |
+
+所有網址（`profile_url`、`evidence[].url`、`personal_site`）後端都只輸出 `http(s)://`；前端放進 `href` 前也請再檢查一次。
+
+### 座標（`geometry`）
+
+給前端在即時畫面上畫點擊標記與方框。座標是即時畫面（`frame` 事件的圖）上的像素，圖多大就照比例換算：
+
+```json
+{"frame": {"w": 1280, "h": 800}, "click": {"x": 640, "y": 400}, "box": {"x": 551, "y": 382, "w": 178, "h": 36}}
+```
+
+- `click`：滑鼠點下去的位置（元素中心），只有點擊、打字步驟有。
+- `box`：`open_profile` 是搜尋結果上那位候選人的整張卡片；`jev_click`、`jev_type_text` 是被點的元素；`candidate` 事件是個人頁上名字的位置。
+- 座標對應的是**動作發生當下**的畫面；點下去之後頁面會換，標記建議顯示 1 秒左右就淡出。
+- 找不到位置時不會有 `geometry`，前端要容許缺少。
 | `evidence` | `[{label, url}]`，只放頁面上真的存在的連結：個人頁、代表作品、個人網站 |
 | `personal_site` | 候選人自己留的網站，沒有就是 `null` |
 
 ## 治理
+
+- **一個網站出錯不影響其他網站**：該網站送 `site_error` 後換下一個，已找到的候選人保留；瀏覽器整個壞掉時才送 `error`。
+- **不會留下 Chrome**：Windows 上 agent 的 Chrome 和伺服器綁在同一個「伺服器結束就一起結束」的群組，強制結束伺服器也會一起關閉；每個伺服器第一次開 Chrome 前，也會清掉上次殘留的（只認找人 agent 的暫存設定檔 `tscu-chrome-*`，不碰一般 Chrome）。
 
 - **公平招募**：送進護欄前會在需求前面補上「招募」，讓「找 30 歲以下的…」這種寫法也會被擋下。代價是「不要考慮年齡」這種公平的寫法也會被擋（「不限性別」可以通過）。
 - **不蒐集聯絡方式**：Email、電話在進模型和輸出前都會移除。
