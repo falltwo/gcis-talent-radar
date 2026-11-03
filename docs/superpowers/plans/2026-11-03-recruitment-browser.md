@@ -47,3 +47,11 @@ V2 completed: minimal brief/state tests RED→GREEN (8/8); browser verifies one 
 - Node 測試、語法檢查及瀏覽器實測初始、作業、審核篩選、薪資攔截與單次完成；截圖保存。
 
 V3 completed: focus helper RED→GREEN, 9 Node tests pass; Python 516 pass. Browser validated layout handoff, review filter returning salary/skills only, no active writing/cursor at review, hidden-field validation and inverted salaries blocked, single approval success. Independent read-only review found no important defects. Finished progress bar hidden on review to recover viewport space. No remote push.
+
+## 第四版試作計畫
+- 新增獨立 map-layout 樣式，地圖左右面板與中央工作／審核同座標，避免再動畫。
+- FLIP 量測右側初始位置並放大／回彈到中央，取消或退出時清理 Web Animation；減少動態時直接切換。
+- 接回地圖按鈕與同選點模擬成果標記；保留審核關卡和來源說明。
+- 跑現有 9 項流程測試、語法與資產檢查；瀏覽器確認初始可見地圖、居中／審核位置不變、完成回收並保留標記。
+
+V4 completed: map-overlay layout and 950ms FLIP, same working/review geometry, reduced-motion branch, success counter bound to captured coordinate. Node tests 9 pass; assets/syntax/diff pass. Browser confirmed initial map gap, centered review 860x473 at [104.5,181] on 1069x663 map, zero center offset, successful one-review publication, reset to brief and 1-count marker. Independent read-only review: no important defects. No external publishing or push.
