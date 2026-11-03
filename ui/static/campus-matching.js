@@ -19,7 +19,7 @@
   let active=false,view='schools',dataset=null,loading=null,results=[],nodes=[],popup=null,selectedId=null,frame=0,generation=0;
   let originKey='',basket=new Map();
   const lineSource='campus-demo-connections',headSource='campus-demo-heads',radiusSource='campus-search-radius',sweepSource='campus-radius-sweep-area';
-  let radiusRing=[],shownCount=0,popupBox=null;
+  let radiusRing=[],shownCount=0,popupBox=null,lastSweep='';
   // MapLibre cannot offset a dash, so stepping through these patterns moves it along the line.
   const DASH_FRAMES=[[0,4,3],[.5,4,2.5],[1,4,2],[1.5,4,1.5],[2,4,1],[2.5,4,.5],[3,4,0],[0,.5,3,3.5],[0,1,3,3],[0,1.5,3,2.5],[0,2,3,2],[0,2.5,3,1.5],[0,3,3,1],[0,3.5,3,.5]];
   function flowLines(map){
@@ -193,7 +193,8 @@
       if(!radiusInput.checkValidity()||!Number.isFinite(radius)||radius<=0){status('請輸入至少 0.1 公里的有效搜尋範圍。');return;}
       results=data.campuses.map(item=>{const coordinates=demoCoordinates(location.coordinates,item.offset_km);return {...item,coordinates,distance_km:distance(location.coordinates,coordinates)};}).filter(item=>item.distance_km<=radius&&matchRoles(item,roles)).sort((a,b)=>a.distance_km-b.distance_km);
       updateBasket();drawRadius(location.coordinates,radius);
-      if(sweep&&!reduced){fitAll();if(!await runSweep(location.coordinates,radius,request))return;}
+      const sweepKey=[nextOrigin,radius,roles].join('|');
+      if(sweep&&!reduced&&sweepKey!==lastSweep){fitAll();if(!await runSweep(location.coordinates,radius,request))return;lastSweep=sweepKey;}
       renderList();
       if(!results.length){status('展示資料中沒有符合條件的校區。可擴大範圍，或改用 CNC、品管、設備等示範職務；不代表附近沒有真實學校。');fitAll();return;}
       status(`顯示 ${results.length} 個虛構展示校區，非正式媒合結果。`);drawMap(location);

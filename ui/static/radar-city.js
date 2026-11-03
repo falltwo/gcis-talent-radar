@@ -68,8 +68,10 @@
   window.radarFeatures={select:selectFeature};
   selectFeature(null);
   workspace.querySelectorAll('[data-feature]').forEach(button=>button.addEventListener('click',()=>{
-    if(button.dataset.feature==='校園人才媒合'&&window.campusMatching){window.campusMatching.toggle();return;}
+    if(button.dataset.feature==='校園人才媒合'&&window.campusMatching){window.headhunter?.deactivate(true);window.campusMatching.toggle();return;}
     window.campusMatching?.deactivate();
+    if(button.dataset.feature==='獵頭Agent'&&window.headhunter){window.headhunter.toggle();return;}
+    window.headhunter?.deactivate();
     featureTrigger=button;selectFeature(button.dataset.feature);
     $('feature-placeholder-title').textContent=button.dataset.feature;featureDialog.showModal();
   }));
@@ -191,7 +193,7 @@
     clearTimeout(busyTimer);busySince=performance.now();setLocating(true);
   });
   $('replay-intro').addEventListener('click',()=>{
-    window.campusMatching?.deactivate();
+    window.campusMatching?.deactivate();window.headhunter?.deactivate();
     entrance.show();
     $('intro-district').value=selected.district;fillRoads('intro',selected.road);
     workspace.inert=true;$('expansion').inert=true;document.body.style.overflow='hidden';
