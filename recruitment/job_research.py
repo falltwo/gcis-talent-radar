@@ -11,6 +11,7 @@ import requests
 from fastapi import HTTPException
 
 from agent.prompt_guard import inspect_hiring_prompt
+from recruitment.job_templates import COMMON_TEMPLATES
 
 
 TEMPLATES = {
@@ -28,10 +29,21 @@ TEMPLATES = {
         "skills": ["CNC設備操作", "尺寸量測"], "training": ["公司設備操作流程"],
     },
 }
+TEMPLATES.update(COMMON_TEMPLATES)
+
+
+def normalize_role(role):
+    return re.sub(r"[\s_-]+", "", unicodedata.normalize("NFKC", role).casefold())
+
+
+def find_template(role):
+    normalized = normalize_role(role)
+    return next(((name, value) for name, value in TEMPLATES.items()
+                 if normalized in {normalize_role(alias) for alias in value['aliases']}), None)
 
 
 def has_template(role):
-    return any(role.strip().casefold() in [alias.casefold() for alias in value["aliases"]] for value in TEMPLATES.values())
+    return find_template(role) is not None
 
 
 def timestamp():
@@ -126,11 +138,12 @@ def research_role(role):
 def draft_job(body):
     if inspect_hiring_prompt("招募 " + body.role + "，" + body.needs)["decision"] != "ALLOW":
         raise HTTPException(422, "請使用與工作相關的招募條件，移除不適合的個人特徵限制。")
-    template = next((value for value in TEMPLATES.values() if body.role.strip().casefold() in [alias.casefold() for alias in value["aliases"]]), None)
+    matched = find_template(body.role)
+    template = matched[1] if matched else None
     if template:
         source = {**template["source"], "retrieved_at":None, "status":"CURATED_REFERENCE"}
         # The local template is an original summary of the cited occupational reference.
-        generated = {"description":template["description"],"required_skills":template["skills"],"trainable_skills":template["training"],"review_notes":[]}
+        generated = {"description":template["description"],"required_skills":template["skills"],"trainable_skills":template["training"],"review_notes":template.get('review_notes',[])}
         sources, origin = [source], "OCCUPATIONAL_TEMPLATE"
     else:
         generated, sources = research_role(body.role)
@@ -146,6 +159,6 @@ def draft_job(body):
     conditions=explicit_conditions(body.needs)
     job.update(conditions)
     for key in conditions: provenance[key]="HR_INPUT"
-    return {"job":job,"source":origin,"sources":sources,"field_provenance":provenance,
+    return {"job":job,"source":origin,"template_name":matched[0] if matched else None,"sources":sources,"field_provenance":provenance,
             "review_notes":["非HR指定的班制、時間、工作內容及技能均為建議，請確認後再刊登。",*generated["review_notes"]],
             "requires_hr_review":True,"missing_fields":[],"notice":"保留HR已提供條件；範本或網路補全內容均屬待確認建議。"}

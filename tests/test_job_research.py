@@ -66,3 +66,43 @@ def test_source_links_reject_local_or_unsafe_urls(url):
 def test_negotiable_salary_cannot_invent_range():
     with pytest.raises(ValueError):
         Requirement(title='會計',district='大雅區',shift='日班',headcount=3,salary_mode='NEGOTIABLE',salary_min=30000,salary_max=40000)
+
+
+@pytest.mark.parametrize('role',list(research.TEMPLATES))
+def test_common_roles_use_valid_templates_without_network(client, monkeypatch, role):
+    from api.mock104 import JobForm
+    monkeypatch.setenv('RECRUITMENT_AGENT_DEMO_AI_ENABLED','0')
+    def unexpected_search(*args, **kwargs):
+        raise AssertionError('A common template must not call web research')
+    monkeypatch.setattr(research.requests,'post',unexpected_search)
+    result=client.post('/api/mock104/agent/prepare',json={'role':role,'district':'西屯區','needs':'招募三人，月薪面議'})
+    assert result.status_code==200,result.text
+    draft=result.json()
+    assert draft['source']=='OCCUPATIONAL_TEMPLATE'
+    assert draft['template_name']==role
+    assert draft['job']['headcount']==3 and draft['job']['salary_min'] is None
+    assert draft['sources'][0]['status']=='CURATED_REFERENCE'
+    JobForm.model_validate(draft['job'])
+
+
+def test_aliases_are_unambiguous_and_all_resolve():
+    seen={}
+    for name,template in research.TEMPLATES.items():
+        for alias in template['aliases']:
+            key=research.normalize_role(alias)
+            assert key not in seen or seen[key]==name
+            seen[key]=name
+            assert research.find_template(alias)[0]==name
+    assert research.find_template(' 企劃　助理 ')[0]=='企劃助理'
+    assert research.find_template('ＣＮＣ　操作員')[0]=='CNC操作員'
+    assert research.find_template('Front End Engineer')[0]=='前端工程師'
+    assert research.find_template('量子研究師') is None
+    assert research.find_template('量子軟體工程師') is None
+
+
+def test_planning_assistant_does_not_inherit_marketing_requirements():
+    draft=research.draft_job(AgentPrepare(role='企劃助理',district='大雅區',needs='招募三人，月薪面議'))
+    assert '行銷' not in '、'.join(draft['job']['required_skills'])
+    assert '廣告投放' not in '、'.join(draft['job']['required_skills'])
+    assert any('確認方向' in note for note in draft['review_notes'])
+    assert draft['field_provenance']['required_skills']=='SUGGESTED'
