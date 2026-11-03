@@ -1,0 +1,30 @@
+{
+  "version": "nlsc-campus-match/1.0",
+  "source_dataset_id": "174606",
+  "source_url": "https://www.tgos.tw/tgos/VirtualDir/Product/5f346c6b-edde-4fe7-8685-5585c0fb7852/各級學校範圍圖_121_1150409.zip",
+  "selection_basis": "教育部校名、校區名稱與地址行政區，對照國土測繪中心具名學校範圍；明確排除附中、實驗小學、試驗場與預定地。",
+  "matches": [
+    {"campus_id":"0006:7d9250ac8231f0cf","object_id":2374,"feature_name":"國立中興大學","note":"興大路145號校本部；排除農業試驗場、葡萄中心與附屬中學。"},
+    {"campus_id":"0039:91828657de9d6b82","object_id":2519,"feature_name":"國立臺中教育大學英才校區","note":"民生路227號英才校區；與民生路140號本部分開。"},
+    {"campus_id":"0039:ef4df6ecde4bac71","object_id":2523,"feature_name":"國立臺中教育大學","note":"民生路140號本部；排除附設實驗國民小學。"},
+    {"campus_id":"0043:6156bf202fde0c93","object_id":2383,"feature_name":"國立勤益科技大學","note":"太平區中山路二段57號。"},
+    {"campus_id":"0049:c2a7c72f219d95c3","object_id":2415,"feature_name":"國立臺灣體育運動大學","note":"北區雙十路1段16號臺中校區。"},
+    {"campus_id":"0050:5724ebc9f716963f","object_id":2539,"feature_name":"國立臺中科技大學","note":"三民路三段129號三民校區；排除南屯校區預定地。"},
+    {"campus_id":"0050:a650bc77aba92428","object_id":2516,"feature_name":"國立臺中科技大學民生校區","note":"西區三民路一段193號；與北區三民校區分開。"},
+    {"campus_id":"1001:cfbc54cfc76bbf27","object_id":2619,"feature_name":"東海大學","note":"臺灣大道四段1727號整體校園範圍。"},
+    {"campus_id":"1007:0db42d202a3f0475","object_id":2363,"feature_name":"逢甲大學","note":"文華路100號文華校區；排除福星與中科校區。"},
+    {"campus_id":"1007:317c1a3db8c4ec87","object_id":2418,"feature_name":"逢甲大學中科校區","note":"東大路一段951號中科校區。"},
+    {"campus_id":"1008:87cc8f359df49b26","object_id":2669,"feature_name":"靜宜大學","note":"沙鹿區臺灣大道七段200號。"},
+    {"campus_id":"1018:19dfb486a6e73739","object_id":2436,"feature_name":"朝陽科技大學","note":"吉峰東路168號主要校園範圍；不把鄰近分離圖徵當作另一所學校。"},
+    {"campus_id":"1029:aac19cf0e363f345","object_id":2375,"feature_name":"中山醫學大學","note":"建國北路1段110號本部；排除另列的大慶校區地塊。"},
+    {"campus_id":"1034:a54ab63710f5a880","object_id":2655,"feature_name":"弘光科技大學","note":"沙鹿區臺灣大道六段1018號。"},
+    {"campus_id":"1035:7f6c42bed0a05163","object_id":2385,"feature_name":"中國醫藥大學","note":"北區學士路91號英才校區；以行政區區分與水湳同名圖徵，排除鄰近分離圖徵。"},
+    {"campus_id":"1035:eb9b9cebf79538ea","object_id":2617,"feature_name":"中國醫藥大學","note":"北屯區經貿路一段100號水湳校本部；不使用北區英才校區的同名圖徵。"},
+    {"campus_id":"1045:328064102d6ff22d","object_id":2382,"feature_name":"嶺東科技大學","note":"嶺東路1號春安校區；與中台路7號寶文校區分開。"},
+    {"campus_id":"1045:870636573f95b169","object_id":2380,"feature_name":"嶺東科技大學寶文校區","note":"中台路7號寶文校區。"},
+    {"campus_id":"1047:3fc37bbe23ef530f","object_id":2389,"feature_name":"中臺科技大學","note":"北屯區廍子路666號。"},
+    {"campus_id":"1048:2b7fbcacf93d7e9e","object_id":2426,"feature_name":"亞洲大學","note":"柳豐路500號主要校園地塊；不把鄰近分離圖徵當作另一所學校。"},
+    {"campus_id":"1062:3cd81a4143f9b50f","object_id":2627,"feature_name":"僑光科技大學","note":"西屯區僑光路100號。"},
+    {"campus_id":"1069:f0e6c7eda6d24223","object_id":2455,"feature_name":"修平學校財團法人修平科技大學","note":"大里區工業路11號。"}
+  ]
+}

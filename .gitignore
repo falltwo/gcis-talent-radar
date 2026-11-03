@@ -76,3 +76,6 @@ node_modules/
 playwright-report/
 
 test-results/
+
+# Local education database backups created by the ETL.
+/data/backups/education/
