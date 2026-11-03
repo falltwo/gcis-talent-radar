@@ -4,6 +4,15 @@
 .hunter-left{left:12px;width:320px;transform:translateX(-100%)}
 .hunter-right{right:12px;width:380px;bottom:36px;transform:translateX(100%)}
 .hunter-active .hunter-side{visibility:visible;opacity:1;transform:none;transition:transform .4s cubic-bezier(.16,1,.3,1),opacity .3s ease-out,visibility 0s}
+.hunter-center{left:344px;right:404px;bottom:36px;transform:none}
+/* The browser itself animates between the two spots, so the empty centre just switches off. */
+.hunter-active:not(.hunter-big) .hunter-center{visibility:hidden;transition:none}
+.hunter-browser{will-change:transform}
+/* Frames arrive at 16:10, so the enlarged screen keeps that shape instead of leaving blank bands. */
+.hunter-center{justify-content:center}
+.hunter-center .hunter-browser{flex:0 1 auto;max-height:100%}
+.hunter-center .hunter-screen{flex:0 1 auto;aspect-ratio:16/10}
+.hunter-zoom{margin-left:auto}
 .hunter-active .city-topbar,.hunter-active .map-toolbar,.hunter-active .map-status-bar,.hunter-active .district-toggle,.hunter-active .district-panel,.hunter-active .map-hud-coords,.hunter-active .maplibregl-ctrl-top-right,.hunter-active .sidebar-toggle{visibility:hidden}
 
 .hunter-pane{display:flex;flex-direction:column;min-height:0;overflow:hidden;border:1px solid var(--line);border-radius:10px;background:var(--panel);-webkit-backdrop-filter:blur(0);backdrop-filter:blur(0);box-shadow:0 8px 24px rgba(15,23,42,.08);transition:border-color .3s,box-shadow .3s,backdrop-filter .4s cubic-bezier(.16,1,.3,1),-webkit-backdrop-filter .4s cubic-bezier(.16,1,.3,1)}
@@ -23,7 +32,8 @@
 .radar-workspace.sidebar-instant{transition:none}
 
 .hunter-field{display:block;margin-bottom:8px;color:var(--muted);font-size:12px}
-.hunter-field input[type=text]{display:block;width:100%;min-height:34px;margin-top:3px;padding:6px 9px;border:1px solid var(--line);border-radius:7px;background:var(--well);color:var(--text);font-size:13px}
+.hunter-field[hidden]{display:none}
+.hunter-field input[type=text],.hunter-field input[type=number]{display:block;width:100%;min-height:34px;margin-top:3px;padding:6px 9px;border:1px solid var(--line);border-radius:7px;background:var(--well);color:var(--text);font-size:13px}
 .hunter-tag{display:inline-block;margin-bottom:8px;padding:1px 10px;border:1px solid rgba(0,112,243,.4);border-radius:999px;background:rgba(0,112,243,.08);color:var(--blue);font-size:12px;font-weight:650}
 .hunter-sites{display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;margin-top:4px}
 .hunter-site{position:relative;display:flex;align-items:center;gap:5px;min-width:0;padding:3px 7px;border:1px solid var(--line);border-radius:6px;background:var(--well);color:var(--muted);font-size:11.5px;cursor:pointer}
@@ -66,12 +76,24 @@
 .hunter-ripple{position:absolute;width:56px;height:56px;margin:-22px 0 0 -22px;border:2px solid var(--blue);border-radius:50%;pointer-events:none;animation:hunter-ripple .7s ease-out forwards}
 @keyframes hunter-ripple{from{opacity:.9;transform:scale(.15)}to{opacity:0;transform:scale(1)}}
 .hunter-scan,.hunter-flag,.hunter-sim{display:none}
+.hunter-frame{position:absolute;inset:0;z-index:1;width:100%;height:100%;object-fit:contain;background:#fff}
+.hunter-frame[hidden]{display:none}
+.running .hunter-sim,.running .hunter-flag{z-index:2}
+.hunter-card p.hunter-fit.is-unknown{background:rgba(100,116,139,.12);color:#475569}
+.hunter-site.is-off{opacity:.45;cursor:not-allowed}
+.hunter-links a{color:inherit;text-decoration:underline;text-underline-offset:2px}
 .running .hunter-scan{display:block;position:absolute;left:0;right:0;top:0;height:56px;pointer-events:none;background:linear-gradient(transparent,rgba(0,112,243,.07) 80%,rgba(0,112,243,.4) 98%,transparent);animation:hunter-scan 5s linear infinite}
 @keyframes hunter-scan{from{transform:translateY(-60px)}to{transform:translateY(420px)}}
 .running .hunter-flag{display:block;position:absolute;top:7px;left:50%;transform:translateX(-50%);padding:1px 10px;border:1px solid var(--err);border-radius:6px;background:rgba(255,255,255,.85);color:var(--err);font-size:11px;font-weight:700;letter-spacing:.14em;animation:hunter-flag 3s ease-in-out infinite}
 @keyframes hunter-flag{50%{opacity:.72}}
 .running .hunter-sim{display:block;position:absolute;right:7px;bottom:7px;padding:2px 8px;border-radius:6px;background:rgba(255,255,255,.88);box-shadow:0 0 0 1px var(--line);color:var(--muted);font-size:11px}
 .hunter-screen.glitch .hunter-feed{animation:hunter-glitch .5s steps(2) both}
+.hunter-screen.glitch:after{z-index:2}
+/* A bright band sweeps top to bottom over scanlines while the frame jolts sideways. */
+.hunter-screen.wipe:after{content:"";position:absolute;inset:0;z-index:2;pointer-events:none;background:linear-gradient(transparent 40%,rgba(0,112,243,.35) 49%,rgba(255,255,255,.7) 50%,transparent 60%) 0 100%/100% 200% no-repeat,repeating-linear-gradient(0deg,rgba(0,112,243,.12) 0 2px,transparent 2px 5px);animation:hunter-wipe .15s linear both}
+@keyframes hunter-wipe{to{background-position:0 0,0 0;opacity:.4}}
+.hunter-screen.wipe .hunter-frame{animation:hunter-jolt .15s steps(3) both}
+@keyframes hunter-jolt{33%{transform:translateX(-2px);filter:saturate(1.6) hue-rotate(-12deg)}66%{transform:translateX(2px)}}
 .hunter-screen.glitch:after{content:"";position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(0deg,rgba(0,112,243,.22) 0 3px,transparent 3px 9px),linear-gradient(90deg,rgba(220,38,38,.14),rgba(0,112,243,.14));animation:hunter-flash .5s linear both}
 @keyframes hunter-glitch{0%,100%{transform:translateX(0);filter:none}20%{transform:translateX(-12px) skewX(6deg);filter:hue-rotate(90deg);clip-path:inset(12% 0 42% 0)}40%{transform:translateX(10px) skewX(-5deg);clip-path:inset(46% 0 8% 0)}60%{transform:translateX(-6px);filter:hue-rotate(220deg);clip-path:inset(4% 0 62% 0)}80%{opacity:.5;clip-path:inset(0)}}
 @keyframes hunter-flash{0%,100%{opacity:0}25%,70%{opacity:1}}
@@ -104,14 +126,38 @@
 .campus-node.is-focus svg{transform:scale(1.2)}
 .campus-node.is-focus i,.campus-node.is-focus i:first-child{border-color:#f0762b;animation:campus-ring 1.3s ease-out infinite}.campus-node.is-focus i:nth-child(2){animation-delay:.65s}
 
+/* Run finished: lock-on rings and a stamp over the last frame, then a green wave down the cards. */
+.hunter-done{position:absolute;inset:0;z-index:3;display:grid;place-content:center;justify-items:center;gap:2px;pointer-events:none;background:rgba(248,250,252,.6);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);animation:hunter-done-in .35s ease-out both;transition:opacity .5s ease-in}
+.hunter-done.is-out{opacity:0}
+.hunter-done i{position:absolute;left:50%;top:50%;width:220px;height:220px;margin:-110px 0 0 -110px;border:2px solid var(--ok);border-radius:50%;animation:hunter-lock 1.1s cubic-bezier(.16,1,.3,1) both}
+.hunter-done i:nth-child(2){animation-delay:.18s;border-width:1px}
+.hunter-done-card{position:relative;display:grid;justify-items:center;gap:3px;padding:14px 28px;border:1px solid rgba(22,163,74,.35);border-radius:10px;background:rgba(255,255,255,.94);box-shadow:0 12px 32px rgba(15,23,42,.14),0 0 0 4px rgba(22,163,74,.06)}
+.hunter-done small{color:var(--muted);font:10.5px var(--mono);letter-spacing:.3em;animation:hunter-done-in .3s ease-out .05s both}
+.hunter-done b{display:flex;align-items:center;gap:12px;color:#15803D;font:400 24px/1.25 var(--mono);letter-spacing:.28em;text-shadow:0 0 14px rgba(22,163,74,.45);animation:hunter-stamp .45s cubic-bezier(.2,.8,.2,1.4) .12s both}
+.hunter-done b:before,.hunter-done b:after{content:"";width:26px;height:1px;background:currentColor;opacity:.6}
+.hunter-done span{color:var(--text);font:11.5px var(--mono);letter-spacing:.2em;animation:hunter-done-in .4s ease-out .35s both}
+.hunter-done em{margin-right:2px;color:#15803D;font-style:normal;font-size:15px}
+@keyframes hunter-done-in{from{opacity:0}}
+@keyframes hunter-lock{from{opacity:0;transform:scale(2.6)}55%{opacity:1}to{opacity:.85;transform:scale(1)}}
+@keyframes hunter-stamp{from{opacity:0;transform:scale(1.6)}}
+.hunter-track.is-done{animation:hunter-track-done 1.2s ease-out}
+.hunter-track.is-failed .hunter-fill{background:linear-gradient(90deg,#B91C1C,var(--err));animation:none}
+.hunter-track.is-done .hunter-fill{background:linear-gradient(90deg,#15803D,var(--ok))}
+@keyframes hunter-track-done{30%{box-shadow:inset 0 0 0 1px var(--ok),0 0 12px rgba(22,163,74,.55)}}
+.hunter-card.is-cheer{animation:hunter-cheer .8s ease-out var(--cheer,0ms) both}
+@keyframes hunter-cheer{30%{border-color:var(--ok);box-shadow:0 0 0 1px var(--ok),0 0 14px rgba(22,163,74,.35);transform:translateX(4px)}}
+
 @media(max-width:900px){
  .hunter-left,.hunter-right{left:8px;right:8px;width:auto}
  .hunter-left{top:8px;bottom:50%}.hunter-right{top:50%;bottom:8px}
+ .hunter-zoom{display:none}
 }
 @media(prefers-reduced-motion:reduce){
  .hunter-side,.hunter-active .hunter-side,.hunter-pane,.hunter-fill,.hunter-feed,.hunter-card,.hunter-cursor{transition:none}
  .hunter-mode:after,.hunter-site.is-active,.hunter-fill,.hunter-prompt:after,.running .hunter-flag,.hunter-card,.hunter-screen.glitch .hunter-feed{animation:none}
  .hunter-card:hover{transform:none}
+ .hunter-done,.hunter-done *,.hunter-track.is-done,.hunter-card.is-cheer{animation:none}
  .running .hunter-feed,.campus-node.is-focus i,.campus-node.is-focus i:first-child{animation:none}
- .running .hunter-scan,.hunter-ripple,.hunter-screen.glitch:after{display:none}
+ .running .hunter-scan,.hunter-ripple,.hunter-screen.glitch:after,.hunter-screen.wipe:after{display:none}
+ .hunter-screen.wipe .hunter-frame{animation:none}
 }
