@@ -41,6 +41,34 @@ def test_explicit_work_conditions_override_template():
     assert result['min_experience_months']==24
 
 
+@pytest.mark.parametrize(('needs','months'),[
+    ('日班 工作經驗兩年以上',24),('工作至少兩年',24),('兩年以上工作經驗',24),
+    ('至少兩年相關工作經驗',24),('需具備2年工作經驗',24),('工作經驗：２年以上',24),
+    ('工作經驗二年以上',24),('年資至少三年',36),('經驗至少十年',120),
+    ('至少十二年工作經驗',144),('工作經驗二十五年以上',300),
+    ('工作經驗一年半以上',18),('半年工作經驗',6),('工作經驗2.5年以上',30),
+    ('工作經驗不限',0),('經驗不拘',0),
+])
+def test_experience_supports_chinese_numerals_and_word_order(needs,months):
+    assert research.explicit_conditions(needs)['min_experience_months']==months
+
+
+@pytest.mark.parametrize('needs',[
+    '公司成立兩年，招募三人','招募兩人，日班','公司於2024年成立',
+    '工作經驗兩年以下','最多兩年工作經驗','不需要兩年工作經驗',
+])
+def test_unrelated_or_negated_years_do_not_become_experience_minimums(needs):
+    assert 'min_experience_months' not in research.explicit_conditions(needs)
+
+
+def test_chinese_experience_is_preserved_as_hr_input(client):
+    response=client.post('/api/mock104/agent/prepare',json={'role':'會計','district':'大里區','needs':'日班 工作經驗兩年以上'})
+    assert response.status_code==200,response.text
+    draft=response.json()
+    assert draft['job']['min_experience_months']==24
+    assert draft['field_provenance']['min_experience_months']=='HR_INPUT'
+
+
 def test_quantum_role_calls_live_search_and_requires_citations(monkeypatch):
     monkeypatch.setenv('OPENROUTER_API_KEY','test-only')
     observed=[]

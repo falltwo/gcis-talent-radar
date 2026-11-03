@@ -75,6 +75,42 @@ def timestamp():
     return datetime.now(timezone.utc).isoformat()
 
 
+def experience_months(text):
+    """Read work-experience minimums, including Chinese numerals and word order."""
+    digits = {'一':1,'二':2,'兩':2,'三':3,'四':4,'五':5,'六':6,'七':7,'八':8,'九':9}
+    def years(value):
+        if re.fullmatch(r'\d+(?:\.5)?', value):
+            return float(value)
+        if value in digits:
+            return digits[value]
+        if value.count('十') == 1:
+            left, right = value.split('十')
+            if (not left or left in digits) and (not right or right in digits):
+                return (digits.get(left, 1) * 10) + digits.get(right, 0)
+        return None
+    number = r'(?:[0-9]{1,2}(?:\.5)?|[一二兩三四五六七八九十]{1,3})'
+    duration = rf'(?:(?P<years>{number})\s*年\s*(?P<half>半)?|(?P<half_only>半)\s*年)'
+    patterns = [
+        rf'(?:工作經驗|相關經驗|經驗|年資|工作)\s*[:：]?\s*(?:(?:至少|最少|需要|須要|需|須|具備|滿|達|超過|有)\s*)?{duration}',
+        rf'(?<![0-9.一二兩三四五六七八九十]){duration}\s*(?:以上)?\s*(?:的)?\s*(?:相關)?\s*(?:工作)?經驗',
+    ]
+    matches = []
+    for pattern in patterns:
+        for match in re.finditer(pattern, text):
+            if re.search(r'(?:不需要|不需|不必|不用|無需|無須|不要求|最多|至多|不超過)\s*(?:至少)?\s*$', text[:match.start()]):
+                continue
+            if re.match(r'\s*(?:以下|以內|內)', text[match.end():]):
+                continue
+            count = .5 if match['half_only'] else years(match['years'])
+            if count is not None:
+                matches.append((match.start(), int(count * 12) + (6 if match['half'] else 0)))
+    if matches:
+        return min(matches)[1]
+    if '經驗不拘' in text or '經驗不限' in text:
+        return 0
+    return None
+
+
 def explicit_conditions(needs):
     text = unicodedata.normalize("NFKC", needs)
     result = {}
@@ -96,9 +132,8 @@ def explicit_conditions(needs):
     if hours: result["work_hours"] = hours[1] + "–" + hours[2]
     if "兼職" in text: result["employment_type"] = "兼職"
     elif "全職" in text: result["employment_type"] = "全職"
-    experience = re.search(r"(?:至少|需|具備)?\s*([0-9]{1,2})\s*年(?:以上)?(?:的)?(?:相關)?(?:工作)?經驗", text)
-    if experience: result["min_experience_months"] = int(experience[1]) * 12
-    elif "經驗不拘" in text: result["min_experience_months"] = 0
+    experience = experience_months(text)
+    if experience is not None: result['min_experience_months'] = experience
     return result
 
 
