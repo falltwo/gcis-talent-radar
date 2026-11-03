@@ -1,0 +1,8 @@
+const {test}=require('node:test');const assert=require('node:assert/strict');
+const {PostingFlow}=require('../../ui/static/recruitment-flow.js');
+const draft=()=>({company:'示範企業',role:'CNC 技術員',address:'臺中市大雅區中清路三段',salaryMin:35000,salaryMax:45000,hires:2,skills:'機械加工經驗'});
+test('filling completes at preview and cannot publish without confirmation',()=>{const f=new PostingFlow();f.start(draft());for(let i=0;i<10;i++)f.advance();assert.equal(f.state,'preview');assert.throws(()=>f.publish(false));assert.equal(f.state,'preview');f.publish(true);assert.equal(f.state,'published');assert.throws(()=>f.publish(true));});
+test('validation rejects missing role and reversed salary',()=>{for(const d of [{...draft(),role:' '},{...draft(),salaryMin:50000},{...draft(),hires:0},{...draft(),salaryMin:NaN}])assert.throws(()=>new PostingFlow().start(d));});
+test('cannot publish while filling and cancel invalidates pending work',()=>{const f=new PostingFlow();f.start(draft());assert.throws(()=>f.publish(true));f.advance();f.cancel();assert.equal(f.advance(),null);assert.equal(f.state,'idle');assert.throws(()=>f.publish(true));});
+test('restart requires fresh preview and snapshots user inputs',()=>{const f=new PostingFlow(),d=draft();f.start(d);d.role='改寫';assert.equal(f.draft.role,'CNC 技術員');for(let i=0;i<10;i++)f.advance();f.start({...draft(),role:'品管'});assert.equal(f.state,'filling');assert.throws(()=>f.publish(true));});
+test('scenario recruitment counts retain thousands separators correctly',()=>{const {scenarioHires}=require('../../ui/static/recruitment-flow.js');assert.equal(scenarioHires('1,000 人'),1000);assert.equal(scenarioHires('100,000'),100000);assert.equal(scenarioHires('20 人'),20);assert.equal(scenarioHires('尚未提供'),2);});
