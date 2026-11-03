@@ -76,7 +76,7 @@ def decide(screenshot, job, goal, previous_error):
         "Actions: {type:click,x:number,y:number}, {type:type,text:approved field value}, "
         "{type:key,key:Tab|Shift+Tab|Enter|ArrowDown|ArrowUp|Home|End|PageDown|PageUp|Control+A|Backspace|Escape|Space}, "
         "{type:scroll,dy:number}, {type:wait}. Never use browser address-bar shortcuts. "
-        "Use Control+A before replacing text. For selects click then use keys; do not type into numeric fields with text formatting. "
+        "Use Control+A before replacing text. Dropdown options render inside the web page. Click the field, then click the visible option, or use ArrowDown/ArrowUp and Enter. Never wait for a human to select an option; do not type into numeric fields with text formatting. "
         "You can fill consecutive fields with Tab but must confirm the next screenshot. Scroll to find lower fields. "
         "For salary_mode NEGOTIABLE choose 月薪面議 and leave numeric salary empty. "
         "Create ONE new job through 新增職缺; fill all approved fields including company intro and hours. "
@@ -164,18 +164,21 @@ def operate(registry, cookie, origin, run_id):
                 with service.connection() as conn:
                     details={row['request_id']:dict(row) for row in conn.execute('SELECT * FROM mock_job_details').fetchall()}
                 candidates=[]
+                saved_mismatch=None
                 for req in requests_rows:
                     if req['id'] in initial or req['id'] not in details: continue
                     actual={**req['data'],**{k:v for k,v in details[req['id']].items() if k!='request_id'}}
                     if actual==state['job']: candidates.append(req['id'])
+                    elif actual.get('title')==state['job']['title']:
+                        saved_mismatch={key:{'saved':actual.get(key),'approved':value} for key,value in state['job'].items() if actual.get(key)!=value}
                 if candidates:
                     identifier=candidates[-1]
                     pub=next((row for row in jobs if row['request_id']==identifier),None)
                     if pub and pub['status'] in {'SUCCEEDED','FAILED'}:
-                        update(job_id=identifier,screenshot=base64.b64encode(page.screenshot(type='jpeg',quality=65)).decode(),phase='PUBLISHED' if pub['status']=='SUCCEEDED' else 'FAILED',message='模擬刊登完成' if pub['status']=='SUCCEEDED' else '模擬刊登失敗')
+                        update(job_id=identifier,screenshot=base64.b64encode(page.screenshot(type='jpeg',quality=65,timeout=10000)).decode(),phase='PUBLISHED' if pub['status']=='SUCCEEDED' else 'FAILED',message='模擬刊登完成' if pub['status']=='SUCCEEDED' else '模擬刊登失敗')
                         break
                     if state['phase']=='COMPUTER_RUNNING' and state['confirm_before_publish']:
-                        update(job_id=identifier,phase='AWAITING_CONFIRMATION',screenshot=base64.b64encode(page.screenshot(type='jpeg',quality=65)).decode(),message='已填入一般網站。請在 Chrome 預覽後送出，或回工作台確認繼續。')
+                        update(job_id=identifier,phase='AWAITING_CONFIRMATION',screenshot=base64.b64encode(page.screenshot(type='jpeg',quality=65,timeout=10000)).decode(),message='已填入一般網站。請在 Chrome 預覽後送出，或回工作台確認繼續。')
                         deadline=time.monotonic()+600
                         while time.monotonic()<deadline:
                             state=current()
@@ -186,9 +189,11 @@ def operate(registry, cookie, origin, run_id):
                         update(job_id=identifier,phase='COMPUTER_PUBLISHING')
                 state=current()
                 if state['phase'] in {'CANCELLED','FAILED'}: break
-                screenshot=page.screenshot(type='jpeg',quality=65)
+                screenshot=page.screenshot(type='jpeg',quality=65,timeout=10000)
                 update(screenshot=base64.b64encode(screenshot).decode(),step=step+1)
                 goal='Fill the approved data, then save and show job preview. DO NOT submit publication yet.' if state['phase']=='COMPUTER_RUNNING' else 'Publish this already-created job through 送出刊登申請 then 模擬審核通過並刊登. Do not create another job.'
+                if not candidates and saved_mismatch:
+                    goal+=' A draft was saved but verification found differences. Use 返回編輯 on this existing draft, correct ONLY these fields, then save and preview again. Do not wait and do not create another draft. Differences: '+json.dumps(saved_mismatch,ensure_ascii=False)
                 decision=decide(screenshot,state['job'],goal,error)
                 update(message=str(decision.get('note','操作網站中'))[:250])
                 try:

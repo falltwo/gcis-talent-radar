@@ -1,0 +1,5 @@
+.web-select{width:100%;min-height:43px;border:1px solid #c4cad3;border-radius:5px;padding:10px 12px;display:flex;align-items:center;justify-content:space-between;gap:12px;color:var(--ink);background:white;font:inherit;text-align:left;font-weight:400}
+.web-select svg{width:16px;height:16px;flex-shrink:0}.web-select:hover:not(:disabled){border-color:var(--orange)}
+.web-select-options{position:fixed;z-index:1000;overflow-y:auto;overscroll-behavior:contain;scrollbar-color:#b4b9c0 white;border:1px solid #b6bdc6;border-radius:5px;padding:4px;background:white;color:var(--ink)}
+.web-select-options button{display:block;width:100%;min-height:43px;border:0;border-radius:3px;padding:9px 12px;background:white;color:inherit;font:inherit;text-align:left}
+.web-select-options button:hover,.web-select-options button.active{background:var(--soft);color:var(--orange)}.web-select-options button[aria-selected=true]{font-weight:700}
