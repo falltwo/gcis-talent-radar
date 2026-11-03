@@ -1,5 +1,6 @@
 """Approved handoff must match visibly filled data before any mock publication."""
 from collections import deque
+import re
 
 import pytest
 
@@ -95,6 +96,25 @@ def test_agent_page_and_scripts_are_served(client):
     page=client.get('/mock104').text
     assert 'window.MockPortal' not in page
     assert 'mockportal:detail' not in page
+
+
+def test_workbench_script_url_matches_content_and_changes_with_updates(client,monkeypatch,tmp_path):
+    import api.main as main
+    def script_url():
+        response=client.get('/recruitment-agent')
+        assert response.headers['cache-control']=='no-store'
+        return re.search(r'src="(/recruitment-agent/assets/[a-f0-9]{16}\.js)"',response.text)[1]
+    current=script_url()
+    script=client.get(current)
+    assert script.status_code==200
+    assert script.headers['cache-control']=='no-store'
+    assert script.content==(main.STATIC_DIR/'recruitment-agent.js').read_bytes()
+    monkeypatch.setattr(main,'STATIC_DIR',tmp_path)
+    (tmp_path/'recruitment-agent.js').write_text('/* new version */',encoding='utf-8')
+    updated=script_url()
+    assert updated!=current
+    assert client.get(updated).text=='/* new version */'
+    assert client.get(current).status_code==404
 
 
 def test_sample_does_not_claim_to_parse_arbitrary_roles(client):

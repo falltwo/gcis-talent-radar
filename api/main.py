@@ -4,12 +4,13 @@ FastAPI Backend Application
 """
 import sys
 import json
+import hashlib
 from pathlib import Path
 from typing import Dict, Any, List, Optional
 from fastapi import FastAPI, Query, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from pydantic import BaseModel
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -431,7 +432,19 @@ def serve_mock_job_board():
 
 @app.get("/recruitment-agent")
 def serve_recruitment_agent():
-    return FileResponse(UI_DIR / "recruitment-agent.html", headers={"Cache-Control": "no-store"})
+    script=(STATIC_DIR / 'recruitment-agent.js').read_bytes()
+    version=hashlib.sha256(script).hexdigest()[:16]
+    html=(UI_DIR / 'recruitment-agent.html').read_text(encoding='utf-8')
+    html=html.replace('/static/recruitment-agent.js', f'/recruitment-agent/assets/{version}.js')
+    return HTMLResponse(html, headers={"Cache-Control":"no-store"})
+
+
+@app.get('/recruitment-agent/assets/{version}.js', include_in_schema=False)
+def serve_recruitment_agent_script(version: str):
+    script=STATIC_DIR / 'recruitment-agent.js'
+    if version!=hashlib.sha256(script.read_bytes()).hexdigest()[:16]:
+        raise HTTPException(404, '頁面版本已更新，請重新整理工作台。')
+    return FileResponse(script, media_type='text/javascript', headers={'Cache-Control':'no-store'})
 
 @app.get("/architecture")
 @app.get("/architecture/index.html")
