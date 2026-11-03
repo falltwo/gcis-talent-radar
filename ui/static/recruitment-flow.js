@@ -35,5 +35,14 @@
   }
   function scenarioHires(text){const count=Number(String(text||'').replace(/,/g,'').replace(/\s*人\s*$/,'').trim());return Number.isInteger(count)&&count>=1&&count<=100000?count:2;}
   function needsReview(source,valid){return !valid||source==='pending'||source==='template';}
-  const api={PostingFlow,scenarioHires,needsReview};if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.RecruitmentFlow=api;
+  class DemoNavigation{
+    constructor(){this.reset();}
+    reset(){this.state='blank';this.address='';this.target='';}
+    begin(url,origin){const u=new URL(url);if(!['http:','https:'].includes(u.protocol)||u.origin!==origin)throw Error('僅能開啟目前網站的本機模擬頁。');this.target=u.href;this.address='';this.state='typing';}
+    typeNext(){if(this.state!=='typing')return this.address;this.address=this.target.slice(0,this.address.length+3);if(this.address===this.target)this.state='entered';return this.address;}
+    open(){if(this.state!=='entered')throw Error('網址尚未輸入完成。');this.state='loading';}
+    ready(){if(this.state!=='loading')throw Error('模擬頁尚未開啟。');this.state='ready';}
+    get canFill(){return this.state==='ready';}
+  }
+  const api={PostingFlow,scenarioHires,needsReview,DemoNavigation};if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.RecruitmentFlow=api;
 })(globalThis);

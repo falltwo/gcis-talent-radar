@@ -55,3 +55,11 @@ V3 completed: focus helper RED→GREEN, 9 Node tests pass; Python 516 pass. Brow
 - 跑現有 9 項流程測試、語法與資產檢查；瀏覽器確認初始可見地圖、居中／審核位置不變、完成回收並保留標記。
 
 V4 completed: map-overlay layout and 950ms FLIP, same working/review geometry, reduced-motion branch, success counter bound to captured coordinate. Node tests 9 pass; assets/syntax/diff pass. Browser confirmed initial map gap, centered review 860x473 at [104.5,181] on 1069x663 map, zero center offset, successful one-review publication, reset to brief and 1-count marker. Independent read-only review: no important defects. No external publishing or push.
+
+## 第五版計畫
+1. 導航狀態測試先失敗，加入輸入網址／載入完成後才可填表的控制。
+2. 新增本機模擬站與瀏覽器外框，接導航→填寫、暫停恢復與略過。
+3. 獨立 map-effects 模組接送出／審核／發布／退出；沿 map.project 更新示意線與端點、保存還原鏡頭。
+4. Node 測試、語法資產檢查及瀏覽器驗證導航順序、訊號停止／回傳、退出清理與原審核規則。
+
+V5 completed: navigation tests RED→GREEN, 11 pass. Local mock site HTTP 200 and inline JS checked. Browser confirms no entry signal, ordered navigation logs before first field, paused operation, review hides packet, completion return/wave, stop restores original pin x and clears signal. Independent reviewer identified standalone salary custom-validity dependency; reproduced then fixed and rechecked in browser (corrected minimum permits submit). No external API or push.
