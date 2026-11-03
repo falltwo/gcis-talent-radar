@@ -17,14 +17,20 @@ from typing import Any, Callable, Iterator, Optional
 
 from agent.audit_log import write_agent_audit
 from agent.prompt_guard import inspect_hiring_prompt
-from sourcing import decider, planner
+from sourcing import apis, decider, planner
 from sourcing import usage as usage_meter
 from sourcing.browser import BrowserUnavailable, SourcingBrowser
-from sourcing.extract import (Candidate, from_openalex, from_stackoverflow_api, location_matches, result_cards,
+from sourcing.extract import (Candidate, from_openalex, from_orcid, from_stackoverflow_api, location_matches,
+                              result_cards,
                               summarize)
 from sourcing.sites import Site, blocked_reason, sites_for
 
-SO_MAX_LOOKUPS = 8  # Stack Overflow 篩地點時最多查幾位（每位 2 次官方 API）
+API_SITES = {  # 只走官方 API 的網站：說明、取資料的函式、顯示用網址
+    "openalex": ("搜尋論文作者", from_openalex, "https://api.openalex.org"),
+    "orcid": ("搜尋研究者", from_orcid, "https://pub.orcid.org"),
+}
+COUNTRY_OF = {city: "Taiwan" for city in set(planner.LOCATIONS.values()) if city != "Taiwan"}
+COUNTRY_LABEL = {"Taiwan": "台灣"}
 DONE_MESSAGE = "只列出公開頁面的連結，未蒐集 Email 或電話；聯絡前請自行確認候選人的公開意願。"
 POPUP_GOAL = ("Close any cookie banner, sign-in prompt or popup so that the list of search results "
             "(people, users or their work) is visible. Do not open any result and do not sign in.")
@@ -133,7 +139,7 @@ def stream(prep: Prepared, *, browser_factory: Optional[Callable[[], SourcingBro
         return {"type": "decision", "site": site.id, "what": what, "detail": detail,
                 "by": "gpt-6-luna" if source == "llm" else "rules"}
 
-    # 只走官方 API 的網站（OpenAlex）先跑，不需要開瀏覽器
+    # 只走官方 API 的網站（OpenAlex、ORCID）先跑，不需要開瀏覽器
     api_sites = [s for s in prep.sites if s.search_url is None]
     browser_sites = [s for s in prep.sites if s.search_url is not None]
     for i, site in enumerate(api_sites):
@@ -141,14 +147,19 @@ def stream(prep: Prepared, *, browser_factory: Optional[Callable[[], SourcingBro
         if remaining <= 0 or stopped():
             break
         quota = math.ceil(remaining / (len(prep.sites) - i))
-        yield step(site, "read_api", f"用 OpenAlex 官方 API 搜尋論文作者：{plan.terms.text()}",
-                   url="https://api.openalex.org", screenshot=None)
-        found = from_openalex(site, plan, limit=quota)
+        what, fetch, api_url = API_SITES[site.profile_api]
+        yield step(site, "read_api", f"用 {site.name} 官方 API {what}：{plan.terms.text()}", url=api_url, screenshot=None)
+        try:
+            found = fetch(site, plan, limit=quota)
+        except Exception as exc:  # 一個網站出錯不影響其他網站
+            found = None
+            yield {"type": "site_error", "site": site.id, "reason": f"{site.name} 發生錯誤（{type(exc).__name__}），已跳過"}
+            continue
         if found is None:
-            yield {"type": "site_error", "site": site.id, "reason": "OpenAlex API 暫時無法使用"}
+            yield {"type": "site_error", "site": site.id, "reason": f"{site.name} API 暫時無法使用"}
             continue
         if not found:
-            yield {"type": "site_error", "site": site.id, "reason": "OpenAlex 沒有找到符合地點的作者"}
+            yield {"type": "site_error", "site": site.id, "reason": f"{site.name} 沒有找到符合地點的人"}
         for cand in found:
             candidates.append(cand)
             yield {"type": "candidate", "candidate": cand.as_dict()}
@@ -197,9 +208,23 @@ def stream(prep: Prepared, *, browser_factory: Optional[Callable[[], SourcingBro
         if not cards:
             yield {"type": "site_error", "site": site.id, "reason": "搜尋結果頁沒有找到候選人連結"}
             return
-        # Stack Overflow 的排行不分地點，要多看幾位才篩得到需求地點的人
-        wanted = SO_MAX_LOOKUPS if site.profile_api == "stackexchange" and plan.terms.location else quota * 2
-        picked, source = decider.pick_candidates(site, plan, cards, k=min(len(cards), wanted))
+        so_infos: dict[str, dict] = {}
+        if site.profile_api == "stackexchange":
+            # 官方 API 不能依地點搜尋：把排行上的人一次批次查完，先篩地點再挑人
+            so_infos = apis.stackoverflow_users([c.url.rstrip("/").split("/")[-2] for c in cards]) or {}
+            yield step(site, "read_api", f"用 Stack Exchange 官方 API 一次查 {len(cards)} 位的公開資料", browser)
+            if plan.terms.location:
+                kept = []
+                for c in cards:
+                    loc = (so_infos.get(c.url.rstrip("/").split("/")[-2]) or {}).get("location", "")
+                    if location_matches(plan.terms.location, loc) or location_matches(COUNTRY_OF.get(plan.terms.location), loc):
+                        kept.append(c)
+                if not kept:
+                    yield {"type": "site_error", "site": site.id,
+                           "reason": f"排行上的 {len(cards)} 位沒有人填在{plan.terms.location}（Stack Overflow 排行不分地點）"}
+                    return
+                cards = kept
+        picked, source = decider.pick_candidates(site, plan, cards, k=min(len(cards), quota * 2))
         yield decision(site, "pick", "先看：" + "、".join(c.name for c in picked), source)
         results_url = browser.url()
 
@@ -211,16 +236,22 @@ def stream(prep: Prepared, *, browser_factory: Optional[Callable[[], SourcingBro
             if blocked_reason(card.url):
                 continue
             if site.profile_api == "stackexchange":
-                cand = from_stackoverflow_api(site, card.url, plan, fallback_name=card.name)
+                cand = from_stackoverflow_api(site, card.url, plan, fallback_name=card.name,
+                                              info=so_infos.get(card.url.rstrip("/").split("/")[-2]))
                 yield step(site, "read_api", f"用 Stack Exchange 官方 API 讀取：{card.name}", browser,
                            geometry=browser_call(browser, "card_box", card.url))
                 if cand is None:
                     yield {"type": "site_error", "site": site.id, "reason": "Stack Exchange API 暫時無法使用"}
                     return
                 if plan.terms.location and not location_matches(plan.terms.location, cand.location):
-                    yield {"type": "candidate_skipped", "site": site.id, "name": cand.name,
-                           "reason": f"地點不符（{cand.location or '未填地點'}）"}
-                    continue
+                    if not location_matches(COUNTRY_OF.get(plan.terms.location), cand.location):
+                        yield {"type": "candidate_skipped", "site": site.id, "name": cand.name,
+                               "reason": f"地點不符（{cand.location or '未填地點'}）"}
+                        continue
+                    # 同國家、不同城市：列為部分符合，不直接丟掉
+                    cand.fit = "部分符合" if cand.fit in ("符合", "未判斷") else cand.fit
+                    country = COUNTRY_OF[plan.terms.location]
+                    cand.fit_reason = f"在{COUNTRY_LABEL.get(country, country)}其他城市（{cand.location}）。" + cand.fit_reason
             else:
                 card_geometry = browser_call(browser, "card_box", card.url)
                 if browser.jev_ready and browser_call(browser, "visible_link", card.url) is not False:
@@ -260,6 +291,9 @@ def stream(prep: Prepared, *, browser_factory: Optional[Callable[[], SourcingBro
         with browser_factory() as browser:
             if not browser.jev_ready:
                 yield {"type": "notice", "message": "未設定 OPENROUTER_API_KEY：改用確定性操作（不經 Jev），需求與摘要改用規則版。"}
+            if plan.terms.location and any(s.profile_api == "stackexchange" for s in browser_sites):
+                yield {"type": "notice", "message": "Stack Overflow 的排行不分地點，官方 API 也不能依地點搜尋，"
+                                                    "指定城市時通常找不到人；同國家其他城市的人會列為部分符合。"}
             for i, site in enumerate(browser_sites):
                 remaining = prep.max_candidates - len(candidates)
                 if remaining <= 0 or stopped():

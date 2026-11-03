@@ -8,6 +8,34 @@ import requests
 STACKEXCHANGE = "https://api.stackexchange.com/2.3"
 
 
+def stackoverflow_users(user_ids: list[str], *, timeout: float = 15.0) -> Optional[dict[str, dict[str, Any]]]:
+    """一次查最多 100 位的公開資料（顯示名稱、聲望、地點、網站）；先用來篩地點，省下逐一查詢。"""
+    ids = [i for i in user_ids if i.isdigit()][:100]
+    if not ids:
+        return {}
+    try:
+        r = requests.get(f"{STACKEXCHANGE}/users/{';'.join(ids)}", params={"site": "stackoverflow", "pagesize": 100},
+                         timeout=timeout)
+        r.raise_for_status()
+        items = r.json().get("items") or []
+    except (requests.RequestException, ValueError):
+        return None
+    return {str(i.get("user_id")): {
+        "display_name": i.get("display_name") or "", "reputation": i.get("reputation"),
+        "location": i.get("location") or "", "website_url": i.get("website_url") or "", "link": i.get("link") or "",
+    } for i in items}
+
+
+def stackoverflow_top_tags(user_id: str, *, timeout: float = 15.0) -> Optional[list[str]]:
+    try:
+        r = requests.get(f"{STACKEXCHANGE}/users/{user_id}/top-tags", params={"site": "stackoverflow", "pagesize": 6},
+                         timeout=timeout)
+        r.raise_for_status()
+        return [t.get("tag_name") for t in r.json().get("items", []) if t.get("tag_name")]
+    except (requests.RequestException, ValueError):
+        return None
+
+
 def stackoverflow_user(user_id: str, *, timeout: float = 15.0) -> Optional[dict[str, Any]]:
     """Stack Exchange 官方 API：公開的顯示名稱、聲望、地點、網站與最常回答的標籤。"""
     params = {"site": "stackoverflow"}
@@ -48,18 +76,23 @@ def _openalex(path: str, params: dict[str, Any], timeout: float) -> dict[str, An
     return response.json()
 
 
-def openalex_institutions(city: str, *, country: str = "TW", timeout: float = 20.0) -> list[str]:
-    """回傳位在指定城市的機構 id（例如 Taichung 的中興、東海、逢甲）。"""
-    ids: list[str] = []
+def openalex_city_institutions(city: str, *, country: str = "TW", timeout: float = 20.0) -> list[tuple[str, str]]:
+    """位在指定城市的機構 (id, 名稱)，例如 Taichung 的中興、東海、逢甲。"""
+    found: list[tuple[str, str]] = []
     for page in range(1, 4):
         data = _openalex("institutions", {"filter": f"country_code:{country}", "per-page": 200, "page": page,
-                                          "select": "id,geo"}, timeout)
+                                          "select": "id,display_name,geo"}, timeout)
         for inst in data.get("results", []):
             if ((inst.get("geo") or {}).get("city") or "").lower() == city.lower():
-                ids.append(_tail(inst.get("id")))
+                found.append((_tail(inst.get("id")), inst.get("display_name") or ""))
         if page * 200 >= data.get("meta", {}).get("count", 0):
             break
-    return ids
+    return found
+
+
+def openalex_institutions(city: str, *, country: str = "TW", timeout: float = 20.0) -> list[str]:
+    """回傳位在指定城市的機構 id。"""
+    return [i for i, _ in openalex_city_institutions(city, country=country, timeout=timeout)]
 
 
 def openalex_authors(topic: str, location: Optional[str], *, limit: int = 5,
@@ -129,3 +162,65 @@ def openalex_authors(topic: str, location: Optional[str], *, limit: int = 5,
         })
     order = list(picked)
     return sorted(out, key=lambda a: order.index(a["id"]) if a["id"] in order else len(order))[:limit]
+
+
+ORCID = "https://pub.orcid.org/v3.0"
+
+
+def _orcid(path: str, params: Optional[dict[str, Any]] = None, timeout: float = 20.0) -> dict[str, Any]:
+    response = requests.get(f"{ORCID}/{path}", params=params, headers={"Accept": "application/json"}, timeout=timeout)
+    response.raise_for_status()
+    return response.json()
+
+
+def _split_keywords(values: list[str]) -> list[str]:
+    out: list[str] = []
+    for value in values:
+        for part in str(value).replace("；", ";").replace("，", ",").replace(";", ",").split(","):
+            part = part.strip()
+            if part and part.lower() not in {o.lower() for o in out}:
+                out.append(part)
+    return out
+
+
+def orcid_researchers(topics: list[str], location: Optional[str], *, limit: int = 5,
+                      timeout: float = 20.0) -> Optional[list[dict[str, Any]]]:
+    """ORCID 官方公開 API（不需金鑰）：依研究關鍵字與所屬機構找研究者，再讀每位的公開關鍵字與網站。
+
+    城市用「位在該城市的機構」來篩（機構名單來自 OpenAlex）；國家用機構名稱含國名粗篩。API 失敗回 None。
+    """
+    terms = [t for t in topics if t] or ["research"]
+    quoted = " OR ".join(f'"{t}"' for t in terms)
+    parts = [f"(keyword:({quoted}) OR {quoted})"]
+    try:
+        if location in COUNTRY_CODES:
+            parts.append(f'affiliation-org-name:("{location}")')
+        elif location:
+            names = [n for _, n in openalex_city_institutions(location, timeout=timeout) if n][:25]
+            if not names:
+                return []
+            parts.append("affiliation-org-name:(" + " OR ".join(f'"{n}"' for n in names) + ")")
+        data = _orcid("expanded-search/", {"q": " AND ".join(parts), "rows": max(limit * 2, 10)}, timeout)
+        out = []
+        for row in data.get("expanded-result") or []:
+            orcid_id = row.get("orcid-id")
+            if not orcid_id:
+                continue
+            person = _orcid(f"{orcid_id}/person", timeout=timeout)
+            keywords = _split_keywords([k.get("content") for k in (person.get("keywords") or {}).get("keyword", [])
+                                        if k.get("content")])
+            urls = [((u.get("url") or {}).get("value") or "")
+                    for u in (person.get("researcher-urls") or {}).get("researcher-url", [])]
+            name = " ".join(x for x in (row.get("given-names"), row.get("family-names")) if x)
+            out.append({
+                "orcid": orcid_id, "name": name or orcid_id,
+                "institutions": [i for i in row.get("institution-name") or [] if i][:3],
+                "keywords": keywords[:8],
+                "biography": ((person.get("biography") or {}).get("content") or "")[:500],
+                "urls": [u for u in urls if u][:3],
+            })
+            if len(out) >= limit:
+                break
+        return out
+    except (requests.RequestException, ValueError, KeyError, TypeError):
+        return None

@@ -414,11 +414,14 @@ def test_research_role_uses_openalex_without_opening_browser(monkeypatch):
 
 def test_openalex_failure_is_reported_and_other_sites_continue(monkeypatch):
     monkeypatch.setattr(apis, "openalex_authors", lambda *a, **k: None)
-    prep = service.prepare("找機器學習研究員", site_ids=["openalex", "orcid"])
-    browser = FakeBrowser({})
+    pages = {SITES["kaggle"].search_url(SearchTerms(("machine learning",), None)): {
+        "title": "k", "links": [("https://www.kaggle.com/alice", "Alice")]},
+        "https://www.kaggle.com/alice": {"title": "Alice | Kaggle", "text": ["ML notebooks"], "links": []}}
+    prep = service.prepare("找機器學習研究員", site_ids=["openalex", "kaggle"])
+    browser = FakeBrowser(pages)
     events = list(service.stream(prep, browser_factory=lambda: browser))
     assert any(e["type"] == "site_error" and e["site"] == "openalex" for e in events)
-    assert any("orcid.org" in u for u in browser.opened)
+    assert any("kaggle.com" in u for u in browser.opened)
 
 
 def test_openalex_drops_authors_who_moved_away(monkeypatch):
@@ -685,33 +688,41 @@ def test_unsafe_urls_never_reach_the_frontend(monkeypatch):
     assert "data:" not in json.dumps(cand.as_dict())
 
 
-def test_stackoverflow_filters_location_and_judges_fit(monkeypatch):
-    users = {"1": ("UK Dev", "Cambridge, United Kingdom"), "2": ("TC Dev", "台中市")}
-    monkeypatch.setattr(apis, "stackoverflow_user", lambda uid: {
-        "display_name": users[uid][0], "reputation": 100, "location": users[uid][1], "link": "",
-        "website_url": "", "top_tags": ["python", "django"]})
-    prep = service.prepare("找會 Python 的工程師，在台中", max_candidates=1, site_ids=["stackoverflow"])
-    events = list(service.stream(prep, browser_factory=lambda: FakeBrowser(_so_pages())))
-    skipped = [e for e in events if e["type"] == "candidate_skipped"]
-    cands = [e["candidate"] for e in events if e["type"] == "candidate"]
-    assert skipped[0]["name"] == "UK Dev" and "Cambridge" in skipped[0]["reason"]
-    assert cands[0]["name"] == "TC Dev" and cands[0]["fit"] == "部分符合" and cands[0]["location"] == "台中市"
+def test_stackoverflow_batches_lookup_and_filters_location(monkeypatch):
+    users = {"1": ("UK Dev", "Cambridge, United Kingdom"), "2": ("TC Dev", "台中市"), "3": ("TP Dev", "Taipei, Taiwan")}
+    calls = []
+
+    def batch(ids):
+        calls.append(list(ids))
+        return {i: {"display_name": users[i][0], "reputation": 100, "location": users[i][1], "link": "", "website_url": ""}
+                for i in ids}
+
+    monkeypatch.setattr(apis, "stackoverflow_users", batch)
+    monkeypatch.setattr(apis, "stackoverflow_top_tags", lambda uid: ["python", "django"])
+    url = SITES["stackoverflow"].search_url(SearchTerms(("python",), "Taichung"))
+    pages = {url: {"title": "top", "links": [(f"https://stackoverflow.com/users/{i}/u{i}", users[i][0]) for i in users]}}
+    prep = service.prepare("找會 Python 的工程師，在台中", max_candidates=2, site_ids=["stackoverflow"])
+    events = list(service.stream(prep, browser_factory=lambda: FakeBrowser(pages)))
+    cands = {e["candidate"]["name"]: e["candidate"] for e in events if e["type"] == "candidate"}
+    assert calls == [["1", "2", "3"]]  # 一次批次查完
+    assert set(cands) == {"TC Dev", "TP Dev"} and "UK Dev" not in cands
+    assert cands["TC Dev"]["fit"] == "部分符合" and cands["TP Dev"]["fit_reason"].startswith("在台灣其他城市")
+    assert any(e["type"] == "notice" and "Stack Overflow" in e["message"] for e in events)
 
 
-def test_one_failing_site_does_not_end_the_run(monkeypatch):
+def test_one_failing_site_does_not_end_the_run():
     class FlakyBrowser(FakeBrowser):
         def open(self, url):
-            if "orcid.org/orcid-search" in url:
+            if "huggingface.co" in url:
                 raise TimeoutError("WebSocketTimeoutException")
             super().open(url)
 
-    monkeypatch.setattr(apis, "openalex_authors", lambda *a, **k: [])
     pages = {SITES["kaggle"].search_url(SearchTerms(("machine learning",), None)): {
         "title": "k", "links": [("https://www.kaggle.com/alice", "Alice")]},
         "https://www.kaggle.com/alice": {"title": "Alice | Kaggle", "text": ["ML notebooks"], "links": []}}
-    prep = service.prepare("找機器學習研究員", max_candidates=2, site_ids=["orcid", "kaggle"])
+    prep = service.prepare("找機器學習工程師", max_candidates=2, site_ids=["huggingface", "kaggle"])
     events = list(service.stream(prep, browser_factory=lambda: FlakyBrowser(pages)))
-    errors = [e for e in events if e["type"] == "site_error" and e["site"] == "orcid"]
+    errors = [e for e in events if e["type"] == "site_error" and e["site"] == "huggingface"]
     assert errors and "TimeoutError" in errors[0]["reason"]
     assert events[-1]["type"] == "done" and any(e["type"] == "candidate" for e in events)
 
@@ -782,3 +793,28 @@ def test_cleanup_kills_only_leftover_agent_chrome(monkeypatch, tmp_path):
     (tmp_path / "tscu-chrome-old").mkdir()
     assert cleanup_stale_chrome() == 1 and killed == [1]
     assert not (tmp_path / "tscu-chrome-old").exists()
+
+
+
+def test_orcid_uses_official_api_with_city_institutions(monkeypatch):
+    seen = {}
+
+    def fake_orcid(path, params=None, timeout=20.0):
+        if path == "expanded-search/":
+            seen["q"] = params["q"]
+            return {"expanded-result": [{"orcid-id": "0000-0001-2345-6789", "given-names": "Lin", "family-names": "Chen",
+                                         "institution-name": ["Feng Chia University"]}]}
+        return {"keywords": {"keyword": [{"content": "machine learning; computer vision"}]},
+                "researcher-urls": {"researcher-url": [{"url": {"value": "javascript:alert(1)"}},
+                                                        {"url": {"value": "https://lin.example.org"}}]},
+                "biography": {"content": "Works on ML."}}
+
+    monkeypatch.setattr(apis, "_orcid", fake_orcid)
+    monkeypatch.setattr(apis, "openalex_city_institutions", lambda city, **k: [("I1", "Feng Chia University")])
+    prep = service.prepare("找台中的機器學習研究員", site_ids=["orcid"])
+    events = list(service.stream(prep, browser_factory=lambda: pytest.fail("ORCID 不應開瀏覽器")))
+    cand = next(e["candidate"] for e in events if e["type"] == "candidate")
+    assert 'affiliation-org-name:("Feng Chia University")' in seen["q"] and '"machine learning"' in seen["q"]
+    assert cand["name"] == "Lin Chen" and cand["profile_url"] == "https://orcid.org/0000-0001-2345-6789"
+    assert cand["skills"][:2] == ["machine learning", "computer vision"] and cand["fit"] == "部分符合"
+    assert cand["personal_site"] == "https://lin.example.org" and "javascript" not in json.dumps(cand)

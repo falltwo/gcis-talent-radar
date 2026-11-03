@@ -40,12 +40,12 @@ pip install -r requirements-sourcing.txt   # typesafe-computer-use，需要 Pyth
 | 職類 | 網站 | 狀態 |
 |---|---|---|
 | 軟體開發 | GitHub | 可用 |
-| 軟體開發 | Stack Overflow | 搜尋頁用瀏覽器；個人頁會跳 Cloudflare 驗證，改用官方 Stack Exchange API 讀公開資料。排行不分地點，有指定地點時最多查 8 位，自填地點不符的略過 |
+| 軟體開發 | Stack Overflow | 搜尋頁用瀏覽器；個人頁會跳 Cloudflare 驗證，改用官方 Stack Exchange API。排行不分地點、API 也不能依地點搜尋：排行上的人一次批次查完（1 次 API），自填地點在需求城市的列入，同國家其他城市列為部分符合，其他略過；指定城市時通常找不到人，會送 `notice` 說明 |
 | 軟體開發 | GitLab | **不可用**：Cloudflare 機器人驗證 |
 | AI／資料 | GitHub、Hugging Face、Kaggle | 可用（Hugging Face 從模型推回作者） |
 | 設計 | Dribbble | 可用（從作品搜尋找作者） |
 | 設計 | Behance | **不可用**：對自動瀏覽回應 HTTP 400 |
-| 研究 | ORCID | 可用（頁面較慢，常有 cookie 橫幅） |
+| 研究 | ORCID | 官方公開 API（不需金鑰，不開瀏覽器）：依研究關鍵字搜尋，城市用「位在該城市的機構」篩（機構名單來自 OpenAlex），附研究關鍵字與研究者網站。網頁版很重、常讓瀏覽器連線逾時，所以不用網頁 |
 | 研究 | OpenAlex | 官方 API，不開瀏覽器（取代 Google Scholar）：依主題找近年論文的作者，再用作者**目前**所屬機構篩城市或國家 |
 | 所有職類 | 個人網站 | 不主動搜尋；只記錄候選人在個人頁用 `rel="me"` 留的網站 |
 | 不碰 | LinkedIn、Google Scholar、104／1111／518／yes123／CakeResume | 條款禁止自動化（含登入後的帳號），或屬付費雇主帳號的履歷庫；不做 computer use。正式管道是 LinkedIn Recruiter System Connect、104 HR Max Open API 等官方合作 |
@@ -115,7 +115,7 @@ await fetch(`/api/sourcing/runs/${run_id}`, {method: 'DELETE'});
 | `error` | 瀏覽器或套件無法使用 | `reason` |
 | `done` | 結束 | `count`、`plan`、`message`、`usage`（實際 token 與費用）、`cancelled` |
 
-`step.action`：`open_entry`（開網站入口頁）、`fallback`（Jev 沒完成，改用備案）、`read_api`（OpenAlex、Stack Exchange 官方 API）、`open_search`（開搜尋結果頁）、`jev_click`／`jev_type_text`／`jev_press_enter`／`jev_press_escape`／`jev_scroll_down`／`jev_done`／`jev_none`／`jev_refused`…（Jev 的動作；`jev_refused` 是被安全規則擋下的動作）、`open_profile`（點擊或開啟個人頁）。
+`step.action`：`open_entry`（開網站入口頁）、`fallback`（Jev 沒完成，改用備案）、`read_api`（OpenAlex、ORCID、Stack Exchange 官方 API）、`open_search`（開搜尋結果頁）、`jev_click`／`jev_type_text`／`jev_press_enter`／`jev_press_escape`／`jev_scroll_down`／`jev_done`／`jev_none`／`jev_refused`…（Jev 的動作；`jev_refused` 是被安全規則擋下的動作）、`open_profile`（點擊或開啟個人頁）。
 
 `candidate` 欄位：
 
@@ -125,7 +125,7 @@ await fetch(`/api/sourcing/runs/${run_id}`, {method: 'DELETE'});
 | `name`、`headline` | 顯示名稱、一句話介紹 |
 | `skills`、`matched_skills` | 頁面上的技能；其中符合需求的 |
 | `summary`、`summary_source` | 專長摘要；`llm`、`rules` 或 `api` |
-| `fit`、`fit_reason` | gpt-6-luna 判斷：`符合`、`部分符合`、`未判斷`；判斷根據。官方 API 來的候選人（Stack Overflow、OpenAlex）用 API 給的標籤、研究主題判斷 |
+| `fit`、`fit_reason` | gpt-6-luna 判斷：`符合`、`部分符合`、`未判斷`；判斷根據。官方 API 來的候選人（Stack Overflow、OpenAlex、ORCID）用 API 給的標籤、研究主題、關鍵字判斷 |
 | `location` | 候選人自己公開填的地點（目前只有 Stack Overflow），沒有就是空字串 |
 
 所有網址（`profile_url`、`evidence[].url`、`personal_site`）後端都只輸出 `http(s)://`；前端放進 `href` 前也請再檢查一次。

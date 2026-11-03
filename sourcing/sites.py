@@ -158,9 +158,9 @@ SITES: dict[str, Site] = {s.id: s for s in [
     Site("dribbble", "Dribbble", ("design",), ("dribbble.com",), _dribbble,
          re.compile(r"^https://dribbble\.com/([A-Za-z0-9_-]+)$"), _DRIBBBLE_RESERVED,
          entry_url="https://dribbble.com/", typed_query=lambda t: t.text()),
-    Site("orcid", "ORCID", ("research",), ("orcid.org",), _orcid,
-         re.compile(r"^https://orcid\.org/(\d{4}-\d{4}-\d{4}-\d{3}[\dX])$"),
-         entry_url="https://orcid.org/orcid-search/search", typed_query=lambda t: t.text()),
+    # ORCID 網頁很重、常讓瀏覽器連線逾時，改用官方公開 API（不需金鑰），不開瀏覽器
+    Site("orcid", "ORCID", ("research",), ("orcid.org", "pub.orcid.org"), None,
+         re.compile(r"^https://orcid\.org/(\d{4}-\d{4}-\d{4}-\d{3}[\dX])$"), profile_api="orcid"),
     # Google Scholar 沒有官方 API 且禁止自動化，研究類改用 OpenAlex 官方 API
     Site("openalex", "OpenAlex", ("research",), ("openalex.org", "api.openalex.org"), None, None,
          profile_api="openalex"),

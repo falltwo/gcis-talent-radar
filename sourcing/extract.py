@@ -217,10 +217,14 @@ def summarize(site: Site, profile_url: str, title: str, text: list[str], links: 
     return cand
 
 
-def from_stackoverflow_api(site: Site, profile_url: str, plan: Plan, *, fallback_name: str = "") -> Optional[Candidate]:
-    """Stack Overflow 個人頁會跳 Cloudflare 驗證，改用官方 API 讀公開資料。"""
+def from_stackoverflow_api(site: Site, profile_url: str, plan: Plan, *, fallback_name: str = "",
+                           info: Optional[dict] = None) -> Optional[Candidate]:
+    """Stack Overflow 個人頁會跳 Cloudflare 驗證，改用官方 API 讀公開資料。`info` 是批次查好的基本資料。"""
     user_id = profile_url.rstrip("/").split("/")[-2]
-    info = apis.stackoverflow_user(user_id)
+    if info is None:
+        info = apis.stackoverflow_user(user_id)
+    elif "top_tags" not in info:
+        info = {**info, "top_tags": apis.stackoverflow_top_tags(user_id) or []}
     if not info:
         return None
     tags = [clean_text(t)[:40] for t in info["top_tags"]]
@@ -296,3 +300,30 @@ def judge_fit(plan: Plan, site: Site, facts: list[str], matched: list[str]) -> t
         return fallback
     reason = clean_text(str(out.get("fit_reason", "")))[:80]
     return out["fit"], ("" if PERSONAL_TRAIT.search(reason) else reason)
+
+
+def from_orcid(site: Site, plan: Plan, *, limit: int) -> Optional[list[Candidate]]:
+    """ORCID 官方公開 API：研究關鍵字相關、所屬機構在需求地點的研究者。"""
+    people = apis.orcid_researchers(list(plan.terms.skills), plan.terms.location, limit=limit)
+    if people is None:
+        return None
+    out = []
+    for p in people:
+        profile = f"https://orcid.org/{p['orcid']}"
+        keywords = [clean_text(k)[:40] for k in p["keywords"]]
+        lower = " ".join(keywords + [p["biography"]]).lower()
+        institutions = [clean_text(i) for i in p["institutions"]]
+        cand = Candidate(site.id, profile, clean_text(p["name"])[:80], "、".join(institutions)[:120], keywords[:6],
+                         [s for s in plan.terms.skills if s.lower() in lower],
+                         summary=f"研究關鍵字：{'、'.join(keywords[:4])}" if keywords else clean_text(p["biography"])[:80],
+                         summary_source="api")
+        cand.fit, cand.fit_reason = judge_fit(plan, site, [
+            f"所屬機構：{', '.join(institutions)}", f"研究關鍵字：{', '.join(keywords)}",
+            f"自我介紹：{clean_text(p['biography'])[:300]}"], cand.matched_skills)
+        cand.evidence = [{"label": "ORCID 個人頁", "url": profile}]
+        for url in p["urls"]:
+            if safe_url(url) and not blocked_reason(url) and not site_for_url(url):
+                cand.personal_site = cand.personal_site or url
+                cand.evidence.append({"label": "研究者網站", "url": url})
+        out.append(cand)
+    return out
