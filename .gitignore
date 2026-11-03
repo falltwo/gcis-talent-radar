@@ -76,3 +76,6 @@ node_modules/
 playwright-report/
 
 test-results/
+
+# 找人流程錄影：真實個人頁截圖，不進版控
+docs/demo/recording/
