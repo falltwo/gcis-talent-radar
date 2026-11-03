@@ -10,6 +10,11 @@ from recruitment.models import Requirement
 from tests.test_mock104 import client
 
 
+@pytest.fixture(autouse=True)
+def isolated_history(monkeypatch,tmp_path):
+    monkeypatch.setenv('RECRUITMENT_TEMPLATE_HISTORY_DB',str(tmp_path/'history.sqlite'))
+
+
 def test_accounting_sparse_needs_preserves_headcount_and_negotiable_salary(client):
     response=client.post('/api/mock104/agent/prepare',json={'mode':'AUTO','role':'會計','district':'大雅區','needs':'招募三人，月薪面議'})
     assert response.status_code==200,response.text

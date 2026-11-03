@@ -1,6 +1,7 @@
 """Source-backed draft suggestions; explicit HR conditions always take precedence."""
 import ipaddress
 import json
+import math
 import os
 import re
 import unicodedata
@@ -12,6 +13,7 @@ from fastapi import HTTPException
 
 from agent.prompt_guard import inspect_hiring_prompt
 from recruitment.job_templates import COMMON_TEMPLATES
+from recruitment.job_history import JobHistory
 
 
 TEMPLATES = {
@@ -44,6 +46,29 @@ def find_template(role):
 
 def has_template(role):
     return find_template(role) is not None
+
+
+def history_for(role):
+    try:
+        item = JobHistory().get(normalize_role(role))
+    except RuntimeError as exc:
+        raise HTTPException(503, str(exc)) from None
+    if item and all(safe_source(source) for source in item['sources']):
+        return item
+    return None
+
+
+def strategy_for(role):
+    matched = find_template(role)
+    history = None if matched else history_for(role)
+    source = 'OCCUPATIONAL_TEMPLATE' if matched else 'HISTORICAL_TEMPLATE' if history else 'LIVE_WEB_RESEARCH'
+    return {'source': source, 'template_name': matched[0] if matched else history['role'] if history else None,
+            'max_wait_seconds': 60 if source == 'LIVE_WEB_RESEARCH' else 15}
+
+
+def local_usage():
+    return {'model_called': False, 'web_search_called': False, 'prompt_tokens': 0,
+            'completion_tokens': 0, 'total_tokens': 0, 'cost_usd': 0}
 
 
 def timestamp():
@@ -112,7 +137,8 @@ def research_role(role):
                   "plugins":[{"id":"web","engine":"exa","max_results":3}], "messages":[{"role":"system","content":prompt},{"role":"user","content":role}],
                   "response_format":{"type":"json_object"},"reasoning_effort":"none","max_completion_tokens":2600},timeout=(5,45))
         if not response.ok: raise HTTPException(502, "職位搜尋服務未完成；沒有將離線內容冒充即時搜尋。")
-        message = response.json()["choices"][0]["message"]
+        payload = response.json()
+        message = payload["choices"][0]["message"]
         generated = json.loads(message["content"])
         sources = []
         for annotation in message.get("annotations", []):
@@ -128,6 +154,14 @@ def research_role(role):
         for name in ('required_skills','trainable_skills'):
             generated[name]=generated[name][:8]
             if any(len(term)>80 for term in generated[name]): raise ValueError()
+        raw_usage = payload.get('usage') or {}
+        usage = {'model_called': True, 'web_search_called': True}
+        for name in ('prompt_tokens', 'completion_tokens', 'total_tokens'):
+            value = raw_usage.get(name)
+            usage[name] = value if type(value) is int and value >= 0 else None
+        cost = raw_usage.get('cost')
+        usage['cost_usd'] = cost if type(cost) in (int, float) and math.isfinite(cost) and cost >= 0 else None
+        generated['_usage'] = usage
         return generated, sources[:5]
     except requests.RequestException:
         raise HTTPException(502, "網路搜尋逾時或無法連線，請稍後重試。") from None
@@ -140,14 +174,23 @@ def draft_job(body):
         raise HTTPException(422, "請使用與工作相關的招募條件，移除不適合的個人特徵限制。")
     matched = find_template(body.role)
     template = matched[1] if matched else None
+    history = None if template else history_for(body.role)
+    history_saved = False
+    usage = local_usage()
     if template:
         source = {**template["source"], "retrieved_at":None, "status":"CURATED_REFERENCE"}
         # The local template is an original summary of the cited occupational reference.
         generated = {"description":template["description"],"required_skills":template["skills"],"trainable_skills":template["training"],"review_notes":template.get('review_notes',[])}
         sources, origin = [source], "OCCUPATIONAL_TEMPLATE"
+    elif history:
+        generated = history['content']
+        sources = [{**source, 'status': 'HISTORICAL_REFERENCE'} for source in history['sources']]
+        origin = 'HISTORICAL_TEMPLATE'
     else:
         generated, sources = research_role(body.role)
         origin = "LIVE_WEB_RESEARCH"
+        usage = generated['_usage']
+        history_saved = JobHistory().save(normalize_role(body.role), body.role, generated, sources)
     job = {"title":body.role,"company_name":body.company_name or "示範企業（待HR確認）","company_intro":body.company_intro,
            "district":body.district,"headcount":1,"salary_mode":"NEGOTIABLE","salary_min":None,"salary_max":None,
            "employment_type":"全職","shift":"日班","schedule_system":"固定班制","work_hours":"09:00–18:00",
@@ -159,6 +202,13 @@ def draft_job(body):
     conditions=explicit_conditions(body.needs)
     job.update(conditions)
     for key in conditions: provenance[key]="HR_INPUT"
-    return {"job":job,"source":origin,"template_name":matched[0] if matched else None,"sources":sources,"field_provenance":provenance,
-            "review_notes":["非HR指定的班制、時間、工作內容及技能均為建議，請確認後再刊登。",*generated["review_notes"]],
+    notes = ["非HR指定的班制、時間、工作內容及技能均為建議，請確認後再刊登。",*generated["review_notes"]]
+    if origin == 'LIVE_WEB_RESEARCH':
+        notes.append('已保存為歷史搜尋範本，30天內相同職稱可直接重用。' if history_saved else '本次研究成功，但歷史範本未能保存；本次建議仍可確認使用。')
+    if history:
+        notes.append('重用歷史搜尋範本，非本次即時查詢；仍請HR核對職務方向。')
+    return {"job":job,"source":origin,"template_name":matched[0] if matched else history['role'] if history else None,"sources":sources,"field_provenance":provenance,
+            'usage': usage, 'history_saved': history_saved,
+            'history': {'saved_at':history['saved_at'],'expires_at':history['expires_at']} if history else None,
+            "review_notes":notes,
             "requires_hr_review":True,"missing_fields":[],"notice":"保留HR已提供條件；範本或網路補全內容均屬待確認建議。"}

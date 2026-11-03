@@ -14,7 +14,8 @@ from recruitment.drafting import prepare_requirement
 from recruitment.models import ExtractedRequirement, StrictModel
 from recruitment.workflow import uid
 from recruitment.computer_use import launch, local_origin
-from recruitment.job_research import draft_job, find_template, has_template
+from recruitment.job_research import draft_job, strategy_for
+from recruitment.job_history import JobHistory
 
 
 router = APIRouter(prefix="/api/mock104/agent", tags=["Recruitment Agent demo"])
@@ -78,17 +79,25 @@ def reserve_model_call(session):
 @router.get('/strategy')
 def preparation_strategy(response: Response, role: str = Query(min_length=1, max_length=120)):
     response.headers['Cache-Control']='no-store'
-    matched=find_template(role)
-    return {'source':'OCCUPATIONAL_TEMPLATE' if matched else 'LIVE_WEB_RESEARCH',
-            'template_name':matched[0] if matched else None,
-            'max_wait_seconds':15 if matched else 60}
+    return strategy_for(role)
+
+
+@router.get('/history')
+def history_templates(response: Response):
+    response.headers['Cache-Control']='no-store'
+    try:
+        items=JobHistory().items()
+    except RuntimeError as exc:
+        raise HTTPException(503,str(exc)) from None
+    return {'items':[{key:item[key] for key in ('role','saved_at','expires_at','sources')} for item in items],
+            'retention_days':30,'max_items':200}
 
 
 @router.post("/prepare")
 def prepare(body: AgentPrepare, request: Request, response: Response):
     portal.protect(request, response)
     with portal.get_session(request) as session:
-        if body.mode == "MODEL" or (body.mode == "AUTO" and not has_template(body.role)):
+        if body.mode == "MODEL" or (body.mode == "AUTO" and strategy_for(body.role)['source']=='LIVE_WEB_RESEARCH'):
             reserve_model_call(session)
     # Long network/model work must not hold the browser/session registry lock.
     if body.mode == "AUTO":
