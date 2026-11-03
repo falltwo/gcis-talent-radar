@@ -33,3 +33,10 @@ Pre-flight: single task, no shared task interfaces.
 Implementation follows approved local-only demonstration scope. Existing isolated local integration branch used; no additional worktree or remote push.
 Review: independent reviewer identified comma-separated company-hires parsing; reproduced with failing assertion then fixed and verified 5/5 Node tests.
 Verification details: docs/RECRUITMENT_BROWSER_DEMO.md.
+
+## 第二版執行（已授權）
+1. 新增狀態機測試：最小需求可開始、缺薪資必須停在審核、編輯後單次確認、暫停與略過動畫、退回草稿。
+2. 更新狀態機支援薪資待補與來源；以需求卡片／來源節點／可編輯審核替換舊全欄必填表單。
+3. 驗證 Node 測試與前端語法，瀏覽器操作整個流程與切換取消，保存截圖；不推送。
+
+V2 completed: minimal brief/state tests RED→GREEN (8/8); browser verifies one review, missing salary, pause/skip and review edits retained. Independent review findings reproduced in browser then fixed: return draft preservation, provenance explanation; pause label resets too. Syntax/diff and assets verified. No real model/search/publishing calls.
