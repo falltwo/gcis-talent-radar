@@ -180,14 +180,14 @@ def stream(prep: Prepared, *, browser_factory: Optional[Callable[[], SourcingBro
 
     def search_site(browser: SourcingBrowser, site: Site, quota: int) -> Iterator[dict]:
         """單一網站：搜尋、挑人、逐一讀個人頁。這裡丟出的例外只會結束這個網站。"""
-        search_url = site.search_url(plan.terms)
-
-        # 1. 搜尋：gpt-6-luna 決定要打的字，Jev 在入口頁的搜尋框操作；沒完成就直接開搜尋結果頁
+        # 1. 搜尋：gpt-6-luna 決定要打的字（GitHub 先用官方 API 數人數，太少就放寬），
+        #    Jev 在入口頁的搜尋框操作；沒完成就直接開同一組搜尋字的結果頁
+        text, source, note = decider.search_text(site, plan, need=min(quota, 10))
+        yield decision(site, "search_text", f"在 {site.name} 搜尋：{text}" + (f"。{note}" if note else ""), source)
+        search_url = site.query_url(text) if site.query_url else site.search_url(plan.terms)
         searched = False
         try:
             if browser.jev_ready and site.entry_url:
-                text, source = decider.search_text(site, plan)
-                yield decision(site, "search_text", f"在 {site.name} 搜尋：{text}", source)
                 browser.open(site.entry_url)
                 yield step(site, "open_entry", f"開啟 {site.name}", browser)
                 goal = (f"Search this website for: {text}. Click the main search box, type the text, and press "
@@ -201,7 +201,7 @@ def stream(prep: Prepared, *, browser_factory: Optional[Callable[[], SourcingBro
                     yield step(site, "fallback", f"Jev 沒有完成搜尋（{browser.last_outcome}），改直接開搜尋結果頁")
             if not searched:
                 browser.open(search_url)
-                yield step(site, "open_search", f"在 {site.name} 搜尋：{plan.terms.text()}", browser)
+                yield step(site, "open_search", f"在 {site.name} 搜尋：{text}", browser)
         except PermissionError as exc:
             yield {"type": "site_error", "site": site.id, "reason": str(exc)}
             return

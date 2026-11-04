@@ -39,19 +39,45 @@ class SearchTerms:
     skills: tuple[str, ...]
     location: Optional[str] = None  # 英文地名，例如 Taichung
 
-    def text(self, *, with_location: bool = True) -> str:
-        parts = list(self.skills)
+    def text(self, *, with_location: bool = True, max_skills: Optional[int] = None) -> str:
+        parts = list(self.skills[:max_skills] if max_skills else self.skills)
         if with_location and self.location:
             parts.append(self.location)
         return " ".join(parts)
 
 
-def _github_query(terms: SearchTerms) -> str:
-    parts = [f"language:{s}" if s.lower() in GITHUB_LANGUAGES else s for s in terms.skills]
-    if terms.location:
-        loc = terms.location
-        parts.append(f'location:"{loc}"' if " " in loc else f"location:{loc}")
+def github_parts(terms: SearchTerms) -> tuple[Optional[str], Optional[str]]:
+    """GitHub 找人只放一個程式語言與一個關鍵字：條件是「全部都要符合」，多放就找不到人。"""
+    language = next((s.lower() for s in terms.skills if s.lower() in GITHUB_LANGUAGES), None)
+    keyword = next((s for s in terms.skills if s.lower() not in GITHUB_LANGUAGES), None)
+    return language, keyword
+
+
+def github_query(location: Optional[str], language: Optional[str], keyword: Optional[str]) -> str:
+    parts = []
+    if language:
+        parts.append(f"language:{language}")
+    if keyword:
+        parts.append(f'"{keyword}"' if " " in keyword else keyword)
+    if location:
+        parts.append(f'location:"{location}"' if " " in location else f"location:{location}")
     return " ".join(parts)
+
+
+def github_ladder(location: Optional[str], language: Optional[str], keyword: Optional[str]) -> list[str]:
+    """由嚴到寬的搜尋條件：地點＋語言＋關鍵字 → 地點＋關鍵字 → 地點＋語言 → 只有地點。"""
+    combos = [(language, keyword), (None, keyword), (language, None), (None, None)]
+    out: list[str] = []
+    for lang, kw in combos:
+        q = github_query(location, lang, kw)
+        if q and q not in out:
+            out.append(q)
+    return out
+
+
+def _github_query(terms: SearchTerms) -> str:
+    language, keyword = github_parts(terms)
+    return github_query(terms.location, language, keyword)
 
 
 def _github(terms: SearchTerms) -> str:
@@ -63,21 +89,30 @@ def _github_typed(terms: SearchTerms) -> str:
     return "type:user " + _github_query(terms)
 
 
+def _github_url(text: str) -> str:
+    return f"https://github.com/search?q={quote_plus(text.replace('type:user', '').strip())}&type=users"
+
+
 def _stackoverflow(terms: SearchTerms) -> str:
     tag = (terms.skills[0] if terms.skills else "python").lower().replace(" ", "-")
     return f"https://stackoverflow.com/tags/{quote(tag)}/topusers"
 
 
+# Hugging Face、Kaggle、Dribbble 不能依地點搜尋，關鍵字也只放兩個，免得搜不到
+def _short(terms: SearchTerms) -> str:
+    return terms.text(with_location=False, max_skills=2)
+
+
 def _huggingface(terms: SearchTerms) -> str:
-    return f"https://huggingface.co/models?search={quote_plus(terms.text(with_location=False))}"
+    return f"https://huggingface.co/models?search={quote_plus(_short(terms))}"
 
 
 def _kaggle(terms: SearchTerms) -> str:
-    return f"https://www.kaggle.com/search?q={quote_plus(terms.text())}"
+    return f"https://www.kaggle.com/search?q={quote_plus(_short(terms))}"
 
 
 def _dribbble(terms: SearchTerms) -> str:
-    return f"https://dribbble.com/search/{quote(terms.text())}"
+    return f"https://dribbble.com/search/{quote(_short(terms))}"
 
 
 def _orcid(terms: SearchTerms) -> str:
@@ -100,6 +135,8 @@ class Site:
     # Jev 操作的起點：入口頁上有搜尋框，Jev 把 typed_query 打進去再送出；沒有就直接開 search_url
     entry_url: Optional[str] = None
     typed_query: Optional[Callable[[SearchTerms], str]] = None
+    # 搜尋字 → 搜尋結果網址（Jev 沒打成功時直接開）
+    query_url: Optional[Callable[[str], str]] = None
     # 搜尋結果怎麼看下一頁：(第一頁網址, 第幾頁) → 網址；None 表示往下捲動載入更多
     page_url: Optional[Callable[[str, int], str]] = None
     available: bool = True
@@ -147,7 +184,7 @@ advertise places resources cookie-policy
 SITES: dict[str, Site] = {s.id: s for s in [
     Site("github", "GitHub", ("software", "ai_data"), ("github.com",), _github,
          re.compile(r"^https://github\.com/([A-Za-z0-9](?:[A-Za-z0-9-]{0,38}))$"), _GITHUB_RESERVED,
-         entry_url="https://github.com/search?type=users", typed_query=_github_typed,
+         entry_url="https://github.com/search?type=users", typed_query=_github_typed, query_url=_github_url,
          page_url=lambda url, n: _with_param(url, "p", str(n))),
     # 網頁版連排行頁都會跳 Cloudflare 驗證，排行與個人資料都改用官方 Stack Exchange API，不開瀏覽器
     Site("stackoverflow", "Stack Overflow", ("software",), ("stackoverflow.com",), None,
@@ -155,14 +192,17 @@ SITES: dict[str, Site] = {s.id: s for s in [
     Site("huggingface", "Hugging Face", ("ai_data",), ("huggingface.co",), _huggingface,
          re.compile(r"^https://huggingface\.co/([A-Za-z0-9][A-Za-z0-9._-]*)$"), _HF_RESERVED,
          work_pattern=re.compile(r"^https://huggingface\.co/([A-Za-z0-9][A-Za-z0-9._-]*)/[A-Za-z0-9._-]+$"),
-         entry_url="https://huggingface.co/models", typed_query=lambda t: t.text(with_location=False),
+         entry_url="https://huggingface.co/models", typed_query=_short,
+         query_url=lambda q: f"https://huggingface.co/models?search={quote_plus(q)}",
          page_url=lambda url, n: _with_param(url, "p", str(n - 1))),
     Site("kaggle", "Kaggle", ("ai_data",), ("www.kaggle.com", "kaggle.com"), _kaggle,
          re.compile(r"^https://www\.kaggle\.com/([A-Za-z0-9_-]+)$"), _KAGGLE_RESERVED,
-         entry_url="https://www.kaggle.com/search", typed_query=lambda t: t.text()),
+         entry_url="https://www.kaggle.com/search", typed_query=_short,
+         query_url=lambda q: f"https://www.kaggle.com/search?q={quote_plus(q)}"),
     Site("dribbble", "Dribbble", ("design",), ("dribbble.com",), _dribbble,
          re.compile(r"^https://dribbble\.com/([A-Za-z0-9_-]+)$"), _DRIBBBLE_RESERVED,
-         entry_url="https://dribbble.com/", typed_query=lambda t: t.text()),
+         entry_url="https://dribbble.com/", typed_query=_short,
+         query_url=lambda q: f"https://dribbble.com/search/{quote(q)}"),
     # ORCID 網頁很重、常讓瀏覽器連線逾時，改用官方公開 API（不需金鑰），不開瀏覽器
     Site("orcid", "ORCID", ("research",), ("orcid.org", "pub.orcid.org"), None,
          re.compile(r"^https://orcid\.org/(\d{4}-\d{4}-\d{4}-\d{3}[\dX])$"), profile_api="orcid"),

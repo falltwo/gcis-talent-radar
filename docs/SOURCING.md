@@ -115,6 +115,8 @@ await fetch(`/api/sourcing/runs/${run_id}`, {method: 'DELETE'});
 | `error` | 瀏覽器或套件無法使用 | `reason` |
 | `done` | 結束 | `count`、`plan`、`message`、`usage`（實際 token 與費用）、`cancelled` |
 
+搜尋字怎麼決定：GitHub 找人時每個條件都要同時符合，所以 gpt-6-luna 只提「一個程式語言＋一個關鍵字」，程式先用 GitHub 官方搜尋 API 數人數，太少就依序放寬（地點＋語言＋關鍵字 → 地點＋關鍵字 → 地點＋語言 → 只有地點），放寬經過會寫在 `search_text` 的 `detail`。Hugging Face、Kaggle、Dribbble 不能依地點搜尋，搜尋字只放一到三個關鍵詞、不放地點。
+
 `step.action`：`open_entry`（開網站入口頁）、`next_page`（一頁不夠，換下一頁或往下捲動載入更多）、`fallback`（Jev 沒完成，改用備案）、`read_api`（OpenAlex、ORCID、Stack Exchange 官方 API）、`open_search`（開搜尋結果頁）、`jev_click`／`jev_type_text`／`jev_press_enter`／`jev_press_escape`／`jev_scroll_down`／`jev_done`／`jev_none`／`jev_refused`…（Jev 的動作；`jev_refused` 是被安全規則擋下的動作）、`open_profile`（點擊或開啟個人頁）。
 
 `candidate` 欄位：

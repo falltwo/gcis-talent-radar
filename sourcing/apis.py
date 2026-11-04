@@ -241,3 +241,14 @@ def orcid_researchers(topics: list[str], location: Optional[str], *, limit: int 
         return out
     except (requests.RequestException, ValueError, KeyError, TypeError):
         return None
+
+
+def github_user_count(query: str, *, timeout: float = 10.0) -> Optional[int]:
+    """GitHub 官方搜尋 API：這組條件找得到幾個人（不需金鑰，每分鐘 10 次）；失敗回 None。"""
+    try:
+        r = requests.get("https://api.github.com/search/users", params={"q": query, "per_page": 1},
+                         headers={"Accept": "application/vnd.github+json"}, timeout=timeout)
+        r.raise_for_status()
+        return int(r.json().get("total_count", 0))
+    except (requests.RequestException, ValueError, TypeError):
+        return None

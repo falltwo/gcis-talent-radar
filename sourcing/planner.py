@@ -12,19 +12,20 @@ from typing import Optional
 from sourcing import llm
 from sourcing.sites import CATEGORIES, SearchTerms
 
+# re.ASCII：\b 只把英文字母數字當成字，中文緊接英文（AI工程師、UI設計師）才分得開
 CATEGORY_RULES: dict[str, re.Pattern] = {
     "software": re.compile(
         r"軟體|軟件|程式|工程師.*(?:後端|前端|全端)|後端|前端|全端|韌體|開發者|\b(?:software|developer|engineer|backend|"
         r"front-?end|full-?stack|devops|sre|android|ios|web)\b|python|java|javascript|typescript|react|golang|\bgo\b|rust|"
-        r"kotlin|swift|\bphp\b|node\.?js|c\+\+|c#", re.I),
+        r"kotlin|swift|\bphp\b|node\.?js|c\+\+|c#", re.I | re.ASCII),
     "ai_data": re.compile(
         r"\bai\b|人工智慧|機器學習|深度學習|資料科學|數據科學|資料分析|數據分析|資料工程|大型語言模型|電腦視覺|自然語言|"
         r"\b(?:ml|llm|nlp|machine\s+learning|deep\s+learning|data\s+scien\w*|data\s+analy\w*|data\s+engineer\w*|"
-        r"computer\s+vision|pytorch|tensorflow|kaggle)\b", re.I),
+        r"computer\s+vision|pytorch|tensorflow|kaggle)\b", re.I | re.ASCII),
     "design": re.compile(
         r"設計師|視覺設計|平面設計|介面設計|產品設計|品牌設計|插畫|動畫|\b(?:ui|ux|designer|illustrat\w*|figma|"
-        r"graphic\s+design|motion\s+design)\b", re.I),
-    "research": re.compile(r"研究員|研究人員|學者|博士後|教授|\b(?:researcher|postdoc|professor|research\s+scientist)\b", re.I),
+        r"graphic\s+design|motion\s+design)\b", re.I | re.ASCII),
+    "research": re.compile(r"研究員|研究人員|學者|博士後|教授|\b(?:researcher|postdoc|professor|research\s+scientist)\b", re.I | re.ASCII),
 }
 
 # 網路上少有公開作品的職類：沒命中上面任何職類時才用來給建議
@@ -33,7 +34,7 @@ NO_PUBLIC_WORK = re.compile(
     r"客服|人資|採購|總機|收銀|領班|組長|焊工|水電|黑手|搬運", re.I)
 
 SKILL_WORDS = [
-    "python", "java", "javascript", "typescript", "golang", "go", "rust", "kotlin", "swift", "php", "ruby", "c++",
+    "ai", "python", "java", "javascript", "typescript", "golang", "go", "rust", "kotlin", "swift", "php", "ruby", "c++",
     "c#", "scala", "dart", "react", "vue", "angular", "node.js", "django", "flask", "fastapi", "spring",
     "kubernetes", "docker", "aws", "gcp", "azure", "terraform", "linux", "android", "ios", "flutter",
     "pytorch", "tensorflow", "llm", "nlp", "computer vision", "machine learning", "deep learning",
@@ -121,7 +122,7 @@ _LLM_SYSTEM = (
     "location 是英文城市或國家名，沒有就給 null；has_public_work 表示這個職類的人通常會在網路上公開作品。只回 JSON。"
 )
 PERSONAL_TRAIT = re.compile(r"\b(?:male|female|man|woman|men|women|age|young|old|married|single|nationality|religion)\b|"
-                            r"男|女|歲|年輕|已婚|未婚|國籍|宗教", re.I)
+                            r"男|女|歲|年輕|已婚|未婚|國籍|宗教", re.I | re.ASCII)
 
 
 def plan(query: str) -> Plan:

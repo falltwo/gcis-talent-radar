@@ -6,7 +6,7 @@ import os
 import pytest
 
 from api.main import app
-from sourcing import extract, llm, planner, service
+from sourcing import apis, extract, llm, planner, service
 from sourcing.extract import Link
 from sourcing.sites import SITES, SearchTerms, blocked_reason, catalog, sites_for
 
@@ -15,6 +15,7 @@ from sourcing.sites import SITES, SearchTerms, blocked_reason, catalog, sites_fo
 def isolated(monkeypatch, tmp_path):
     monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
     monkeypatch.setenv("AGENT_AUDIT_LOG_PATH", str(tmp_path / "audit.jsonl"))
+    monkeypatch.setattr(apis, "github_user_count", lambda q: 100)  # 不連 GitHub 官方 API
     return tmp_path
 
 
@@ -69,6 +70,13 @@ def test_rule_plan_reads_role_skills_and_location():
 def test_rule_plan_design_and_ai_roles():
     assert planner.rule_plan("UI 設計師").categories == ["design"]
     assert "ai_data" in planner.rule_plan("機器學習工程師").categories
+
+
+def test_rule_plan_reads_english_role_right_next_to_chinese():
+    p = planner.rule_plan("找AI工程師 在台中")
+    assert "ai_data" in p.categories and p.terms.skills == ("ai",) and p.terms.location == "Taichung"
+    assert planner.rule_plan("UI設計師").categories == ["design"]
+    assert "ai_data" in planner.rule_plan("找ML工程師").categories
 
 
 def test_rule_plan_does_not_match_skill_inside_other_words():
@@ -518,14 +526,40 @@ def test_stream_live_interleaves_frames_and_finishes():
 def test_decider_validates_model_output(monkeypatch):
     plan = planner.rule_plan("Python 工程師，在台中")
     monkeypatch.setenv("OPENROUTER_API_KEY", "test")
-    monkeypatch.setattr(llm, "chat_json", lambda *a, **k: {"query": "language:python location:Taichung"})
-    assert decider.search_text(SITES["github"], plan) == ("type:user language:python location:Taichung", "llm")
-    monkeypatch.setattr(llm, "chat_json", lambda *a, **k: {"query": "male python developer"})
-    assert decider.search_text(SITES["github"], plan)[1] == "rules"
+    monkeypatch.setattr(llm, "chat_json", lambda *a, **k: {"language": "Python", "keyword": "backend"})
+    assert decider.search_text(SITES["github"], plan)[:2] == ("type:user language:python backend location:Taichung", "llm")
+    monkeypatch.setattr(llm, "chat_json", lambda *a, **k: {"language": "cobol", "keyword": "male"})
+    assert decider.search_text(SITES["github"], plan)[0] == "type:user location:Taichung"
+    monkeypatch.setattr(llm, "chat_json", lambda *a, **k: {"query": "python django flask machine learning Taichung"})
+    assert decider.search_text(SITES["kaggle"], plan)[1] == "rules"
     cards = [decider.Card(f"https://github.com/u{i}", f"u{i}") for i in range(5)]
     monkeypatch.setattr(llm, "chat_json", lambda *a, **k: {"picks": [3, 3, 99, 1]})
     picked, source = decider.pick_candidates(SITES["github"], plan, cards, k=2)
     assert [c.name for c in picked] == ["u3", "u1"] and source == "llm"
+
+
+def test_github_search_loosens_until_enough_people(monkeypatch):
+    """GitHub 每個條件都要同時符合：太嚴就依序放寬，並在決策說明列出每一步的人數。"""
+    counts = {"language:python AI location:Taichung": 0, "AI location:Taichung": 40}
+    monkeypatch.setattr(apis, "github_user_count", lambda q: counts.get(q, 186))
+    monkeypatch.setenv("OPENROUTER_API_KEY", "test")
+    monkeypatch.setattr(llm, "chat_json", lambda *a, **k: {"language": "python", "keyword": "AI"})
+    plan = planner.rule_plan("找AI工程師 在台中")
+    text, source, note = decider.search_text(SITES["github"], plan, need=5)
+    assert text == "type:user AI location:Taichung" and source == "llm"
+    assert "（0 人）" in note and "（40 人）" in note
+    counts["AI location:Taichung"] = 2
+    assert decider.search_text(SITES["github"], plan, need=5)[0] == "type:user language:python location:Taichung"
+    monkeypatch.setattr(apis, "github_user_count", lambda q: None)  # 官方 API 不能用：取中間寬度
+    assert decider.search_text(SITES["github"], plan)[0] == "type:user AI location:Taichung"
+
+
+def test_sites_without_location_search_use_short_queries():
+    terms = SearchTerms(("python", "pytorch", "tensorflow", "machine learning"), "Taichung")
+    assert SITES["kaggle"].typed_query(terms) == "python pytorch"
+    assert "Taichung" not in SITES["dribbble"].search_url(terms)
+    assert SITES["kaggle"].query_url("deep learning") == "https://www.kaggle.com/search?q=deep+learning"
+    assert SITES["github"].query_url("type:user AI location:Taichung").endswith("q=AI+location%3ATaichung&type=users")
 
 
 def test_jev_may_only_type_into_search_fields_and_enter_after_typing(monkeypatch):
