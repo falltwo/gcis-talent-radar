@@ -1,0 +1,794 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxfile host="drawio" version="26.0.0">
+  <diagram id="overview" name="1 全貌">
+    <mxGraphModel grid="1" gridSize="10" page="1" pageScale="1" pageWidth="1700" pageHeight="1400" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="overview-title" value="產業人才雷達：系統全貌（現有＋規劃）" style="text;html=1;align=left;verticalAlign=top;whiteSpace=wrap;fontColor=#555555;fontSize=20;fontStyle=1;fontColor=#222222;" vertex="1" parent="1">
+          <mxGeometry x="40" y="10" width="900" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="overview-user" value="HR／工廠老闆" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="520" y="70" width="200" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="overview-fe" value="前端頁面" style="swimlane;startSize=30;html=1;whiteSpace=wrap;rounded=1;arcSize=4;fillColor=#fbfbfb;strokeColor=#999999;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="80" y="170" width="1080" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="overview-fe-home" value="首頁：直接問答＋擴廠情境" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="overview-fe">
+          <mxGeometry x="60" y="45" width="300" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="overview-fe-cmp" value="行政區徵才比較（PR #20）" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="overview-fe">
+          <mxGeometry x="390" y="45" width="300" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="overview-fe-src" value="找人頁 /sourcing&#xa;（前端團隊做介面）" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#ffffff;strokeColor=#6c8ebf;dashed=1;" vertex="1" parent="overview-fe">
+          <mxGeometry x="720" y="45" width="300" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="overview-api" value="FastAPI 後端（api/main.py）" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="500" y="340" width="240" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="overview-gov" value="共用治理層" style="swimlane;startSize=30;html=1;whiteSpace=wrap;rounded=1;arcSize=4;fillColor=#fbfbfb;strokeColor=#999999;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="80" y="450" width="1080" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="overview-gov-scope" value="範圍檢查&#xa;（規劃：改用 Jev）" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="overview-gov">
+          <mxGeometry x="20" y="42" width="230" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="overview-gov-fair" value="公平招募護欄&#xa;就服法第 5 條" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="overview-gov">
+          <mxGeometry x="280" y="42" width="230" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="overview-gov-num" value="數字核對" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="overview-gov">
+          <mxGeometry x="540" y="42" width="230" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="overview-gov-audit" value="稽核紀錄（只存雜湊值）" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="overview-gov">
+          <mxGeometry x="800" y="42" width="230" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="overview-qa" value="招募環境問答 agent" style="swimlane;startSize=30;html=1;whiteSpace=wrap;rounded=1;arcSize=4;fillColor=#fbfbfb;strokeColor=#999999;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="80" y="610" width="500" height="130" as="geometry" />
+        </mxCell>
+        <mxCell id="overview-qa-llm" value="gpt-6-luna&#xa;function calling 選工具" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="overview-qa">
+          <mxGeometry x="20" y="45" width="210" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="overview-qa-write" value="撰寫回答＋查證紀錄" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="overview-qa">
+          <mxGeometry x="270" y="45" width="210" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="overview-sa" value="找人 agent（computer use）" style="swimlane;startSize=30;html=1;whiteSpace=wrap;rounded=1;arcSize=4;fillColor=#fbfbfb;strokeColor=#999999;fontStyle=1;dashed=1;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="660" y="610" width="500" height="130" as="geometry" />
+        </mxCell>
+        <mxCell id="overview-sa-cu" value="typesafe-computer-use&#xa;Jev 決定每一步" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#ffffff;strokeColor=#6c8ebf;dashed=1;" vertex="1" parent="overview-sa">
+          <mxGeometry x="20" y="45" width="210" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="overview-sa-llm" value="gpt-6-luna&#xa;打字、讀畫面、寫摘要" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#ffffff;strokeColor=#6c8ebf;dashed=1;" vertex="1" parent="overview-sa">
+          <mxGeometry x="270" y="45" width="210" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="overview-tools" value="官方資料工具 engine/&#xa;＋預測引擎 forecast/" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="100" y="800" width="220" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="overview-data" value="處理後資料表&#xa;data/processed" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;size=10;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="360" y="795" width="180" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="overview-router" value="OpenRouter&#xa;gpt-6-luna、Jev" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;" vertex="1" parent="1">
+          <mxGeometry x="520" y="920" width="200" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="overview-gov-data" value="政府開放資料&#xa;經濟部、勞動部、臺中市府…" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;" vertex="1" parent="1">
+          <mxGeometry x="100" y="920" width="260" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="overview-sites" value="外部網站&#xa;GitHub、Stack Overflow、個人網站" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;" vertex="1" parent="1">
+          <mxGeometry x="880" y="800" width="260" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="overview-api-sites" value="官方 API&#xa;GitHub、Stack Exchange、ORCID" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;" vertex="1" parent="1">
+          <mxGeometry x="880" y="920" width="260" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="overview-o1" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endSize=8;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="overview-user" target="overview-fe">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="overview-o2" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endSize=8;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="overview-fe" target="overview-api">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="overview-o3" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endSize=8;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="overview-api" target="overview-gov">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="overview-o4" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endSize=8;exitX=0.25;exitY=1;exitDx=0;exitDy=0;entryX=0.54;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="overview-gov" target="overview-qa">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="overview-o5" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endSize=8;exitX=0.75;exitY=1;exitDx=0;exitDy=0;entryX=0.46;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="overview-gov" target="overview-sa">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="overview-o6" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endSize=8;exitX=0.2;exitY=1;exitDx=0;exitDy=0;entryX=0.3636;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="overview-qa" target="overview-tools">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="overview-o7" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endSize=8;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="overview-tools" target="overview-data">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="overview-o8" value="ETL" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endSize=8;exitX=0.3;exitY=0;exitDx=0;exitDy=0;entryX=0.3;entryY=1;entryDx=0;entryDy=0;" edge="1" parent="1" source="overview-gov-data" target="overview-tools">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="overview-o9" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endSize=8;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0.45;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="overview-qa" target="overview-router">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="overview-o10" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endSize=8;exitX=0.2;exitY=1;exitDx=0;exitDy=0;entryX=0.75;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="overview-sa" target="overview-router">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="overview-o11" value="瀏覽器操作" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endSize=8;exitX=0.8;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="overview-sa" target="overview-sites">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="overview-o12" value="資料以 API 為準" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endSize=8;dashed=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="overview-sites" target="overview-api-sites">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="overview-legend" value="圖例" vertex="1" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#999999;verticalAlign=top;fontStyle=1;">
+          <mxGeometry x="1200" y="70" width="190" height="126" as="geometry" />
+        </mxCell>
+        <mxCell id="overview-legend-done" value="" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#d5e8d4;strokeColor=#82b366;rounded=0;" vertex="1" parent="overview-legend">
+          <mxGeometry x="10" y="30" width="30" height="16" as="geometry" />
+        </mxCell>
+        <mxCell id="overview-legend-done-t" value="已有" style="text;html=1;align=left;verticalAlign=top;whiteSpace=wrap;fontColor=#555555;verticalAlign=middle;fontColor=#333333;" vertex="1" parent="overview-legend">
+          <mxGeometry x="50" y="28" width="130" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="overview-legend-pr" value="" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#fff2cc;strokeColor=#d6b656;rounded=0;" vertex="1" parent="overview-legend">
+          <mxGeometry x="10" y="54" width="30" height="16" as="geometry" />
+        </mxCell>
+        <mxCell id="overview-legend-pr-t" value="開發中（PR）" style="text;html=1;align=left;verticalAlign=top;whiteSpace=wrap;fontColor=#555555;verticalAlign=middle;fontColor=#333333;" vertex="1" parent="overview-legend">
+          <mxGeometry x="50" y="52" width="130" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="overview-legend-plan" value="" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#ffffff;strokeColor=#6c8ebf;dashed=1;rounded=0;" vertex="1" parent="overview-legend">
+          <mxGeometry x="10" y="78" width="30" height="16" as="geometry" />
+        </mxCell>
+        <mxCell id="overview-legend-plan-t" value="規劃中" style="text;html=1;align=left;verticalAlign=top;whiteSpace=wrap;fontColor=#555555;verticalAlign=middle;fontColor=#333333;" vertex="1" parent="overview-legend">
+          <mxGeometry x="50" y="76" width="130" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="overview-legend-ext" value="" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;rounded=0;" vertex="1" parent="overview-legend">
+          <mxGeometry x="10" y="102" width="30" height="16" as="geometry" />
+        </mxCell>
+        <mxCell id="overview-legend-ext-t" value="外部網站・資料來源" style="text;html=1;align=left;verticalAlign=top;whiteSpace=wrap;fontColor=#555555;verticalAlign=middle;fontColor=#333333;" vertex="1" parent="overview-legend">
+          <mxGeometry x="50" y="100" width="130" height="20" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="hiring" name="2 招募流程×功能">
+    <mxGraphModel grid="1" gridSize="10" page="1" pageScale="1" pageWidth="1700" pageHeight="1400" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="hiring-title" value="公司招募流程 × 功能（只做前四步＋合規，不碰候選人管理）" style="text;html=1;align=left;verticalAlign=top;whiteSpace=wrap;fontColor=#555555;fontSize=20;fontStyle=1;fontColor=#222222;" vertex="1" parent="1">
+          <mxGeometry x="40" y="10" width="1300" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="hiring-h0" value="第 0 步&#xa;決定在哪裡擴廠" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="70" width="200" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="hiring-h0-0" value="擴廠情境（四個官方數字）" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="40" y="160" width="200" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="hiring-h0-1" value="行政區徵才比較" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="40" y="230" width="200" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="hiring-h0-2" value="行政區同業動態" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#ffffff;strokeColor=#6c8ebf;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="300" width="200" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="hiring-h0-3" value="通勤圈範圍" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#ffffff;strokeColor=#6c8ebf;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="370" width="200" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="hiring-h0-4" value="行政區長期就業趨勢" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#ffffff;strokeColor=#6c8ebf;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="440" width="200" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="hiring-h0-5" value="趨勢預測區間" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#ffffff;strokeColor=#6c8ebf;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="510" width="200" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="hiring-h0-6" value="地圖" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#ffffff;strokeColor=#6c8ebf;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="580" width="200" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="hiring-h1" value="第 1 步&#xa;規劃職類與時程" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="280" y="70" width="200" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="hiring-he1" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endSize=8;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="hiring-h0" target="hiring-h1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="hiring-h1-0" value="職稱對照" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#ffffff;strokeColor=#6c8ebf;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="280" y="160" width="200" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="hiring-h1-1" value="臺中職類求供倍數" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#ffffff;strokeColor=#6c8ebf;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="280" y="230" width="200" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="hiring-h1-2" value="全國求才僱用率&#xa;（勞動部 146549）" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#ffffff;strokeColor=#6c8ebf;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="280" y="300" width="200" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="hiring-h1-3" value="招募時機" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#ffffff;strokeColor=#6c8ebf;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="280" y="370" width="200" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="hiring-h2" value="第 2 步&#xa;設計職缺與薪資" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="520" y="70" width="200" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="hiring-he2" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endSize=8;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="hiring-h1" target="hiring-h2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="hiring-h2-0" value="同區職缺開薪分布" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#ffffff;strokeColor=#6c8ebf;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="520" y="160" width="200" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="hiring-h2-1" value="製造業職類薪資&#xa;（勞動部 41685）" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#ffffff;strokeColor=#6c8ebf;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="520" y="230" width="200" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="hiring-h2-2" value="招募條件對照" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#ffffff;strokeColor=#6c8ebf;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="520" y="300" width="200" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="hiring-h2-3" value="職缺文案健檢" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#ffffff;strokeColor=#6c8ebf;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="520" y="370" width="200" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="hiring-h3" value="第 3 步&#xa;決定去哪裡找人" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="760" y="70" width="200" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="hiring-he3" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endSize=8;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="hiring-h2" target="hiring-h3">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="hiring-h3-0" value="找人 agent&#xa;GitHub、Stack Overflow…" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#ffffff;strokeColor=#6c8ebf;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="760" y="160" width="200" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="hiring-h3-1" value="附近職訓課程&#xa;（勞動部 6060）" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#ffffff;strokeColor=#6c8ebf;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="760" y="230" width="200" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="hiring-h3-2" value="相關科系畢業生趨勢" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#ffffff;strokeColor=#6c8ebf;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="760" y="300" width="200" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="hiring-h3-3" value="技能檢定發證數&#xa;（勞動部 166315）" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#ffffff;strokeColor=#6c8ebf;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="760" y="370" width="200" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="hiring-h3-4" value="臺中移工總數&#xa;（勞動部 41881）" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#ffffff;strokeColor=#6c8ebf;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="760" y="440" width="200" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="hiring-h4" value="第 4 步&#xa;篩選與面試" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="1000" y="70" width="200" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="hiring-he4" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endSize=8;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="hiring-h3" target="hiring-h4">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="hiring-h4-0" value="公平招募護欄" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="1000" y="160" width="200" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="hiring-h4-1" value="職缺文案健檢（共用）" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#ffffff;strokeColor=#6c8ebf;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="1000" y="230" width="200" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="hiring-h5" value="第 5–6 步&#xa;錄用後持續觀察" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="1240" y="70" width="200" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="hiring-he5" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endSize=8;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="hiring-h4" target="hiring-h5">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="hiring-h5-0" value="每日職缺快照" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#ffffff;strokeColor=#6c8ebf;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="1240" y="160" width="200" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="hiring-h5-1" value="變化通知&#xa;Email" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#ffffff;strokeColor=#6c8ebf;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="1240" y="230" width="200" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="hiring-h-out" value="不在範圍：履歷管理、面試排程、錄用作業（交給 ATS／人資）" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="1000" y="330" width="440" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="hiring-cross" value="每一步都用得到" style="swimlane;startSize=30;html=1;whiteSpace=wrap;rounded=1;arcSize=4;fillColor=#fbfbfb;strokeColor=#999999;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="680" width="1400" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="hiring-cx0" value="查證紀錄" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="hiring-cross">
+          <mxGeometry x="20" y="40" width="200" height="45" as="geometry" />
+        </mxCell>
+        <mxCell id="hiring-cx1" value="數字核對" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="hiring-cross">
+          <mxGeometry x="248" y="40" width="200" height="45" as="geometry" />
+        </mxCell>
+        <mxCell id="hiring-cx2" value="稽核紀錄" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="hiring-cross">
+          <mxGeometry x="476" y="40" width="200" height="45" as="geometry" />
+        </mxCell>
+        <mxCell id="hiring-cx3" value="匯出查證報告" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#ffffff;strokeColor=#6c8ebf;dashed=1;" vertex="1" parent="hiring-cross">
+          <mxGeometry x="704" y="40" width="200" height="45" as="geometry" />
+        </mxCell>
+        <mxCell id="hiring-cx4" value="多輪追問" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#ffffff;strokeColor=#6c8ebf;dashed=1;" vertex="1" parent="hiring-cross">
+          <mxGeometry x="932" y="40" width="200" height="45" as="geometry" />
+        </mxCell>
+        <mxCell id="hiring-cx5" value="資料新鮮度頁" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#ffffff;strokeColor=#6c8ebf;dashed=1;" vertex="1" parent="hiring-cross">
+          <mxGeometry x="1160" y="40" width="200" height="45" as="geometry" />
+        </mxCell>
+        <mxCell id="hiring-legend" value="圖例" vertex="1" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#999999;verticalAlign=top;fontStyle=1;">
+          <mxGeometry x="1490" y="70" width="190" height="126" as="geometry" />
+        </mxCell>
+        <mxCell id="hiring-legend-done" value="" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#d5e8d4;strokeColor=#82b366;rounded=0;" vertex="1" parent="hiring-legend">
+          <mxGeometry x="10" y="30" width="30" height="16" as="geometry" />
+        </mxCell>
+        <mxCell id="hiring-legend-done-t" value="已有" style="text;html=1;align=left;verticalAlign=top;whiteSpace=wrap;fontColor=#555555;verticalAlign=middle;fontColor=#333333;" vertex="1" parent="hiring-legend">
+          <mxGeometry x="50" y="28" width="130" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="hiring-legend-pr" value="" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#fff2cc;strokeColor=#d6b656;rounded=0;" vertex="1" parent="hiring-legend">
+          <mxGeometry x="10" y="54" width="30" height="16" as="geometry" />
+        </mxCell>
+        <mxCell id="hiring-legend-pr-t" value="開發中（PR）" style="text;html=1;align=left;verticalAlign=top;whiteSpace=wrap;fontColor=#555555;verticalAlign=middle;fontColor=#333333;" vertex="1" parent="hiring-legend">
+          <mxGeometry x="50" y="52" width="130" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="hiring-legend-plan" value="" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#ffffff;strokeColor=#6c8ebf;dashed=1;rounded=0;" vertex="1" parent="hiring-legend">
+          <mxGeometry x="10" y="78" width="30" height="16" as="geometry" />
+        </mxCell>
+        <mxCell id="hiring-legend-plan-t" value="規劃中" style="text;html=1;align=left;verticalAlign=top;whiteSpace=wrap;fontColor=#555555;verticalAlign=middle;fontColor=#333333;" vertex="1" parent="hiring-legend">
+          <mxGeometry x="50" y="76" width="130" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="hiring-legend-ext" value="" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;rounded=0;" vertex="1" parent="hiring-legend">
+          <mxGeometry x="10" y="102" width="30" height="16" as="geometry" />
+        </mxCell>
+        <mxCell id="hiring-legend-ext-t" value="外部網站・資料來源" style="text;html=1;align=left;verticalAlign=top;whiteSpace=wrap;fontColor=#555555;verticalAlign=middle;fontColor=#333333;" vertex="1" parent="hiring-legend">
+          <mxGeometry x="50" y="100" width="130" height="20" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="qa" name="3 問答流程">
+    <mxGraphModel grid="1" gridSize="10" page="1" pageScale="1" pageWidth="1700" pageHeight="1400" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="qa-title" value="招募環境問答流程（數字由程式算，模型只負責理解和說明）" style="text;html=1;align=left;verticalAlign=top;whiteSpace=wrap;fontColor=#555555;fontSize=20;fontStyle=1;fontColor=#222222;" vertex="1" parent="1">
+          <mxGeometry x="40" y="10" width="900" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="qa-q0" value="HR／老闆提問" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="440" y="70" width="180" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="qa-q-scope" value="範圍檢查&#xa;（規劃：改用 Jev）" style="rhombus;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="430" y="170" width="200" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="qa-q-fair" value="公平招募護欄" style="rhombus;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="430" y="300" width="200" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="qa-q-reject" value="拒答&#xa;不呼叫模型" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+          <mxGeometry x="820" y="245" width="160" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="qa-q-pick" value="gpt-6-luna 選工具&#xa;function calling" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="420" y="430" width="220" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="qa-q-tools" value="資料工具（程式查官方資料，回傳數值＋期別＋出處＋限制）" style="swimlane;startSize=30;html=1;whiteSpace=wrap;rounded=1;arcSize=4;fillColor=#fbfbfb;strokeColor=#999999;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="120" y="530" width="820" height="245" as="geometry" />
+        </mxCell>
+        <mxCell id="qa-qt00" value="公開職缺需求&#xa;台灣就業通" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="qa-q-tools">
+          <mxGeometry x="20" y="42" width="180" height="52" as="geometry" />
+        </mxCell>
+        <mxCell id="qa-qt01" value="全市新設公司趨勢&#xa;GCIS" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="qa-q-tools">
+          <mxGeometry x="220" y="42" width="180" height="52" as="geometry" />
+        </mxCell>
+        <mxCell id="qa-qt02" value="平均投保薪資&#xa;勞保局" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="qa-q-tools">
+          <mxGeometry x="420" y="42" width="180" height="52" as="geometry" />
+        </mxCell>
+        <mxCell id="qa-qt03" value="擴廠情境&#xa;四個口徑" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="qa-q-tools">
+          <mxGeometry x="620" y="42" width="180" height="52" as="geometry" />
+        </mxCell>
+        <mxCell id="qa-qt10" value="行政區同業動態" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#ffffff;strokeColor=#6c8ebf;dashed=1;" vertex="1" parent="qa-q-tools">
+          <mxGeometry x="20" y="108" width="180" height="52" as="geometry" />
+        </mxCell>
+        <mxCell id="qa-qt11" value="職缺開薪分布" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#ffffff;strokeColor=#6c8ebf;dashed=1;" vertex="1" parent="qa-q-tools">
+          <mxGeometry x="220" y="108" width="180" height="52" as="geometry" />
+        </mxCell>
+        <mxCell id="qa-qt12" value="職類求供倍數" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#ffffff;strokeColor=#6c8ebf;dashed=1;" vertex="1" parent="qa-q-tools">
+          <mxGeometry x="420" y="108" width="180" height="52" as="geometry" />
+        </mxCell>
+        <mxCell id="qa-qt13" value="附近職訓課程" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#ffffff;strokeColor=#6c8ebf;dashed=1;" vertex="1" parent="qa-q-tools">
+          <mxGeometry x="620" y="108" width="180" height="52" as="geometry" />
+        </mxCell>
+        <mxCell id="qa-qt20" value="製造業職類薪資" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#ffffff;strokeColor=#6c8ebf;dashed=1;" vertex="1" parent="qa-q-tools">
+          <mxGeometry x="20" y="174" width="180" height="52" as="geometry" />
+        </mxCell>
+        <mxCell id="qa-qt21" value="臺中移工總數" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#ffffff;strokeColor=#6c8ebf;dashed=1;" vertex="1" parent="qa-q-tools">
+          <mxGeometry x="220" y="174" width="180" height="52" as="geometry" />
+        </mxCell>
+        <mxCell id="qa-qt22" value="趨勢預測區間" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#ffffff;strokeColor=#6c8ebf;dashed=1;" vertex="1" parent="qa-q-tools">
+          <mxGeometry x="420" y="174" width="180" height="52" as="geometry" />
+        </mxCell>
+        <mxCell id="qa-q-write" value="gpt-6-luna 撰寫回答" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="420" y="815" width="220" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="qa-q-num" value="數字核對&#xa;每個數字都要對得上" style="rhombus;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="430" y="915" width="200" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="qa-q-block" value="整段攔下&#xa;不顯示模型說法" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+          <mxGeometry x="820" y="930" width="160" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="qa-q-ans" value="回答＋查證紀錄&#xa;出處、期別、限制" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="420" y="1050" width="220" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="qa-q-show" value="顯示給使用者" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="440" y="1170" width="180" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="qa-q-audit" value="稽核紀錄&#xa;只存雜湊值" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;size=10;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="20" y="920" width="130" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="qa-q-next" value="回答之後（規劃）" style="swimlane;startSize=30;html=1;whiteSpace=wrap;rounded=1;arcSize=4;fillColor=#fbfbfb;strokeColor=#999999;fontStyle=1;dashed=1;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="800" y="1020" width="200" height="155" as="geometry" />
+        </mxCell>
+        <mxCell id="qa-q-f1" value="多輪追問" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#ffffff;strokeColor=#6c8ebf;dashed=1;" vertex="1" parent="qa-q-next">
+          <mxGeometry x="20" y="40" width="160" height="45" as="geometry" />
+        </mxCell>
+        <mxCell id="qa-q-f2" value="匯出查證報告 PDF" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#ffffff;strokeColor=#6c8ebf;dashed=1;" vertex="1" parent="qa-q-next">
+          <mxGeometry x="20" y="95" width="160" height="45" as="geometry" />
+        </mxCell>
+        <mxCell id="qa-qe1" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endSize=8;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="qa-q0" target="qa-q-scope">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="qa-qe2" value="通過" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endSize=8;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="qa-q-scope" target="qa-q-fair">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="qa-qe3" value="通過" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endSize=8;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="qa-q-fair" target="qa-q-pick">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="qa-qe4" value="超出範圍" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endSize=8;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.3;entryDx=0;entryDy=0;" edge="1" parent="1" source="qa-q-scope" target="qa-q-reject">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="qa-qe5" value="歧視條件" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endSize=8;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.7;entryDx=0;entryDy=0;" edge="1" parent="1" source="qa-q-fair" target="qa-q-reject">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="qa-qe6" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endSize=8;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="qa-q-pick" target="qa-q-tools">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="qa-qe7" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endSize=8;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="qa-q-tools" target="qa-q-write">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="qa-qe8" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endSize=8;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="qa-q-write" target="qa-q-num">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="qa-qe9" value="全部對上" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endSize=8;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="qa-q-num" target="qa-q-ans">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="qa-qe10" value="有數字對不上" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endSize=8;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="qa-q-num" target="qa-q-block">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="qa-qe11" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endSize=8;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="qa-q-ans" target="qa-q-show">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="qa-qa1" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endSize=8;dashed=1;strokeColor=#999999;endArrow=open;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="qa-q-scope" target="qa-q-audit">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="85" y="215" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="qa-qa2" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endSize=8;dashed=1;strokeColor=#999999;endArrow=open;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="qa-q-fair" target="qa-q-audit">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="85" y="345" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="qa-qa3" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endSize=8;dashed=1;strokeColor=#999999;endArrow=open;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="qa-q-num" target="qa-q-audit">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="qa-qf" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endSize=8;dashed=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.4194;entryDx=0;entryDy=0;" edge="1" parent="1" source="qa-q-ans" target="qa-q-next">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="qa-legend" value="圖例" vertex="1" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#999999;verticalAlign=top;fontStyle=1;">
+          <mxGeometry x="1000" y="70" width="190" height="102" as="geometry" />
+        </mxCell>
+        <mxCell id="qa-legend-done" value="" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#d5e8d4;strokeColor=#82b366;rounded=0;" vertex="1" parent="qa-legend">
+          <mxGeometry x="10" y="30" width="30" height="16" as="geometry" />
+        </mxCell>
+        <mxCell id="qa-legend-done-t" value="已有" style="text;html=1;align=left;verticalAlign=top;whiteSpace=wrap;fontColor=#555555;verticalAlign=middle;fontColor=#333333;" vertex="1" parent="qa-legend">
+          <mxGeometry x="50" y="28" width="130" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="qa-legend-plan" value="" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#ffffff;strokeColor=#6c8ebf;dashed=1;rounded=0;" vertex="1" parent="qa-legend">
+          <mxGeometry x="10" y="54" width="30" height="16" as="geometry" />
+        </mxCell>
+        <mxCell id="qa-legend-plan-t" value="規劃中" style="text;html=1;align=left;verticalAlign=top;whiteSpace=wrap;fontColor=#555555;verticalAlign=middle;fontColor=#333333;" vertex="1" parent="qa-legend">
+          <mxGeometry x="50" y="52" width="130" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="qa-legend-stop" value="" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#f8cecc;strokeColor=#b85450;rounded=0;" vertex="1" parent="qa-legend">
+          <mxGeometry x="10" y="78" width="30" height="16" as="geometry" />
+        </mxCell>
+        <mxCell id="qa-legend-stop-t" value="拒答／攔下／封鎖" style="text;html=1;align=left;verticalAlign=top;whiteSpace=wrap;fontColor=#555555;verticalAlign=middle;fontColor=#333333;" vertex="1" parent="qa-legend">
+          <mxGeometry x="50" y="76" width="130" height="20" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="sourcing" name="4 找人 agent">
+    <mxGraphModel grid="1" gridSize="10" page="1" pageScale="1" pageWidth="1700" pageHeight="1400" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="sourcing-title" value="找人 agent 流程（computer use：typesafe-computer-use ＋ Jev ＋ gpt-6-luna）" style="text;html=1;align=left;verticalAlign=top;whiteSpace=wrap;fontColor=#555555;fontSize=20;fontStyle=1;fontColor=#222222;" vertex="1" parent="1">
+          <mxGeometry x="40" y="10" width="1100" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="sourcing-s0" value="HR 輸入找人需求&#xa;職缺、地點、技能" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="470" y="70" width="220" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="sourcing-s-scope" value="Jev 是非題&#xa;是不是找人需求？" style="rhombus;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="470" y="170" width="220" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="sourcing-s-fair" value="公平招募護欄&#xa;排除性別、年齡、國籍條件" style="rhombus;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="460" y="300" width="240" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="sourcing-s-reject" value="拒絕並說明原因" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+          <mxGeometry x="900" y="255" width="180" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="sourcing-s-route" value="Jev 選擇題：依職類挑網站&#xa;GitHub／Stack Overflow／ORCID…" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#ffffff;strokeColor=#6c8ebf;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="420" y="440" width="320" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="sourcing-s-block" value="封鎖：LinkedIn、Google Scholar、&#xa;人力銀行履歷庫" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+          <mxGeometry x="900" y="440" width="260" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="sourcing-s-api" value="官方 API（資料以此為準）" style="swimlane;startSize=30;html=1;whiteSpace=wrap;rounded=1;arcSize=4;fillColor=#fbfbfb;strokeColor=#999999;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="60" y="550" width="420" height="280" as="geometry" />
+        </mxCell>
+        <mxCell id="sourcing-sa0" value="GitHub API&#xa;repo、語言、topics、活躍度" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#ffffff;strokeColor=#6c8ebf;dashed=1;" vertex="1" parent="sourcing-s-api">
+          <mxGeometry x="30" y="42" width="360" height="48" as="geometry" />
+        </mxCell>
+        <mxCell id="sourcing-sa1" value="Stack Exchange API&#xa;回答標籤、聲望" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#ffffff;strokeColor=#6c8ebf;dashed=1;" vertex="1" parent="sourcing-s-api">
+          <mxGeometry x="30" y="100" width="360" height="48" as="geometry" />
+        </mxCell>
+        <mxCell id="sourcing-sa2" value="ORCID API&#xa;論文、研究領域" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#ffffff;strokeColor=#6c8ebf;dashed=1;" vertex="1" parent="sourcing-s-api">
+          <mxGeometry x="30" y="158" width="360" height="48" as="geometry" />
+        </mxCell>
+        <mxCell id="sourcing-sa3" value="Hugging Face API&#xa;模型、資料集" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#ffffff;strokeColor=#6c8ebf;dashed=1;" vertex="1" parent="sourcing-s-api">
+          <mxGeometry x="30" y="216" width="360" height="48" as="geometry" />
+        </mxCell>
+        <mxCell id="sourcing-s-cu" value="瀏覽器 computer use（typesafe-computer-use 瀏覽器模式）" style="swimlane;startSize=30;html=1;whiteSpace=wrap;rounded=1;arcSize=4;fillColor=#fbfbfb;strokeColor=#999999;fontStyle=1;dashed=1;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="560" y="550" width="600" height="380" as="geometry" />
+        </mxCell>
+        <mxCell id="sourcing-cu1" value="讀網頁元素（DOM）" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#ffffff;strokeColor=#6c8ebf;dashed=1;" vertex="1" parent="sourcing-s-cu">
+          <mxGeometry x="30" y="50" width="220" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="sourcing-cu2" value="Jev 決定下一步&#xa;點哪裡／打字／完成" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#ffffff;strokeColor=#6c8ebf;dashed=1;" vertex="1" parent="sourcing-s-cu">
+          <mxGeometry x="350" y="50" width="220" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="sourcing-cu3" value="執行點擊、輸入、捲動" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#ffffff;strokeColor=#6c8ebf;dashed=1;" vertex="1" parent="sourcing-s-cu">
+          <mxGeometry x="350" y="170" width="220" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="sourcing-cu4" value="截圖透過 SSE 推給前端" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#ffffff;strokeColor=#6c8ebf;dashed=1;" vertex="1" parent="sourcing-s-cu">
+          <mxGeometry x="30" y="170" width="220" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="sourcing-cu5" value="gpt-6-luna&#xa;需要打字、讀懂畫面、Jev 卡住時接手" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#ffffff;strokeColor=#6c8ebf;dashed=1;" vertex="1" parent="sourcing-s-cu">
+          <mxGeometry x="200" y="290" width="260" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="sourcing-s-live" value="HR 即時看到操作畫面" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#ffffff;strokeColor=#6c8ebf;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="1220" y="690" width="180" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="sourcing-s-merge" value="整理候選人資料&#xa;個人頁、代表作品、技能證據" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#ffffff;strokeColor=#6c8ebf;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="420" y="980" width="320" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="sourcing-s-score" value="Jev 評分題：符合度排序" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#ffffff;strokeColor=#6c8ebf;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="420" y="1080" width="320" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="sourcing-s-sum" value="gpt-6-luna：專長摘要＋證據連結" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#ffffff;strokeColor=#6c8ebf;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="420" y="1175" width="320" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="sourcing-s-out" value="候選人名單給 HR&#xa;只給連結，不抓 Email" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="460" y="1270" width="240" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="sourcing-s-audit" value="稽核紀錄&#xa;只存雜湊；名單不入庫" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;size=10;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="60" y="1068" width="170" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="sourcing-se1" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endSize=8;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="sourcing-s0" target="sourcing-s-scope">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sourcing-se2" value="是" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endSize=8;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="sourcing-s-scope" target="sourcing-s-fair">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sourcing-se3" value="通過" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endSize=8;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="sourcing-s-fair" target="sourcing-s-route">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sourcing-se4" value="否" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endSize=8;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.3;entryDx=0;entryDy=0;" edge="1" parent="1" source="sourcing-s-scope" target="sourcing-s-reject">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sourcing-se5" value="歧視條件" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endSize=8;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.7;entryDx=0;entryDy=0;" edge="1" parent="1" source="sourcing-s-fair" target="sourcing-s-reject">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sourcing-se6" value="不在白名單" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endSize=8;dashed=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="sourcing-s-route" target="sourcing-s-block">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sourcing-se7" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endSize=8;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="sourcing-s-route" target="sourcing-s-api">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sourcing-se8" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endSize=8;exitX=0.75;exitY=1;exitDx=0;exitDy=0;entryX=0.1667;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="sourcing-s-route" target="sourcing-s-cu">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sourcing-cl1" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endSize=8;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="sourcing-cu1" target="sourcing-cu2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sourcing-cl2" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endSize=8;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="sourcing-cu2" target="sourcing-cu3">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sourcing-cl3" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endSize=8;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="sourcing-cu3" target="sourcing-cu4">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sourcing-cl4" value="下一步" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endSize=8;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" edge="1" parent="1" source="sourcing-cu4" target="sourcing-cu1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sourcing-cl5" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endSize=8;dashed=1;startArrow=block;startSize=6;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="sourcing-cu2" target="sourcing-cu5">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1145" y="627" />
+              <mxPoint x="1145" y="870" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="sourcing-se9" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endSize=8;dashed=1;exitX=1;exitY=0.4474;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="sourcing-s-cu" target="sourcing-s-live">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sourcing-se10" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endSize=8;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.25;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="sourcing-s-api" target="sourcing-s-merge">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sourcing-se11" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endSize=8;exitX=0.1667;exitY=1;exitDx=0;exitDy=0;entryX=0.75;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="sourcing-s-cu" target="sourcing-s-merge">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sourcing-se12" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endSize=8;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="sourcing-s-merge" target="sourcing-s-score">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sourcing-se13" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endSize=8;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="sourcing-s-score" target="sourcing-s-sum">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sourcing-se14" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endSize=8;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="sourcing-s-sum" target="sourcing-s-out">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sourcing-se15" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endSize=8;dashed=1;strokeColor=#999999;endArrow=open;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="sourcing-s-score" target="sourcing-s-audit">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sourcing-legend" value="圖例" vertex="1" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#999999;verticalAlign=top;fontStyle=1;">
+          <mxGeometry x="60" y="140" width="190" height="102" as="geometry" />
+        </mxCell>
+        <mxCell id="sourcing-legend-done" value="" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#d5e8d4;strokeColor=#82b366;rounded=0;" vertex="1" parent="sourcing-legend">
+          <mxGeometry x="10" y="30" width="30" height="16" as="geometry" />
+        </mxCell>
+        <mxCell id="sourcing-legend-done-t" value="已有" style="text;html=1;align=left;verticalAlign=top;whiteSpace=wrap;fontColor=#555555;verticalAlign=middle;fontColor=#333333;" vertex="1" parent="sourcing-legend">
+          <mxGeometry x="50" y="28" width="130" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="sourcing-legend-plan" value="" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#ffffff;strokeColor=#6c8ebf;dashed=1;rounded=0;" vertex="1" parent="sourcing-legend">
+          <mxGeometry x="10" y="54" width="30" height="16" as="geometry" />
+        </mxCell>
+        <mxCell id="sourcing-legend-plan-t" value="規劃中" style="text;html=1;align=left;verticalAlign=top;whiteSpace=wrap;fontColor=#555555;verticalAlign=middle;fontColor=#333333;" vertex="1" parent="sourcing-legend">
+          <mxGeometry x="50" y="52" width="130" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="sourcing-legend-stop" value="" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#f8cecc;strokeColor=#b85450;rounded=0;" vertex="1" parent="sourcing-legend">
+          <mxGeometry x="10" y="78" width="30" height="16" as="geometry" />
+        </mxCell>
+        <mxCell id="sourcing-legend-stop-t" value="拒答／攔下／封鎖" style="text;html=1;align=left;verticalAlign=top;whiteSpace=wrap;fontColor=#555555;verticalAlign=middle;fontColor=#333333;" vertex="1" parent="sourcing-legend">
+          <mxGeometry x="50" y="76" width="130" height="20" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="data" name="5 資料管線">
+    <mxGraphModel grid="1" gridSize="10" page="1" pageScale="1" pageWidth="1700" pageHeight="1400" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="data-title" value="資料管線（政府開放資料 → ETL → 資料表 → 工具 → API）" style="text;html=1;align=left;verticalAlign=top;whiteSpace=wrap;fontColor=#555555;fontSize=20;fontStyle=1;fontColor=#222222;" vertex="1" parent="1">
+          <mxGeometry x="40" y="10" width="1100" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="data-d-src" value="已接入的資料來源" style="swimlane;startSize=30;html=1;whiteSpace=wrap;rounded=1;arcSize=4;fillColor=#fbfbfb;strokeColor=#999999;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="70" width="300" height="410" as="geometry" />
+        </mxCell>
+        <mxCell id="data-ds0" value="經濟部 GCIS 商工登記" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="data-d-src">
+          <mxGeometry x="20" y="40" width="260" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="data-ds1" value="台灣就業通 職缺快照" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="data-d-src">
+          <mxGeometry x="20" y="85" width="260" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="data-ds2" value="勞保局 投保薪資" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="data-d-src">
+          <mxGeometry x="20" y="130" width="260" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="data-ds3" value="臺中市府 工廠家數" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="data-d-src">
+          <mxGeometry x="20" y="175" width="260" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="data-ds4" value="臺中市勞工局 就業市場季報" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="data-d-src">
+          <mxGeometry x="20" y="220" width="260" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="data-ds5" value="教育部 大專／高中職校務" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="data-d-src">
+          <mxGeometry x="20" y="265" width="260" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="data-ds6" value="經濟部 EE520 工廠調查" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="data-d-src">
+          <mxGeometry x="20" y="310" width="260" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="data-ds7" value="財政部 稅籍登記" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="data-d-src">
+          <mxGeometry x="20" y="355" width="260" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="data-d-new" value="規劃接入的資料來源" style="swimlane;startSize=30;html=1;whiteSpace=wrap;rounded=1;arcSize=4;fillColor=#fbfbfb;strokeColor=#999999;fontStyle=1;dashed=1;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="40" y="510" width="300" height="365" as="geometry" />
+        </mxCell>
+        <mxCell id="data-dn0" value="勞動部 職訓課程（6060）" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#ffffff;strokeColor=#6c8ebf;dashed=1;" vertex="1" parent="data-d-new">
+          <mxGeometry x="20" y="40" width="260" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="data-dn1" value="勞動部 職類薪資（41685）" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#ffffff;strokeColor=#6c8ebf;dashed=1;" vertex="1" parent="data-d-new">
+          <mxGeometry x="20" y="85" width="260" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="data-dn2" value="勞動部 移工人數（41881）" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#ffffff;strokeColor=#6c8ebf;dashed=1;" vertex="1" parent="data-d-new">
+          <mxGeometry x="20" y="130" width="260" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="data-dn3" value="勞動部 求才僱用（146549）" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#ffffff;strokeColor=#6c8ebf;dashed=1;" vertex="1" parent="data-d-new">
+          <mxGeometry x="20" y="175" width="260" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="data-dn4" value="勞動部 技能檢定（166315）" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#ffffff;strokeColor=#6c8ebf;dashed=1;" vertex="1" parent="data-d-new">
+          <mxGeometry x="20" y="220" width="260" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="data-dn5" value="內政部 戶政人口" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#ffffff;strokeColor=#6c8ebf;dashed=1;" vertex="1" parent="data-d-new">
+          <mxGeometry x="20" y="265" width="260" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="data-dn6" value="產發署 登記工廠名錄" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#ffffff;strokeColor=#6c8ebf;dashed=1;" vertex="1" parent="data-d-new">
+          <mxGeometry x="20" y="310" width="260" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="data-etl" value="etl.run_real_etl&#xa;下載＋整理＋品質報告" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="420" y="330" width="220" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="data-cron" value="每日排程&#xa;GitHub Actions cron" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#ffffff;strokeColor=#6c8ebf;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="420" y="470" width="220" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="data-proc" value="data/processed&#xa;處理後資料表" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;size=10;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="720" y="320" width="180" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="data-manifest" value="_manifest.csv（網址、時間、SHA-256）&#xa;DATA_QUALITY.md 品質報告" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="680" y="450" width="260" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="data-t-now" value="官方資料工具（已有）&#xa;職缺需求、新設公司、投保薪資、擴廠情境" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="1000" y="160" width="280" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="data-t-fc" value="預測引擎 forecast/&#xa;rolling-origin 回測、80% 區間" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="1000" y="260" width="280" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="data-t-new" value="新工具（規劃）&#xa;同業動態、開薪分布、求供倍數、職訓、&#xa;職類薪資、移工、畢業生" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#ffffff;strokeColor=#6c8ebf;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="1000" y="360" width="280" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="data-c1" value="/api/official/*、/api/demo/expansion" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="1360" y="160" width="260" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="data-c2" value="AI 問答 agent" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="1360" y="230" width="260" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="data-c3" value="/api/forecast" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#ffffff;strokeColor=#6c8ebf;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="1360" y="300" width="260" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="data-c4" value="/api/data-status 資料新鮮度" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#ffffff;strokeColor=#6c8ebf;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="1360" y="370" width="260" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="data-c5" value="變化通知 Email" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#ffffff;strokeColor=#6c8ebf;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="1360" y="440" width="260" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="data-de1" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endSize=8;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.35;entryDx=0;entryDy=0;" edge="1" parent="1" source="data-d-src" target="data-etl">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="data-de2" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endSize=8;dashed=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.75;entryDx=0;entryDy=0;" edge="1" parent="1" source="data-d-new" target="data-etl">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="data-de3" value="觸發" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endSize=8;dashed=1;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" edge="1" parent="1" source="data-cron" target="data-etl">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="data-de4" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endSize=8;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="data-etl" target="data-proc">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="data-de5" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endSize=8;exitX=0.8;exitY=1;exitDx=0;exitDy=0;entryX=0.2;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="data-etl" target="data-manifest">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="data-de6" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endSize=8;exitX=1;exitY=0.3;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="data-proc" target="data-t-now">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="data-de7" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endSize=8;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="data-proc" target="data-t-fc">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="data-de8" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endSize=8;dashed=1;exitX=1;exitY=0.7;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="data-proc" target="data-t-new">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="data-de9" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endSize=8;exitX=1;exitY=0.3571;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="data-t-now" target="data-c1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="data-de10" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endSize=8;exitX=1;exitY=0.75;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="data-t-now" target="data-c2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="data-de11" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endSize=8;dashed=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="data-t-fc" target="data-c3">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="data-de12" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endSize=8;dashed=1;exitX=1;exitY=0.3;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="data-t-new" target="data-c4">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="data-de13" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endSize=8;dashed=1;exitX=1;exitY=0.75;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="data-t-new" target="data-c5">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="data-legend" value="圖例" vertex="1" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#999999;verticalAlign=top;fontStyle=1;">
+          <mxGeometry x="1360" y="540" width="190" height="78" as="geometry" />
+        </mxCell>
+        <mxCell id="data-legend-done" value="" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#d5e8d4;strokeColor=#82b366;rounded=0;" vertex="1" parent="data-legend">
+          <mxGeometry x="10" y="30" width="30" height="16" as="geometry" />
+        </mxCell>
+        <mxCell id="data-legend-done-t" value="已有" style="text;html=1;align=left;verticalAlign=top;whiteSpace=wrap;fontColor=#555555;verticalAlign=middle;fontColor=#333333;" vertex="1" parent="data-legend">
+          <mxGeometry x="50" y="28" width="130" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="data-legend-plan" value="" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#ffffff;strokeColor=#6c8ebf;dashed=1;rounded=0;" vertex="1" parent="data-legend">
+          <mxGeometry x="10" y="54" width="30" height="16" as="geometry" />
+        </mxCell>
+        <mxCell id="data-legend-plan-t" value="規劃中" style="text;html=1;align=left;verticalAlign=top;whiteSpace=wrap;fontColor=#555555;verticalAlign=middle;fontColor=#333333;" vertex="1" parent="data-legend">
+          <mxGeometry x="50" y="52" width="130" height="20" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

@@ -14,16 +14,26 @@
       <button type="button" class="primary-feature-button" data-feature="刊登召募"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="6" width="16" height="15" rx="2"/><path d="M9 6V3h6v3M8 11h8M8 15h5M16 17v4M14 19h4"/></svg><span>刊登召募</span></button>
       <button type="button" class="primary-feature-button" data-feature="獵頭Agent"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10" cy="9" r="4"/><path d="M3 21v-2a7 7 0 0 1 11-5"/><circle cx="17" cy="17" r="4"/><path d="m20 20 2 2"/></svg><span>獵頭Agent</span></button>
     </nav>
-    <aside class="radar-sidebar" aria-label="資料助理與地點選擇">
+    <aside class="radar-sidebar" id="radar-sidebar" aria-label="資料助理與地點選擇">
       <div class="radar-brand"><span class="brand-symbol" aria-hidden="true">◎</span><div><strong>產業人才雷達</strong><small>TAICHUNG · TALENT RADAR</small></div></div>
       <div class="radar-chat" id="radar-chat"></div>
-      <form class="radar-location" id="sidebar-location"><h3>探索範圍</h3><div class="location-fields"><div><label for="city-district">行政區</label><select id="city-district">${options}</select></div><div><label for="city-road">道路／街道</label><select id="city-road" required disabled><option value="">讀取道路中…</option></select></div></div><button type="submit" id="city-update" disabled>更新探索位置 ↗</button><p id="road-note">道路選單來自本地公司登記地址，並非完整道路名冊。</p></form>
+      <form class="radar-location" id="sidebar-location"><h3>探索範圍</h3><div class="location-fields"><div><label for="city-district">行政區</label><select id="city-district">${options}</select></div><div><label for="city-road">道路／街道</label><select id="city-road" required disabled><option value="">讀取道路中…</option></select></div></div><button type="submit" id="city-update" disabled><i class="radar-mini" aria-hidden="true"></i><span id="city-update-label">更新探索位置 ↗</span></button><p id="road-note">道路選單來自本地公司登記地址，並非完整道路名冊。</p></form>
     </aside>
     <div class="city-stage" id="city-stage">
+      <div class="map-hud" aria-hidden="true"><i></i><i></i><i></i><i></i><b></b><b></b><u></u><u></u><u></u></div>
+      <output class="map-hud-coords" id="map-hud-coords" hidden></output>
+      <button class="sidebar-toggle" id="sidebar-toggle" type="button" aria-controls="radar-sidebar" aria-expanded="true" aria-label="收合側邊欄"><svg viewBox="0 0 10 16" aria-hidden="true"><path d="M8 2 2 8l6 6"/></svg></button>
       <div class="city-topbar"><div><p>EXPLORE YOUR NEXT LOCATION</p><h1 id="city-heading" tabindex="-1">從這裡，看見產業的可能。</h1><div class="city-address" id="city-address">臺中市 · 大雅區</div></div><button class="quiet-button" id="replay-intro" aria-label="重新開啟雷達與地點選擇" title="重新選擇地點">◎</button></div>
       <div id="city-map" role="region" aria-label="真實道路與立體建物地圖"></div>
       <div class="map-toolbar"><button id="map-rotate" type="button">旋轉 ↻</button><button id="map-flat" type="button">平面 2D</button><button id="map-home" type="button">回到選點</button></div>
       <div class="map-status-bar"><span id="map-status" role="status" aria-live="polite">選擇道路後載入地圖</span><button id="map-retry" type="button">重試</button></div>
+      <button class="district-toggle" id="map-districts" type="button" aria-pressed="false" aria-controls="district-panel" hidden>產業圖層</button>
+      <section class="district-panel" id="district-panel" aria-label="行政區產業圖層" hidden>
+        <label for="district-industry">圖層內容</label><select id="district-industry"></select>
+        <div class="district-legend" id="district-legend"><span id="district-low"></span><div id="district-scale"></div><span id="district-high"></span><i class="district-unknown">無資料</i></div>
+        <p id="district-readout" aria-live="polite"></p>
+        <small><span id="district-year"></span><br><a id="district-source" target="_blank" rel="noopener noreferrer"></a><br><a href="https://data.gov.tw/dataset/7441" target="_blank" rel="noopener noreferrer">行政區界線：內政部開放資料</a></small>
+      </section>
       <section class="city-callout company-card" id="company-card-popup" aria-labelledby="company-card-title" hidden>
         <div class="company-card-head"><h2 id="company-card-title">我的企業情境</h2><div class="company-head-actions"><span id="company-data-kind" class="company-data-kind">示範資料</span><button type="button" id="close-company-window" aria-label="關閉企業情境浮窗">×</button></div></div>
         <h3 id="company-name"></h3><div id="company-card-content"><p id="company-industry"></p>
@@ -58,8 +68,12 @@
   window.radarFeatures={select:selectFeature};
   selectFeature(null);
   workspace.querySelectorAll('[data-feature]').forEach(button=>button.addEventListener('click',()=>{
-    if(button.dataset.feature==='校園人才媒合'&&window.campusMatching){window.campusMatching.toggle();return;}
+    if(button.dataset.feature!=='刊登召募')window.recruitment?.deactivate();
+    if(button.dataset.feature==='校園人才媒合'&&window.campusMatching){window.headhunter?.deactivate(true);window.campusMatching.toggle();return;}
     window.campusMatching?.deactivate();
+    if(button.dataset.feature==='獵頭Agent'&&window.headhunter){window.headhunter.toggle();return;}
+    window.headhunter?.deactivate();
+    if(button.dataset.feature==='刊登召募'&&window.recruitment){window.recruitment.toggle();return;}
     featureTrigger=button;selectFeature(button.dataset.feature);
     $('feature-placeholder-title').textContent=button.dataset.feature;featureDialog.showModal();
   }));
@@ -77,18 +91,20 @@
           <div class="radar-aura"></div>
           <div class="radar-disc">
             <svg viewBox="0 0 500 500" class="radar-grid"><circle cx="250" cy="250" r="238"/><circle cx="250" cy="250" r="180"/><circle cx="250" cy="250" r="120"/><circle cx="250" cy="250" r="60"/><path d="M12 250H488M250 12V488"/><g class="radar-ticks"></g></svg>
-            <div class="radar-sweep"></div><div class="radar-targets"></div><i class="radar-center"></i>
+            <div class="radar-pulses"><i></i><i></i><i></i></div><div class="radar-sweep"></div><div class="radar-targets"></div><i class="radar-center"></i>
           </div>
         </div>
         <div class="radar-invitation"><span>點擊任意處，開始探索</span><small>或按任意一般按鍵</small></div>
+        <div class="radar-shock" aria-hidden="true"></div>
+      <button id="radar-sound" class="radar-motion radar-sound" type="button" aria-pressed="true">音效：開</button>
       <button id="radar-motion" class="radar-motion" type="button" aria-pressed="false">暫停動態</button>
     </div>
     <dialog class="explore-dialog" aria-labelledby="explore-dialog-title" aria-describedby="explore-dialog-description">
       <button id="explore-close" type="button" aria-label="關閉地點選擇，回到雷達">×</button>
       <h2 id="explore-dialog-title" tabindex="-1">你想從哪裡開始探索？</h2>
       <p id="explore-dialog-description">選一個地點，看看周邊的產業與招募環境。</p>
-      <form class="explore-form" id="intro-location">
-        <div class="location-fields"><div><label for="intro-district">臺中市行政區</label><select id="intro-district" name="district" autocomplete="off">${options}</select></div><div><label for="intro-road">道路／街道</label><select id="intro-road" name="road" autocomplete="off" required disabled><option value="">讀取道路中…</option></select></div></div>
+      <form class="explore-form roads-loading" id="intro-location">
+        <div class="location-fields"><div><label for="intro-district">臺中市行政區</label><select id="intro-district" name="district" autocomplete="off">${options}</select></div><div><label for="intro-road">道路／街道<i class="road-spinner" aria-hidden="true"></i></label><select id="intro-road" name="road" autocomplete="off" required disabled><option value="">讀取道路中…</option></select></div></div>
         <button id="intro-submit" type="submit" disabled>探索這個地點</button>
         <p id="intro-note" role="status">道路選項來自公司登記地址；定位與地圖資料來自 OpenStreetMap。</p>
       </form>
@@ -100,6 +116,12 @@
   let roadIndex = {};
   let selected = {district: originalDistrict.value, road: ''};
   const entrance = window.createRadarEntrance(intro);
+  $('sidebar-toggle').addEventListener('click', event => {
+    const collapsed = workspace.classList.toggle('sidebar-collapsed');
+    $('radar-sidebar').inert = collapsed;
+    event.currentTarget.setAttribute('aria-expanded', String(!collapsed));
+    event.currentTarget.setAttribute('aria-label', collapsed ? '展開側邊欄' : '收合側邊欄');
+  });
 
   function fillRoads(prefix, preferred = '') {
     const select = $(prefix + '-road');
@@ -112,13 +134,21 @@
     $(prefix === 'intro' ? 'intro-submit' : 'city-update').disabled = !roads.length;
   }
   ['intro','city'].forEach(prefix => $(prefix + '-district').addEventListener('change', () => fillRoads(prefix)));
+  // Roads are already in memory, so this ring is only a visual cue and never delays the select.
+  let spinnerTimer;
+  $('intro-district').addEventListener('change', () => {
+    if (!Object.keys(roadIndex).length) return;
+    $('intro-location').classList.add('roads-loading');
+    clearTimeout(spinnerTimer);
+    spinnerTimer = setTimeout(() => $('intro-location').classList.remove('roads-loading'), 450);
+  });
   fetch('/static/road-index.json').then(response => {if (!response.ok) throw Error('道路資料讀取失敗'); return response.json();}).then(data => {
     roadIndex = data.districts;
     fillRoads('intro', '中清路三段'); fillRoads('city', '中清路三段');
   }).catch(() => {
     $('intro-note').textContent = '道路資料讀取失敗，請重新整理頁面後再試。';
     $('road-note').textContent = '道路資料讀取失敗，請重新整理頁面後再試。';
-  });
+  }).finally(() => $('intro-location').classList.remove('roads-loading'));
   function selectLocation(district,road) {
     selected={district,road};
     $('city-district').value=district;fillRoads('city',road);
@@ -138,15 +168,34 @@
   }
   $('intro-location').addEventListener('submit',e=>{
     e.preventDefault();if(!$('intro-road').value)return;
+    window.streetMap.hold();
     selectLocation($('intro-district').value,$('intro-road').value);
     entrance.leave(()=>{
+      window.streetMap.reveal();
       intro.inert=true;workspace.inert=false;$('expansion').inert=false;
       document.body.style.overflow='';$('city-heading').focus({preventScroll:true});
     });
   });
-  $('sidebar-location').addEventListener('submit',e=>{e.preventDefault();if($('city-road').value)selectLocation($('city-district').value,$('city-road').value);});
+  // Busy follows the real geocoding request; the minimum only keeps a cached answer visible.
+  let busySince=0,busyTimer;
+  function setLocating(busy) {
+    const button=$('city-update');
+    button.classList.toggle('is-busy',busy);button.setAttribute('aria-busy',String(busy));
+    button.disabled=busy||!$('city-road').value;
+    $('city-update-label').textContent=busy?'正在重新定位…':'更新探索位置 ↗';
+  }
+  ['streetmap:location','streetmap:location-error'].forEach(name=>document.addEventListener(name,()=>{
+    if(!busySince)return;
+    clearTimeout(busyTimer);
+    busyTimer=setTimeout(()=>{busySince=0;setLocating(false);},Math.max(0,450-(performance.now()-busySince)));
+  }));
+  $('sidebar-location').addEventListener('submit',e=>{
+    e.preventDefault();if(!$('city-road').value)return;
+    selectLocation($('city-district').value,$('city-road').value);
+    clearTimeout(busyTimer);busySince=performance.now();setLocating(true);
+  });
   $('replay-intro').addEventListener('click',()=>{
-    window.campusMatching?.deactivate();
+    window.campusMatching?.deactivate();window.headhunter?.deactivate();window.recruitment?.deactivate();
     entrance.show();
     $('intro-district').value=selected.district;fillRoads('intro',selected.road);
     workspace.inert=true;$('expansion').inert=true;document.body.style.overflow='hidden';

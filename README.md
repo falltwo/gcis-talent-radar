@@ -114,12 +114,15 @@ python -m pytest tests -q
 | `POST /api/reports/expansion-comparison/resolve`、`POST /api/reports/expansion-comparison` | 確認來源期別並以冪等請求建立報告 |
 | `GET /api/reports/{id}`、`POST /api/reports/{id}/questions` | 讀取原報告與經主張驗證的追問 |
 | `GET /api/reports/{id}/export?format=html`（或`json`） | 原版本列印頁或JSON匯出 |
+| `/api/sourcing/runs`、`/api/sourcing/sites` | 找人 agent（前端功能之一）：依職類到公開作品網站，gpt-6-luna 決策、Jev 用 computer use 操作瀏覽器，SSE 串流即時畫面與候選人；接法見 [docs/SOURCING.md](docs/SOURCING.md) |
+| `/sourcing` | 找人 agent 示範頁 |
 | `/legacy` | 舊版原型，含模擬資料，不屬於展示內容 |
 
 ## 專案結構
 
 ```
 agent/      問答流程：範圍檢查、公平護欄、工具呼叫、數字核對、稽核
+sourcing/   找人 agent：網站目錄、需求規劃、computer use 瀏覽器、候選人擷取
 engine/     資料工具（官方資料查詢）
 etl/        真實資料下載與整理（etl/sources/ 一個來源一個模組）
 forecast/   預測引擎與回測
