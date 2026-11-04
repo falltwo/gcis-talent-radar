@@ -48,6 +48,25 @@ test('overlapping and punctuation-bearing job names are matched exactly',()=>{
  assert.deepEqual(jobs.map(j=>j.salaryMin),[60000,50000,70000]);
 });
 
+test('unknown longer salary titles are rejected instead of matching a shorter known title',()=>{
+ assert.throws(()=>parseBrief('1位工程師、1位經理，助理經理月薪40000'),/薪資|職缺/);
+});
+
+test('decimal wan amounts use exact yuan conversion',()=>{
+ for(const [amount,expected] of [['4.56萬',45600],['2.53萬',25300],['4.5萬5千',50000]]){
+  assert.equal(parseBrief('1位工程師月薪'+amount)[0].salaryMin,expected,amount);
+ }
+ assert.throws(()=>parseBrief('1位工程師月薪4.56元'),/月薪|正整數/);
+});
+
+test('fractional and signed headcounts fail closed before drafts can be created',()=>{
+ for(const count of ['2.5','-2','+2']){
+  assert.throws(()=>parseBrief(count+'位工程師，月薪50000'),/人數/);
+ }
+ const valid=parseBrief('2位工程師，月薪50000');
+ assert.equal(valid[0].hires,2);
+});
+
 test('inline salaries and comma-separated next headcounts still parse',()=>{
  assert.deepEqual(parseBrief('3位工程師月薪50000至60000,5位助理月薪35,000').map(j=>[j.role,j.hires,j.salaryMin,j.salaryMax]),[['工程師',3,50000,60000],['助理',5,35000,35000]]);
  assert.equal(parseBrief('1,000位作業員')[0].hires,1000);

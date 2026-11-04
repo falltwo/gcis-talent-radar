@@ -63,22 +63,29 @@
   function salaryNumber(text){
     for(const part of text.match(/\d[\d,]*/g)||[])if(part.includes(',')&&!/^\d{1,3}(?:,\d{3})+$/.test(part))throw Error('薪資千分位格式不正確，請重新確認。');
     const raw=text.replace(/,/g,'');
-    if(/^\d+(?:\.\d+)?$/.test(raw))return Number(raw);
+    if(/^\d+(?:\.\d+)?$/.test(raw)&&!/[萬万千百十]/.test(raw))return Number(raw);
     if(/^[零〇一二兩三四五六七八九]+$/.test(raw))return Number([...raw].map(c=>salaryDigits[c]).join(''));
     const tokens=raw.match(/\d+(?:\.\d+)?|[零〇一二兩三四五六七八九十百千萬万]/g)||[];
     if(tokens.join('')!==raw)throw Error('無法辨識薪資金額，請重新確認。');
+    const multiplyAmount=(value,unit)=>{
+      if(typeof value!=='string')return value*unit;
+      const [whole,fraction='']=value.split('.'),scale=10n**BigInt(fraction.length);
+      const scaled=(BigInt(whole)*scale+BigInt(fraction||'0'))*BigInt(unit);
+      if(scaled%scale!==0n)throw Error('薪資換算後須為整數元，請重新確認。');
+      return Number(scaled/scale);
+    };
     let total=0,section=0,pending=null,lastUnit=10000,wan=false;
     for(const token of tokens){
       const unit=salaryUnits[token];
       if(!unit){
         if(pending!==null&&pending!==0)throw Error('薪資數字格式不明確，請重新確認。');
-        pending=token in salaryDigits?salaryDigits[token]:Number(token);
+        pending=token in salaryDigits?salaryDigits[token]:(token.includes('.')?token:Number(token));
       }else if(unit===10000){
         if(wan)throw Error('薪資萬位格式不明確，請重新確認。');
-        total+=(section+(pending??0)||1)*unit;section=0;pending=null;lastUnit=10000;wan=true;
+        total+=section*unit+multiplyAmount(pending??(section===0?1:0),unit);section=0;pending=null;lastUnit=10000;wan=true;
       }else{
         if(unit>=lastUnit)throw Error('薪資單位順序不正確，請重新確認。');
-        section+=(pending??1)*unit;pending=null;lastUnit=unit;
+        section+=multiplyAmount(pending??1,unit);pending=null;lastUnit=unit;
       }
     }
     return total+section+(pending??0);
@@ -91,19 +98,16 @@
       // A partial numeric match must never turn an unsupported amount into a valid salary.
       if(/^[\d零〇一二兩三四五六七八九十百千萬万.至到~～–-]|^(?:以上|以下|起|左右|美金|美元|USD|[a-z])/i.test(tail)||(/^,\s*\d/.test(tail)&&!/^,\s*\d[\d,]*\s*[位名個人]/.test(tail)))throw Error('薪資範圍或單位無法完整辨識，請重新確認。');
       const prefix=clean.slice(0,mention.index).trimEnd();
-      const named=spans.filter(s=>{
-        const escaped=s.job.role.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
-        return new RegExp(escaped+String.raw`\s*(?:的\s*)?(?:[:：]\s*)?$`).test(prefix);
-      }).sort((a,b)=>b.job.role.length-a.job.role.length);
+      const clause=prefix.split(/[、，,；;。\n]/).at(-1).trim();
+      const title=clause.replace(/^\d+(?:,\d{3})*\s*[位名個人]\s*/,'').replace(/\s*(?:的\s*)?(?:[:：]\s*)?$/,'').trim();
+      const named=spans.filter(s=>s.job.role===title);
       let owner;
       if(named.length){
-        const longest=named[0].job.role;
-        if(named.filter(s=>s.job.role===longest).length>1)throw Error('同名職缺的薪資歸屬不明確，請使用不同職稱。');
+        if(named.length>1)throw Error('同名職缺的薪資歸屬不明確，請使用不同職稱。');
         owner=named[0];
       }else{
         // Bare salary clauses attach to the immediately preceding count/title only.
         // Any other named/prose prefix must be clarified rather than assigned to that job.
-        const clause=prefix.split(/[、，,；;。\n]/).at(-1).trim();
         if(clause)throw Error('薪資無法對應職缺，請使用「職稱月薪金額」明確指定。');
         owner=spans.filter(s=>s.start<mention.index).at(-1);
       }
@@ -121,10 +125,13 @@
   function parseBrief(text){
     const clean=String(text||'').normalize('NFKC'),jobs=[],spans=[];
     // Locate each count/title independently; a later count always starts another job.
-    const starts=[...clean.matchAll(/(\d+(?:,\d{3})*)\s*[位名個人]\s*/g)];
+    const starts=[...clean.matchAll(/(?<![\d.])([+-]?\d+(?:,\d{3})*(?:\.\d+)?)\s*[位名個人]\s*/g)];
     for(let i=0;i<starts.length;i++){
-      const m=starts[i],count=Number(m[1].replace(/,/g,''));
-      if(!Number.isInteger(count)||count<1||count>100000)continue;
+      const m=starts[i];
+      if(!/^\d+(?:,\d{3})*$/.test(m[1]))throw Error('招募人數須為 1 至 100000 的整數。');
+      const count=Number(m[1].replace(/,/g,''));
+      if(count===0)continue;
+      if(!Number.isSafeInteger(count)||count<1||count>100000)throw Error('招募人數須為 1 至 100000 的整數。');
       const segment=clean.slice(m.index+m[0].length,starts[i+1]?.index??clean.length);
       const role=segment.split(/[、，,；;。\n]|月薪|薪資|待遇|在|於|需要|希望/)[0].replace(/[及與和\s]+$/,'').trim();
       if(!role||role.length>80)continue;
