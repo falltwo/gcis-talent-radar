@@ -104,6 +104,34 @@ class CampusMapTests(unittest.TestCase):
     def query(self, **kwargs):
         return search_education_campuses(24.15, 120.65, **kwargs)
 
+    def test_job_title_finds_direct_and_related_departments_in_the_same_search(self):
+        title = '軟體設計工程師'
+        school_evidence = {'title': title, 'source_url': 'https://school.example/careers'}
+        field_evidence = {'title': title, 'source_url': 'https://field.example/careers'}
+        index = (
+            'fixture',
+            {'cs': {'direct': [school_evidence], 'related': [field_evidence]},
+             'me': {'related': [field_evidence]}},
+            {title: title},
+        )
+        with patch('engine.campus_careers.career_index', return_value=index):
+            params = {'latitude': 24.15, 'longitude': 120.65, 'radius_km': 1.5, 'q': '軟體工程師'}
+            code, direct = api_get(self.app, params)
+            _, expanded = api_get(self.app, {**params, 'include_related': 'true'})
+            _, name = api_get(self.app, {**params, 'q': '資工'})
+
+        self.assertEqual(code, 200)
+        self.assertEqual(direct['search_type'], 'DEPARTMENT_CAREER')
+        self.assertEqual(direct['career_query']['roles'], [title])
+        self.assertEqual([row['campus_id'] for row in direct['items']], ['b1'])
+        self.assertEqual([row['campus_id'] for row in expanded['items']], ['b1', 'a1'])
+        first, second = expanded['items']
+        self.assertEqual(first['unlocated_department_matches'][0]['career_matches'], [school_evidence])
+        self.assertEqual(first['related_departments'], [])
+        self.assertEqual(second['match_tier'], 'RELATED')
+        self.assertEqual(second['related_departments'][0]['career_matches'], [field_evidence])
+        self.assertEqual(name['search_type'], 'CAMPUS_AND_DEPARTMENT_NAME_TEXT')
+
     def test_only_verified_taichung_geometry_and_sorted_real_distances(self):
         result = self.query(radius_km=5)
         self.assertEqual(result['release_id'], 'current')

@@ -40,6 +40,12 @@ python -m pytest tests -q
 
 名冊、座標、總機各有獨立 ETL；操作電話更新見 [電話資料說明](CAMPUS_PHONE_CONTACTS.md)。名冊／座標更新前產生的 `data/backups/education/` 已列入 `.gitignore`；電話備份位於已忽略的 `tmp/education-contact-backups/`。
 
-資料庫只保存教育目錄、科系名稱、座標、公開總機與來源，不含舊人數表或企業排名。`.env`、備份、原始網頁、日誌、原產業 DB 及本機工具不納入提交。
+交付的 SQLite 已匯入補充職涯資料。更新補充清單或重建教育資料庫後，執行以下指令。匯入程式會先備份，再核對當前名冊中的系所 ID。
+
+```powershell
+python -m etl.load_education_careers --db database/education_directory.sqlite3
+```
+
+更新 ColleGo 職涯索引可執行 `python -m etl.load_campus_careers`。此步驟需要網路與教育資料解析套件。API 使用隨附索引與 SQLite 查詢。
 
 正式前端要分段驗收校區搜尋、科系匹配、資訊欄、鏡頭互動；參考 patch 只作選用整合版本。

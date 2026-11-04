@@ -5,6 +5,7 @@ import os
 import sqlite3
 import unicodedata
 from engine.campus_search import expand, suggestions
+from engine.campus_careers import search_careers
 from engine.education_contacts import read_institution_contacts, missing_phone
 from contextlib import contextmanager
 from pathlib import Path
@@ -247,6 +248,22 @@ def search_education_campuses(latitude, longitude, radius_km=15, q='', db_path=N
             JOIN education_sources s ON s.release_id=c.release_id AND s.source_key=c.source_key
             WHERE c.release_id=? AND c.city='臺中市' AND i.in_taichung_scope=1
             ORDER BY i.institution_id,c.campus_id''', (rid,)).fetchall()
+        career_query, career_matches = {}, {}
+        if keyword and not (
+            any(keyword in _search_text(row[field]) for row in campuses for field in ('institution_name', 'name'))
+            or any(term in _search_text(dept['name']) for dept in departments for term in department_terms)
+        ):
+            career_query, career_matches = search_careers(q, conn=conn, release_id=rid)
+
+        def matches_department(dept, tier):
+            if career_query:
+                return career_matches.get(dept['department_id'], {}).get(tier, [])
+            terms = department_terms if tier == 'direct' else expansion['related']
+            return any(term in _search_text(dept['name']) for term in terms)
+
+        def with_career(dept, match):
+            return {**dept, 'career_matches': match} if career_query else dept
+
         items, verified_count = [], 0
         for row in campuses:
             campus = dict(row)
@@ -268,30 +285,42 @@ def search_education_campuses(latitude, longitude, radius_km=15, q='', db_path=N
             related = list(campus_departments.get(campus['campus_id'], {}).values())
             school_departments = by_institution.get(campus['institution_id'], [])
             unlocated = [department for department in school_departments if department['department_id'] not in related_ids]
-            matched = [department for department in related
-                       if any(term in _search_text(department['name']) for term in department_terms)]
-            unlocated_matches = [department for department in unlocated
-                                 if any(term in _search_text(department['name']) for term in department_terms)]
-            related_matches = [dict(department, location_status='RELATED_TO_CAMPUS' if department['department_id'] in {d['department_id'] for d in related} else 'TEACHING_LOCATION_UNVERIFIED')
-                               for department in related + unlocated
-                               if include_related and keyword and any(term in _search_text(department['name']) for term in expansion['related'])
-                               and not any(term in _search_text(department['name']) for term in department_terms)]
+            matched = [with_career(dept, match) for dept in related
+                       if (match := matches_department(dept, 'direct'))]
+            unlocated_matches = [with_career(dept, match) for dept in unlocated
+                                 if (match := matches_department(dept, 'direct'))]
+            campus_ids = {dept['department_id'] for dept in related}
+            related_matches = [
+                dict(with_career(dept, match), location_status='RELATED_TO_CAMPUS'
+                     if dept['department_id'] in campus_ids else 'TEACHING_LOCATION_UNVERIFIED')
+                for dept in related + unlocated
+                if include_related and keyword and (match := matches_department(dept, 'related'))
+                and not matches_department(dept, 'direct')
+            ]
             tier = 'DIRECT'
             if not keyword:
                 match_scope = 'ALL'
-            elif keyword in _search_text(campus['institution_name']):
+            elif not career_query and keyword in _search_text(campus['institution_name']):
                 match_scope = 'INSTITUTION_NAME'
-            elif keyword in _search_text(campus['name']):
+            elif not career_query and keyword in _search_text(campus['name']):
                 match_scope = 'CAMPUS_NAME'
             elif matched:
-                match_scope = 'CAMPUS_DEPARTMENT_NAME'
+                match_scope = 'CAMPUS_DEPARTMENT_CAREER' if career_query else 'CAMPUS_DEPARTMENT_NAME'
             elif unlocated_matches:
                 match_scope = 'INSTITUTION_DEPARTMENT_UNLOCATED'
             elif related_matches:
-                match_scope = 'RELATED_FIELD'
+                match_scope = 'RELATED_CAREER' if career_query else 'RELATED_FIELD'
                 tier = 'RELATED'
             else:
                 continue
+            if career_query:
+                reason = '科系公開生涯進路' if tier == 'DIRECT' else '相關職涯或系所培育方向'
+            elif tier == 'RELATED':
+                reason = '相關領域：' + '、'.join(expansion['families'])
+            elif expansion['alias']:
+                reason = '簡稱對應：' + '、'.join(department_terms)
+            else:
+                reason = '名稱直接符合' if keyword else '搜尋範圍內的校區'
             items.append({**campus, 'latitude': lat, 'longitude': lon, 'distance_km': round(distance, 4),
                           'school_phone': contacts.get(campus['institution_id'], missing_phone()),
                           'coordinate_reference': reference, 'departments': related,
@@ -299,14 +328,14 @@ def search_education_campuses(latitude, longitude, radius_km=15, q='', db_path=N
                           'unlocated_department_count': len(unlocated), 'matched_departments': matched,
                           'unlocated_department_matches': unlocated_matches, 'match_scope': match_scope,
                           'match_tier': tier, 'related_departments': related_matches,
-                          'match_reason': ('相關領域：' + '、'.join(expansion['families'])) if tier == 'RELATED'
-                                          else ('簡稱對應：' + '、'.join(department_terms) if expansion['alias'] else '名稱直接符合' if keyword else '搜尋範圍內的校區')})
+                          'match_reason': reason})
         items.sort(key=lambda item: (item['match_tier'] != 'DIRECT', item['distance_km'], item['institution_name'], item['campus_id']))
         limitations = list(summary.get('limitations', []))
         for note in [
             '距離為選點至校園範圍內代表點的球面直線距離，不是校門距離或通勤距離。',
             '系所名稱檢索不等於職務相關性推薦；未核驗教學校區的系所不會當成已確認設於該校區。',
-            '本查詢僅比對科系名稱與相關領域，不產生媒合分數。',
+            '職務搜尋依公開生涯進路及系所培育方向，表示可能從事的工作。'
+            if career_query else '本查詢僅比對科系名稱與相關領域，不產生媒合分數。',
         ]:
             if note not in limitations:
                 limitations.append(note)
@@ -314,9 +343,11 @@ def search_education_campuses(latitude, longitude, radius_km=15, q='', db_path=N
                 'source_as_of': release['source_as_of'], 'total': len(items), 'items': items,
                 'query_expansion': {'input': q, 'department_terms': list(department_terms),
                                     'alias_applied': expansion['alias']},
-                'search_rule_version': expansion['version'], 'include_related': include_related,
-                'suggestions': suggestions(q, [d['name'] for d in departments]) if not items else [],
+                'search_rule_version': career_query.get('version', expansion['version']), 'include_related': include_related,
+                **({'career_query': career_query} if career_query else {}),
+                'suggestions': suggestions(q, [d['name'] for d in departments]) if not items and not career_query else [],
                 'status': 'OK' if items else 'NO_MATCH', 'limitations': limitations,
-                'search_type': 'CAMPUS_AND_DEPARTMENT_NAME_TEXT', 'distance_type': 'GREAT_CIRCLE',
+                'search_type': 'DEPARTMENT_CAREER' if career_query else 'CAMPUS_AND_DEPARTMENT_NAME_TEXT',
+                'distance_type': 'GREAT_CIRCLE',
                 'origin': {'latitude': latitude, 'longitude': longitude}, 'radius_km': radius_km,
                 'verified_campus_count': verified_count, 'coverage_campus_count': len(campuses)}

@@ -60,8 +60,10 @@ GET /api/education/campuses?latitude=24.15&longitude=120.65&radius_km=30&q=資�
 | `latitude` | number | 必填 | 原點緯度 -90～90，有限數值 |
 | `longitude` | number | 必填 | 原點經度 -180～180，有限數值 |
 | `radius_km` | number | 15 | 大於 0，單位公里 |
-| `q` | string | 空字串 | 最長 80 字；空白查範圍內全部校區 |
-| `include_related` | boolean | `false` | `true` 納入人工規則定義的相關科系 |
+| `q` | string | 空字串 | 最長 80 字。可輸入學校、科系名稱或職務，空白查範圍內全部校區 |
+| `include_related` | boolean | `false` | 設為 `true` 可納入相關科系。名稱搜尋依領域規則，職務搜尋依學類出路或系所培育方向 |
+
+查詢文字優先比對學校、校區和科系名稱。沒有名稱命中時，可用職務名稱或別名找科系。例如 `q=前端工程師` 會比對系所公開的職涯資料，`q=CNC 程式設計師` 搭配 `include_related=true` 可找到有相關課程的系所。
 
 無分頁；一筆代表一個校區，同校可列多筆。`total` 是校區數，不是學校數。先列 `DIRECT` 再列 `RELATED`，同層依距離、學校名稱、校區 ID 排序。不會自動擴大半徑。
 
@@ -75,10 +77,11 @@ GET /api/education/campuses?latitude=24.15&longitude=120.65&radius_km=30&q=資�
 | `origin`、`radius_km` | `{latitude, longitude}`、number，搜尋範圍 |
 | `distance_type` | `GREAT_CIRCLE`，球面直線距離，不是道路或通勤距離 |
 | `query_expansion` | `{input: string, department_terms: string[], alias_applied: boolean}` |
-| `include_related`、`search_rule_version` | boolean、string；目前規則 `campus-name-rules/2.0` |
+| `include_related`、`search_rule_version` | boolean、string。名稱搜尋為 `campus-name-rules/2.0`，使用交付資料庫的職務搜尋為 `campus-careers/1.1` |
 | `suggestions` | string[]，空結果時可能提供建議；由使用者點選重查 |
 | `verified_campus_count`、`coverage_campus_count` | integer，核驗與收錄數，並非本次命中數 |
-| `search_type` | `CAMPUS_AND_DEPARTMENT_NAME_TEXT` |
+| `search_type` | 名稱搜尋為 `CAMPUS_AND_DEPARTMENT_NAME_TEXT`，職務搜尋為 `DEPARTMENT_CAREER` |
+| `career_query` | 僅職務搜尋回傳，格式為 `{version: string, roles: string[]}` |
 | `limitations` | string[]，資料及解讀限制 |
 
 `items[]` 的欄位：
@@ -94,7 +97,7 @@ GET /api/education/campuses?latitude=24.15&longitude=120.65&radius_km=30&q=資�
 | `source_url`、`fetched_at`、`website`、`profile_url` | string，名冊來源、取得時間、學校網站與教育部介紹頁 |
 | `school_phone` | object，學校總機，見下節 |
 | `match_tier`、`match_reason` | `DIRECT`／`RELATED`、string，匹配層級及原因 |
-| `match_scope` | `ALL`、`INSTITUTION_NAME`、`CAMPUS_NAME`、`CAMPUS_DEPARTMENT_NAME`、`INSTITUTION_DEPARTMENT_UNLOCATED`、`RELATED_FIELD` |
+| `match_scope` | `ALL`、`INSTITUTION_NAME`、`CAMPUS_NAME`、`CAMPUS_DEPARTMENT_NAME`、`CAMPUS_DEPARTMENT_CAREER`、`INSTITUTION_DEPARTMENT_UNLOCATED`、`RELATED_FIELD`、`RELATED_CAREER` |
 | `matched_departments` | array，有校區來源關聯且直接匹配的科系；仍需看關聯類型 |
 | `unlocated_department_matches` | array，同校直接匹配、尚無校區關聯的科系，不能說就在此校區授課 |
 | `related_departments` | array，相關科系；`include_related=false` 時為空 |
@@ -102,6 +105,8 @@ GET /api/education/campuses?latitude=24.15&longitude=120.65&radius_km=30&q=資�
 | `institution_department_count`、`unlocated_department_count` | integer，目錄診斷數，非學生人數；目前不顯示 |
 
 科系基本物件含 `department_id`、`institution_id`、`name`、`college`、`website`、`registry_listed`（0／1）、`source_url`。網址可能缺少，前端需允許純文字名稱。
+
+職務命中的科系另帶 `career_matches`，每筆含對應職稱 `title` 與來源 `source_url`。依系所課程或培育方向推得的相關科系另帶 `basis: "TRAINING"`。職涯資料描述可能從事的工作。
 
 `registry_listed=1` 表示當期系所組織名冊列有此科系；`0` 表示只由同年度補充來源取得名稱，當期組織名冊未列出。`0` 不代表確定停招，也不能宣稱目前仍招生。前端應保留名稱並顯示「名冊未列，招生狀態待查」，此提示與教學校區是否核驗是兩回事。
 

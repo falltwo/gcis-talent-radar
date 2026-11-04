@@ -1,4 +1,4 @@
-"""Directory inspection APIs; job-to-department matching is a separate phase."""
+"""Education directory, campus search, and campus details APIs."""
 from fastapi import APIRouter, HTTPException, Query
 from engine.campus_details import campus_detail, EducationEntityNotFound
 from engine.education_directory import (
