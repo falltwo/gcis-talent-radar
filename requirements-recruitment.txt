@@ -1,0 +1,9 @@
+# Authenticated recruitment backend and offline OpenRouter contract tests.
+fastapi==0.135.1
+SQLAlchemy==2.0.45
+pydantic==2.12.5
+httpx==0.28.1
+python-dotenv>=1,<2
+uvicorn>=0.35,<1
+psycopg[binary]>=3.2,<4
+pytest>=8,<10

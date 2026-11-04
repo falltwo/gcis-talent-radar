@@ -1,0 +1,733 @@
+diff --git a/tests/campus_camera_harness.cjs b/tests/campus_camera_harness.cjs
+new file mode 100644
+index 0000000..b8e6c40
+--- /dev/null
++++ b/tests/campus_camera_harness.cjs
+@@ -0,0 +1,15 @@
++const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
++let center=[120.65,24.2],zoom=12,pitch=35,bearing=18,padding={top:8,bottom:9,left:10,right:11};
++let handler=null,fly=null,ease=null;const states=[];
++const map={getCenter:()=>({lng:center[0],lat:center[1]}),getZoom:()=>zoom,getPitch:()=>pitch,getBearing:()=>bearing,getPadding:()=>padding,
++ getContainer:()=>({clientWidth:930}),stop(){},off(){handler=null;},once(_,fn){handler=fn;},
++ flyTo(options){fly=options;center=options.center;zoom=options.zoom;pitch=options.pitch;bearing=options.bearing;},easeTo(options){ease=options;}};
++const c={window:{innerWidth:1280},setTimeout,clearTimeout};vm.createContext(c);vm.runInContext(fs.readFileSync(require('node:path').join(__dirname,'../ui/static/campus-camera.js'),'utf8'),c);
++const camera=c.window.createCampusCamera(map,false,state=>states.push(state));
++camera.focus([120.7,24.1]);assert.equal(camera.getState(),'flying');const old=handler;
++camera.focus([120.8,24.3]);old();assert.equal(camera.getState(),'flying','Old moveend must not complete a newer flight');
++handler();assert.equal(camera.getState(),'detail');assert.equal(fly.zoom,16.5);assert.equal(fly.pitch,56);
++camera.restore();assert.deepEqual(Array.from(ease.center),[120.65,24.2]);assert.equal(ease.zoom,12);assert.equal(ease.pitch,35);assert.equal(ease.bearing,18);assert.equal(ease.padding.left,10);
++camera.focus([120.9,24.3]);const late=handler;camera.discard();late();assert.equal(camera.getState(),'overview');ease=null;camera.restore();assert.equal(ease,null,'A discarded location cannot be restored');
++const reduced=c.window.createCampusCamera(map,true);reduced.focus([120.6,24.2]);assert.equal(fly.duration,0);reduced.restore();assert.equal(ease.duration,0);
++console.log('PASS campus camera: chained focus, exact restoration, cancellation, reduced motion');
+diff --git a/tests/campus_frontend_harness.cjs b/tests/campus_frontend_harness.cjs
+new file mode 100644
+index 0000000..85b0e13
+--- /dev/null
++++ b/tests/campus_frontend_harness.cjs
+@@ -0,0 +1,252 @@
++/* Execute the shipped campus controller with a small deterministic DOM/map.
++ * Fixtures below are contract examples, never substitute production data.
++ */
++const assert = require('node:assert/strict');
++const fs = require('node:fs');
++const path = require('node:path');
++const vm = require('node:vm');
++
++function environment() {
++  const ids = new Map(), events = new Map(), requests = [], markers = [], popups = [];
++  class Element {
++    constructor(tag = 'div') {
++      this.tagName = tag.toUpperCase(); this.children = []; this.dataset = {};
++      this.attributes = {}; this.listeners = {}; this.hidden = false;
++      this.disabled = false; this.value = ''; this._text = ''; this._className = '';
++      this.style = {setProperty() {}, removeProperty() {}};
++      this.classList = {
++        add: (...v) => {this._className = [...new Set([...this._className.split(/\s+/).filter(Boolean), ...v])].join(' ');},
++        remove: (...v) => {this._className = this._className.split(/\s+/).filter(x => !v.includes(x)).join(' ');},
++        contains: v => this._className.split(/\s+/).includes(v),
++        toggle: (v, force) => {const on = force ?? !this.classList.contains(v); on ? this.classList.add(v) : this.classList.remove(v); return on;},
++      };
++    }
++    set id(v) {this._id = v; ids.set(v, this);} get id() {return this._id || '';}
++    set className(v) {this._className = v;} get className() {return this._className;}
++    set textContent(v) {this._text = String(v); this.children = [];}
++    get textContent() {return this._text + this.children.map(n => n.textContent || '').join('');}
++    set innerHTML(html) {
++      this.children = []; this._text = ''; const stack = [this];
++      const tokens = html.match(/<[^>]+>|[^<]+/g) || [];
++      for (const token of tokens) {
++        if (token.startsWith('</')) {if (stack.length > 1) stack.pop(); continue;}
++        if (token.startsWith('<')) {
++          const match = token.match(/^<([\w-]+)/); if (!match) continue;
++          const el = new Element(match[1]);
++          for (const attr of token.slice(match[0].length, -1).matchAll(/([\w-]+)(?:="([^"]*)"|='([^']*)'|=([^\s>]+))?/g)) {
++            el.setAttribute(attr[1], attr[2] ?? attr[3] ?? attr[4] ?? '');
++          }
++          stack.at(-1).append(el);
++          if (!/^(input|br|hr|img|meta|link)$/i.test(match[1]) && !token.endsWith('/>')) stack.push(el);
++        } else stack.at(-1)._text += token;
++      }
++    }
++    setAttribute(k, v) {
++      v = String(v); this.attributes[k] = v;
++      if (k === 'id') this.id = v;
++      if (k === 'class') this.className = v;
++      if (k === 'value') this.value = v;
++      if (k === 'hidden') this.hidden = true;
++      if (k === 'checked') this.checked = true;
++      if (k.startsWith('data-')) this.dataset[k.slice(5).replace(/-([a-z])/g, (_, a) => a.toUpperCase())] = v;
++    }
++    getAttribute(k) {return this.attributes[k] ?? null;}
++    removeAttribute(k) {delete this.attributes[k];}
++    append(...nodes) {for (let n of nodes) {if (typeof n === 'string') {const text = new Element('text'); text._text = n; n = text;} n.parentElement = this; this.children.push(n);}}
++    prepend(...nodes) {for (const n of nodes) n.parentElement = this; this.children.unshift(...nodes);}
++    insertBefore(n, reference) {n.parentElement=this;const index=this.children.indexOf(reference);if(index<0)this.children.push(n);else this.children.splice(index,0,n);}
++    replaceChildren(...nodes) {this.children = []; this._text = ''; this.append(...nodes);}
++    remove() {if (this.parentElement) this.parentElement.children = this.parentElement.children.filter(n => n !== this);}
++    matches(selector) {
++      if (selector === 'dialog[open]') return this.tagName === 'DIALOG' && this.open;
++      if (selector.startsWith('#')) return this.id === selector.slice(1);
++      if (selector.startsWith('.')) return this.classList.contains(selector.slice(1));
++      const attribute = selector.match(/^([\w-]+)?\[([^=\]]+)(?:=["']?([^"'\]]+)["']?)?\]$/);
++      if (attribute) return (!attribute[1] || this.tagName.toLowerCase() === attribute[1]) && this.getAttribute(attribute[2]) !== null && (!attribute[3] || this.getAttribute(attribute[2]) === attribute[3]);
++      return this.tagName.toLowerCase() === selector;
++    }
++    querySelectorAll(selector) {
++      const selectors = selector.split(',').map(s => s.trim()); const found = [];
++      for (const child of this.children) {if (selectors.some(s => child.matches(s))) found.push(child); found.push(...child.querySelectorAll(selector));}
++      return found;
++    }
++    querySelector(selector) {return this.querySelectorAll(selector)[0] || null;}
++    closest(selector) {return selector === 'section.panel' ? chat : this.matches(selector) ? this : this.parentElement?.closest(selector);}
++    addEventListener(type, fn) {(this.listeners[type] ||= []).push(fn);}
++    emit(type, extra = {}) {const event = {type, target: this, currentTarget: this, preventDefault() {}, ...extra}; for (const fn of this.listeners[type] || []) fn(event);}
++    click() {return this.emit('click');}
++    focus() {} scrollIntoView() {} setCustomValidity(v) {this.validationMessage = v;}
++    checkValidity() {return !this.validationMessage && (!this.id.includes('radius') || Number(this.value) >= 0.1);}
++    reportValidity() {return this.checkValidity();}
++  }
++  const body = new Element('body'), workspace = new Element('section'); workspace.className = 'radar-workspace'; body.append(workspace);
++  const chat = new Element('section'); chat.className = 'panel';
++  for (const id of ['ask-title', 'radar-chat', 'city-stage', 'company-roles']) {const el = new Element(); el.id = id; (id === 'ask-title' ? chat : workspace).append(el);}
++  ids.get('radar-chat').append(chat); ids.get('company-roles').textContent = 'CNC 技術員、品管人員';
++  const document = {
++    body, createElement: tag => new Element(tag), createTextNode: text => {const n = new Element('text'); n.textContent = text; return n;},
++    getElementById: id => ids.get(id), querySelector: selector => body.querySelector(selector), querySelectorAll: selector => body.querySelectorAll(selector),
++    addEventListener: (type, fn) => {(events.get(type) || events.set(type, []).get(type)).push(fn);},
++  };
++  const sources = new Map(), layers = new Map();
++  const map = {
++    addSource: (id, value) => sources.set(id, {...value, setData(data) {this.data = data;}}), getSource: id => sources.get(id), removeSource: id => sources.delete(id),
++    addLayer: layer => layers.set(layer.id, layer), getLayer: id => layers.get(id), removeLayer: id => layers.delete(id),
++    setPaintProperty() {}, fitBounds() {}, easeTo() {}, flyTo() {}, stop() {}, resize() {}, getCenter:()=>({lng:120.65,lat:24.2}),getZoom:()=>12,getPitch:()=>35,getBearing:()=>-15,getPadding:()=>({top:0,bottom:0,left:0,right:0}),isStyleLoaded: () => true,
++    getContainer: () => ({clientHeight: 900,clientWidth:930}), once: (_, fn) => fn(), on() {}, off() {},
++  };
++  let location = {coordinates: [120.65, 24.2], district: '大雅區', road: '測試道路'};
++  class Marker {
++    constructor({element}) {this.el = element; markers.push(this);}
++    setLngLat(coordinates) {this.coordinates = coordinates; return this;}
++    addTo() {this.removed = false; return this;} getElement() {return this.el;} remove() {this.removed = true;}
++  }
++  class Popup {
++    constructor() {popups.push(this);}
++    setLngLat() {return this;} setDOMContent(el) {this.el = el; return this;} addTo() {return this;}
++    getElement() {return this.el;} on(type, fn) {if (type === 'close') this.onClose = fn; return this;}
++    remove() {this.onClose?.();}
++  }
++  class LngLatBounds {extend() {return this;}}
++  const window = {streetMap: {getMap: () => map, getLocation: () => location, closeCompany() {}}, radarFeatures: {select() {}}};
++  const fetch = (url, options = {}) => new Promise((resolve, reject) => {requests.push({url: String(url), options, resolve, reject});options.signal?.addEventListener('abort',()=>reject(Object.assign(Error('Aborted'),{name:'AbortError'})),{once:true});});
++  const context = {document, window, maplibregl: {Marker, Popup, LngLatBounds}, fetch, console, URL, URLSearchParams, Intl, AbortController,
++    matchMedia: () => ({matches: true}), performance: {now: () => 10000}, requestAnimationFrame: () => 1, cancelAnimationFrame() {}, setTimeout, clearTimeout,
++    sessionStorage: {getItem: () => null, setItem() {}, removeItem() {}}, localStorage: {getItem: () => null, setItem() {}, removeItem() {}},
++  };
++  vm.createContext(context);
++  for(const script of ['campus-camera.js','campus-insights.js','campus-matching.js'])vm.runInContext(fs.readFileSync(path.join(__dirname, '../ui/static/'+script), 'utf8'), context);
++  return {ids, requests, markers, popups, sources, layers, window, workspace, chat,
++    event: (type, detail) => Promise.all((events.get(type) || []).map(fn => fn({type, detail}))),
++    setLocation: value => {location = value;},
++    liveMarkers: () => markers.filter(marker => !marker.removed),
++  };
++}
++
++const flush = async () => {for (let i = 0; i < 3; i++) await new Promise(resolve => setImmediate(resolve));};
++const campus = (id = 'campus-a', longitude = 120.68) => ({campus_id: id, institution_id: 'school-a', institution_name: '契約測試大學', name: '正式校區',
++  city: '臺中市', district: '西屯區', address: '臺中市測試路', latitude: 24.17, longitude, distance_km: 4.5,
++  source_url: 'https://udb.moe.edu.tw/fixture', website: 'https://fixture.edu.tw',
++  coordinate_status: 'VERIFIED_OFFICIAL_GEOMETRY',
++  coordinate_reference: {point_type: 'CAMPUS_INTERIOR_REFERENCE', crs: 'EPSG:4326'},
++  departments: [{department_id: 'dept-a', name: '機械工程學系', website: 'https://fixture.edu.tw/me', relation_type: 'SINGLE_OFFICIAL_CAMPUS', relation_label: '單一官方校區推定，非逐系教學校區核驗'}],
++  unlocated_department_count: 0, matched_departments: [], unlocated_department_matches: [], match_scope: 'ALL'});
++const answer = (items = [campus()]) => ({release_id: 'contract-fixture', academic_year: 114, total: items.length, items,
++  verified_campus_count: 22, coverage_campus_count: 22, status: items.length ? 'OK' : 'NO_MATCH',
++  source_as_of: '114學年度', search_type: 'CAMPUS_AND_DEPARTMENT_NAME_TEXT', distance_type: 'GREAT_CIRCLE',
++  limitations: ['校園範圍內代表點，非校門。']});
++async function respond(request, payload = answer(), status = 200) {request.resolve({ok: status >= 200 && status < 300, status, json: async () => payload}); await flush();}
++const cases = {
++  async actual_api_coordinates() {
++    const e = environment(); e.window.campusMatching.toggle(); await flush();
++    assert.equal(e.requests.length, 1);
++    const url = new URL(e.requests[0].url, 'http://test');
++    assert.equal(url.pathname, '/api/education/campuses');
++    assert.equal(Number(url.searchParams.get('latitude')), 24.2); assert.equal(Number(url.searchParams.get('longitude')), 120.65);
++    assert.equal(Number(url.searchParams.get('radius_km')), 15);
++    assert.ok(!url.searchParams.get('q'), 'Do not silently turn a job title into a department match');
++    await respond(e.requests[0]);
++    assert.equal(e.liveMarkers().length, 1);
++    assert.deepEqual(Array.from(e.liveMarkers()[0].coordinates), [120.68, 24.17], 'Use the API coordinate without origin offsets');
++    assert.match(e.ids.get('campus-results').textContent, /契約測試大學/);
++    assert.doesNotMatch(e.ids.get('campus-results').textContent, /虛構|展示距離/);
++  },
++  async stale_request_and_exit() {
++    const e = environment(); e.window.campusMatching.toggle(); await flush(); const first = e.requests[0];
++    await e.event('streetmap:location-changing'); e.setLocation({coordinates: [120.7, 24.1], district: '南區'});
++    await e.event('streetmap:location'); await flush(); const second = e.requests[1]; assert.ok(second);
++    await respond(second, answer([campus('new-campus', 120.72)]));
++    await respond(first, answer([campus('old-campus', 120.61)]));
++    assert.equal(e.liveMarkers().length, 1); assert.deepEqual(Array.from(e.liveMarkers()[0].coordinates), [120.72, 24.17]);
++    e.window.campusMatching.deactivate(); assert.equal(e.liveMarkers().length, 0); assert.equal(e.sources.size, 0);
++    assert.equal(e.ids.get('campus-panel').hidden, true); assert.equal(e.chat.hidden, false);
++    e.window.campusMatching.toggle(); await flush(); const last = e.requests.at(-1); e.window.campusMatching.deactivate(); await respond(last);
++    assert.equal(e.liveMarkers().length, 0, 'A late response must not reopen the map after leaving');
++  },
++  async unavailable_then_retry() {
++    const e = environment(); e.window.campusMatching.toggle(); await flush();
++    await respond(e.requests[0], {detail: '校園資料尚未匯入'}, 503);
++    assert.equal(e.liveMarkers().length, 0); assert.ok(e.ids.get('campus-results-status').textContent);
++    const retry = e.ids.get('campus-retry');
++    if (retry) await retry.click(); else await e.ids.get('campus-filters').emit('submit');
++    await flush(); assert.equal(e.requests.length, 2, 'The failure must allow another real API request');
++    await respond(e.requests[1]); assert.equal(e.liveMarkers().length, 1);
++  },
++  async empty_and_radius_validation() {
++    const e = environment(); e.window.campusMatching.toggle(); await flush(); await respond(e.requests[0], answer([]));
++    assert.equal(e.liveMarkers().length, 0); assert.match(e.ids.get('campus-results-status').textContent, /沒有|查無|找不到|無符合/);
++    e.ids.get('campus-radius').value = '0'; await e.ids.get('campus-filters').emit('submit'); await flush();
++    assert.equal(e.requests.length, 1, 'Invalid radius must not create an API request');
++    e.ids.get('campus-radius').value = '7.5'; await e.ids.get('campus-filters').emit('submit'); await flush();
++    assert.equal(Number(new URL(e.requests[1].url, 'http://test').searchParams.get('radius_km')), 7.5);
++    await respond(e.requests[1], answer([]));
++  },
++  async keyword_is_an_api_name_search() {
++    const e = environment(); e.window.campusMatching.toggle(); await flush(); await respond(e.requests[0]);
++    e.ids.get('campus-query').value = '機械工程';
++    await e.ids.get('campus-filters').emit('submit'); await flush();
++    const url = new URL(e.requests[1].url, 'http://test');
++    assert.equal(url.pathname, '/api/education/campuses'); assert.equal(url.searchParams.get('q'), '機械工程');
++    assert.equal(e.liveMarkers().length, 0, 'Old search results must disappear while the new query is pending');
++    await respond(e.requests[1], answer([])); assert.equal(e.liveMarkers().length, 0);
++  },
++  async related_toggle_and_suggestions(){
++    const e=environment();e.window.campusMatching.toggle();await flush();
++    assert.equal(new URL(e.requests[0].url,'http://test').searchParams.get('include_related'),'true');
++    await respond(e.requests[0],{...answer([]),suggestions:['資訊工程']});
++    e.ids.get('campus-related').checked=false;
++    await e.ids.get('campus-suggestions').querySelector('button').click();await flush();
++    const url=new URL(e.requests[1].url,'http://test');
++    assert.equal(url.searchParams.get('q'),'資訊工程');assert.equal(url.searchParams.get('include_related'),'false');assert.equal(url.searchParams.get('radius_km'),'15');
++    await respond(e.requests[1],answer([]));e.window.campusMatching.deactivate();
++  },
++  async school_insights_are_scoped_and_cancelled(){
++    const e=environment();e.window.campusMatching.toggle();await flush();const selected=campus();selected.matched_departments=selected.departments.map(d=>({...d,registry_listed:1}));
++    selected.related_departments=[{department_id:'related',name:'資訊工程學系',website:'https://official.example/cs',registry_listed:0,location_status:'TEACHING_LOCATION_UNVERIFIED'}];
++    selected.departments.push({department_id:'unrelated',name:'財務金融學系'});
++    await respond(e.requests[0],answer([selected]));
++    await e.ids.get('campus-results').querySelector('button').click();await flush();
++    const panel=e.ids.get('campus-detail-panel');assert.match(panel.textContent,/機械工程學系/);assert.match(panel.textContent,/相關科系/);assert.match(panel.textContent,/資訊工程學系/);
++    assert.match(panel.textContent,/名冊未列，招生狀態待查/);
++    assert.equal(panel.querySelectorAll('small').filter(n=>n.textContent==='名冊未列，招生狀態待查').length,1,'Only the supplementary department needs the roster warning');
++    assert.doesNotMatch(panel.textContent,/在學|人數|熱門|企業偏好|財務金融/);
++    assert.equal(panel.querySelector('select'),null,'No study-scope filter remains');
++    assert.equal(e.requests.length,1,'Showing department names must not fetch enrollment statistics');
++    await panel.querySelector('.campus-return').click();assert.equal(panel.hidden,true);e.window.campusMatching.deactivate();
++  },
++  async popup_and_candidates_follow_the_origin() {
++    const e = environment(); e.window.campusMatching.toggle(); await flush();
++    const item = campus(); item.departments = []; item.unlocated_department_count = 1;
++    item.unlocated_department_matches = [{department_id: 'pending-dept', name: '資訊工程學系', website: 'javascript:alert(1)'}];
++    await respond(e.requests[0], answer([item]));
++    await e.ids.get('campus-results').querySelector('button').click();
++
++    const popup = e.ids.get('campus-detail-panel');
++    assert.match(popup.textContent, /114 學年度/); assert.match(popup.textContent, /教學校區待核驗|實際教學校區待核驗/);
++    assert.match(popup.textContent, /資訊工程學系/);assert.doesNotMatch(popup.textContent,/在學|人數/);
++    const links = popup.querySelectorAll('a'); assert.ok(links.length > 0);
++    assert.ok(links.every(link => !link.href.startsWith('javascript:')), 'Source text cannot become a script link');
++    await popup.querySelector('.campus-add').click(); assert.match(e.ids.get('campus-basket-summary').textContent, /1/);
++    await popup.querySelector('.campus-add').click(); assert.match(e.ids.get('campus-basket-summary').textContent, /0/);
++    await popup.querySelector('.campus-add').click();
++    await e.event('streetmap:location-changing'); assert.match(e.ids.get('campus-basket-summary').textContent, /0/);
++    assert.equal(e.liveMarkers().length, 0); assert.equal(e.sources.size, 0);
++  },
++  async school_phone_is_plain_text_with_source_below(){
++    const e=environment();e.window.campusMatching.toggle();await flush();const item=campus();
++    item.school_phone={status:'AVAILABLE',label:'學校總機',display:'04-2451-7250',tel_uri:'tel:+886424517250',source_url:'https://udb.moe.edu.tw/fixture.csv',checked_at:'2026-11-03T16:00:00+08:00'};
++    await respond(e.requests[0],answer([item]));await e.ids.get('campus-results').querySelector('button').click();
++    let panel=e.ids.get('campus-detail-panel');
++    assert.match(panel.textContent,/學校總機/);assert.match(panel.textContent,/04-2451-7250/);assert.doesNotMatch(panel.textContent,/查核|2026-11-03/);
++    assert.ok(panel.querySelectorAll('a').every(a=>!a.href.startsWith('tel:')));
++    assert.match(panel.querySelector('.campus-official-links').textContent,/電話來源：教育部名錄/);
++    assert.doesNotMatch(panel.querySelector('.campus-official-links').textContent,/查核|2026-11-03/);
++    assert.doesNotMatch(panel.querySelector('dl').textContent,/電話來源|2026-11-03/);
++    await panel.querySelector('.campus-return').click();
++    item.school_phone.tel_uri='javascript:alert(1)';
++    await e.ids.get('campus-results').querySelector('button').click();panel=e.ids.get('campus-detail-panel');
++    assert.ok(panel.querySelectorAll('a').every(a=>!a.href.startsWith('javascript:')));
++    e.window.campusMatching.deactivate();
++  },
++};
++(async () => {const name = process.argv[2]; assert.ok(cases[name], `Unknown case: ${name}`); await cases[name](); console.log(`PASS ${name}`);})().catch(error => {console.error(error); process.exitCode = 1;});
+diff --git a/tests/test_campus_camera.py b/tests/test_campus_camera.py
+new file mode 100644
+index 0000000..de7b8cf
+--- /dev/null
++++ b/tests/test_campus_camera.py
+@@ -0,0 +1,11 @@
++import shutil
++import subprocess
++import unittest
++from pathlib import Path
++
++
++class CampusCameraTests(unittest.TestCase):
++    @unittest.skipUnless(shutil.which('node'), 'Node.js not installed')
++    def test_camera_lifecycle(self):
++        script=Path(__file__).with_name('campus_camera_harness.cjs')
++        subprocess.run([shutil.which('node'),str(script)],check=True,capture_output=True,text=True)
+diff --git a/tests/test_campus_frontend.py b/tests/test_campus_frontend.py
+new file mode 100644
+index 0000000..406d648
+--- /dev/null
++++ b/tests/test_campus_frontend.py
+@@ -0,0 +1,46 @@
++"""Exercise the actual campus controller with deterministic API/DOM/map doubles."""
++from pathlib import Path
++import shutil
++import subprocess
++import unittest
++
++
++@unittest.skipUnless(shutil.which("node"), "Node.js is needed for frontend behavior checks")
++class CampusFrontendTests(unittest.TestCase):
++    def run_case(self, name):
++        result = subprocess.run(
++            [shutil.which("node"), str(Path(__file__).with_name("campus_frontend_harness.cjs")), name],
++            capture_output=True, text=True, encoding="utf-8", timeout=15,
++        )
++        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
++
++    def test_api_coordinates_are_not_generated_from_the_origin(self):
++        self.run_case("actual_api_coordinates")
++
++    def test_changed_location_and_exit_discard_late_responses(self):
++        self.run_case("stale_request_and_exit")
++
++    def test_unavailable_source_can_be_retried_without_demo_fallback(self):
++        self.run_case("unavailable_then_retry")
++
++    def test_empty_results_and_invalid_radius_do_not_draw_campuses(self):
++        self.run_case("empty_and_radius_validation")
++
++    def test_keyword_search_reaches_backend_and_clears_old_results(self):
++        self.run_case("keyword_is_an_api_name_search")
++
++    def test_related_toggle_and_explicit_typo_suggestion(self):
++        self.run_case("related_toggle_and_suggestions")
++
++    def test_school_panel_shows_only_matched_names_without_enrollment_requests(self):
++        self.run_case("school_insights_are_scoped_and_cancelled")
++
++    def test_popup_provenance_and_candidates_do_not_fabricate_campus_relations(self):
++        self.run_case("popup_and_candidates_follow_the_origin")
++
++    def test_phone_is_plain_text_and_source_is_in_bottom_source_group(self):
++        self.run_case("school_phone_is_plain_text_with_source_below")
++
++
++if __name__ == "__main__":
++    unittest.main()
+diff --git a/ui/home.html b/ui/home.html
+index d1b5a88..6d35fc3 100644
+--- a/ui/home.html
++++ b/ui/home.html
+@@ -50,7 +50,7 @@
+   <link rel="stylesheet" href="/static/radar-city.css?v=20261102-campus2">
+   <link rel="stylesheet" href="/static/radar-entrance.css?v=20261102-centered1">
+   <link rel="stylesheet" href="/static/company-scenario.css?v=20261102-company-popup2">
+-  <link rel="stylesheet" href="/static/campus-matching.css?v=20261102-campus3">
++  <link rel="stylesheet" href="/static/campus-matching.css?v=20261103-phone5">
+ </head>
+ <body class="analysis-paused">
+   <header class="top"><div class="shell"><div><small>GCIS × TAICHUNG</small><div>臺中製造業資料雷達</div></div>
+@@ -277,6 +277,8 @@
+   <script src="/static/radar-entrance.js?v=20261102-centered1"></script>
+   <script src="/static/radar-city.js?v=20261102-campus1"></script>
+   <script src="/static/company-scenario.js?v=20261102-company-popup2"></script>
+-  <script src="/static/campus-matching.js?v=20261102-campus3"></script>
++  <script src="/static/campus-camera.js?v=20261103-focus1"></script>
++  <script src="/static/campus-insights.js?v=20261103-roster4"></script>
++  <script src="/static/campus-matching.js?v=20261103-phone6"></script>
+ </body>
+ </html>
+diff --git a/ui/static/campus-camera.js b/ui/static/campus-camera.js
+new file mode 100644
+index 0000000..54d7b0b
+--- /dev/null
++++ b/ui/static/campus-camera.js
+@@ -0,0 +1,26 @@
++/* Campus-owned camera snapshots; no changes to the shared street-map controls. */
++(() => {
++  'use strict';
++  window.createCampusCamera = (map, reduced, onState = () => {}) => {
++    let overview = null, revision = 0, listener = null, timer = null, state = 'overview';
++    const emit = next => {state = next; onState(next);};
++    function cancel() {
++      ++revision; clearTimeout(timer);
++      if (listener) map.off('moveend', listener);
++      listener = null; map.stop();
++    }
++    return {
++      focus(coordinates) {
++        cancel();
++        if (!overview) {const c = map.getCenter(); overview = {center: [c.lng, c.lat], zoom: map.getZoom(), pitch: map.getPitch(), bearing: map.getBearing(), padding: {...map.getPadding()}};}
++        const request = revision; emit('flying');
++        const arrive = () => {if (request !== revision) return; clearTimeout(timer); if (listener) map.off('moveend', listener); listener = null; emit('detail');};
++        listener = arrive; timer = setTimeout(arrive, 2400); map.once('moveend', arrive);
++        map.flyTo({center: coordinates, zoom: 16.5, pitch: 56, bearing: -20, padding: {top: 90, bottom: 70, left: 35, right: window.innerWidth>720 ? Math.min(400,Math.max(250,map.getContainer().clientWidth*.42)) : 35}, duration: reduced ? 0 : 1350, essential: false});
++      },
++      restore(instant=false) {cancel(); const previous = overview; overview = null; if (previous) map.easeTo({...previous, duration: reduced||instant ? 0 : 650}); emit('overview');},
++      discard() {cancel(); overview = null; emit('overview');},
++      getState() {return state;},
++    };
++  };
++})();
+diff --git a/ui/static/campus-insights.js b/ui/static/campus-insights.js
+new file mode 100644
+index 0000000..5f291d9
+--- /dev/null
++++ b/ui/static/campus-insights.js
+@@ -0,0 +1,25 @@
++/* Render only the departments returned by the current campus search. */
++(() => {
++  'use strict';
++  const node=(tag,text,cls)=>{const n=document.createElement(tag);if(text!=null)n.textContent=text;if(cls)n.className=cls;return n;};
++  const safeLink=(text,url)=>{try{const u=new URL(url);if(!['https:','http:'].includes(u.protocol))return null;const a=node('a',text);a.href=u.href;a.target='_blank';a.rel='noopener noreferrer';return a;}catch{return null;}};
++  window.loadCampusInsights=(host,item)=>{
++    const direct=new Map([...(item.matched_departments||[]),...(item.unlocated_department_matches||[])].map(d=>[d.department_id,d]));
++    const related=new Map((item.related_departments||[]).filter(d=>!direct.has(d.department_id)).map(d=>[d.department_id,d]));
++    host.replaceChildren();
++    if(!direct.size&&!related.size){host.append(node('p','請先搜尋科系名稱，再查看符合與相關的科系。'));return ()=>{};}
++    const unlocated=new Set((item.unlocated_department_matches||[]).map(d=>d.department_id));
++    for(const [title,group] of [['符合搜尋的科系',direct],['相關科系',related]]){
++      if(!group.size)continue;
++      host.append(node('h3',title));const list=node('ul',null,'campus-department-list');
++      group.forEach((dept,id)=>{
++        const row=node('li');row.append(safeLink(dept.name,dept.website)||node('span',dept.name));
++        if(dept.registry_listed===0)row.append(node('small','名冊未列，招生狀態待查','campus-relation-note'));
++        if(unlocated.has(id)||dept.location_status==='TEACHING_LOCATION_UNVERIFIED')row.append(node('small','教學校區待核驗','campus-relation-note'));
++        else row.append(node('small','校區關聯依名冊，非逐系教學校區核驗','campus-relation-note'));
++        list.append(row);
++      });host.append(list);
++    }
++    return ()=>{};
++  };
++})();
+diff --git a/ui/static/campus-matching.css b/ui/static/campus-matching.css
+index 62e0a50..69b2419 100644
+--- a/ui/static/campus-matching.css
++++ b/ui/static/campus-matching.css
+@@ -1,4 +1,4 @@
+-/* Campus demo stays within the existing blue-and-white map workspace. */
++/* Official campus directory within the existing blue-and-white map workspace. */
+ .primary-feature-nav.has-selection .primary-feature-button[aria-pressed="false"]{background:#e6ebf2;border-color:#d3dce8;color:#626f82;box-shadow:none}
+ .primary-feature-nav.has-selection .primary-feature-button[aria-pressed="false"] svg{stroke:#7c8a9e}
+ .primary-feature-nav.has-selection .primary-feature-button[aria-pressed="false"]:hover{background:#d8e2ef;color:#334c6f}
+@@ -38,3 +38,76 @@
+ .campus-radius-field{position:relative;display:block;margin-top:4px}
+ #campus-filters .campus-radius-field input{margin-top:0;padding-right:45px}
+ .campus-radius-field>span{position:absolute;right:12px;top:50%;transform:translateY(-50%);font-size:12px;color:#64758c;pointer-events:none}
++
++.campus-panel-heading{flex-wrap:wrap;row-gap:6px}
++.campus-source-badge{display:inline-block;font-size:12px;line-height:1.5;padding:3px 7px;border-radius:4px;background:#edf4fc;color:#315b8d;white-space:nowrap}
++.campus-directory-note{font-size:14px;color:#52637b;margin:10px 0 18px;line-height:1.7}
++#campus-filters label,#campus-results-status{font-size:14px;color:#52637b}
++#campus-filters input{font-size:16px}
++#campus-filters button{font-size:14px}
++#campus-filters button:disabled{opacity:.65;cursor:wait}
++#campus-retry{font-size:14px;min-height:40px;margin-bottom:14px;padding:8px 14px}
++#campus-retry[hidden]{display:none}
++.campus-result{min-width:0;overflow-wrap:anywhere}
++.campus-result span,.campus-result small,.campus-result .campus-result-action{font-size:14px;line-height:1.6}
++.campus-result small{color:#5d708b}
++.campus-result.is-selected{box-shadow:none;border-color:#426eab}
++.campus-result .campus-result-caution{color:#79531b;font-size:13px}
++.campus-context span{color:#52637b;font-size:12px}
++.campus-school-popup{max-height:min(520px,calc(100svh - 210px));overflow-wrap:anywhere}
++.campus-school-popup p,.campus-school-popup h3,.campus-school-popup dl{font-size:14px;line-height:1.7}
++.campus-school-popup dt{color:#5d708b}
++.campus-school-popup dl{grid-template-columns:72px 1fr}
++.campus-school-popup .campus-popup-note{font-size:13px;color:#79531b}
++.campus-departments{list-style:none;padding:0;margin:8px 0 14px;max-height:160px;overflow:auto;scrollbar-width:thin;scrollbar-color:#a8bad0 #f2f5f9}
++.campus-departments li{font-size:14px;line-height:1.7;padding:4px 0;border-bottom:1px solid #edf1f6}
++.campus-school-popup a{color:#285b9b;text-underline-offset:3px}
++.campus-official-links{display:flex;flex-direction:column;align-items:start;gap:12px;font-size:14px;margin:16px 0}
++.campus-basket p{font-size:13px;color:#5d708b}
++.campus-basket-row{align-items:start;overflow-wrap:anywhere}
++.campus-basket-row button{flex-shrink:0}
++#campus-panel :focus-visible,.campus-school-popup :focus-visible,.campus-node:focus-visible{outline:3px solid #285eaa;outline-offset:3px}
++.campus-node span{max-width:180px;overflow:hidden;text-overflow:ellipsis;opacity:0;pointer-events:none}
++.campus-node:hover span,.campus-node:focus-visible span,.campus-node.is-selected span{opacity:1}
++@media(max-width:720px){.campus-school-popup{max-height:340px}.campus-departments{max-height:120px}}
++
++/* Campus focus owns this panel; shared company and report surfaces are unchanged. */
++.campus-detail-panel[hidden]{display:none!important}
++.campus-detail-panel{position:absolute;z-index:5;right:18px;top:112px;bottom:42px;width:min(370px,48%);background:#fff;border:1px solid #d6e0ed;border-radius:12px;overflow:auto;scrollbar-width:thin;scrollbar-color:#a8bad0 #f3f6fa;box-shadow:0 10px 26px #18385818}
++.campus-detail-panel .campus-school-popup{max-height:none;overflow:visible;padding:18px;background:transparent;border:0;border-radius:0;box-shadow:none}
++.campus-detail-panel .campus-popup-head{position:sticky;top:0;z-index:1;background:#fff;padding:4px 0 12px;flex-wrap:wrap}
++.campus-detail-panel .campus-popup-head .campus-return{width:auto;height:auto;min-height:40px;padding:8px 12px;font-size:14px;border-radius:6px;background:#285eaa;color:#fff;border:0}
++.campus-detail-panel h2{font-size:25px;color:#263f61;line-height:1.4}
++.campus-detail-panel h3{font-size:17px;margin-top:24px;line-height:1.5}
++.campus-detail-panel p{font-size:14px;line-height:1.75;color:#52637b}
++#campus-flight-status{font-size:13px;color:#315b8d}
++.campus-detail-panel .campus-departments{max-height:140px}
++.campus-insights{border-top:1px solid #dce3ed;margin-top:24px;padding-bottom:12px}
++.campus-insights select{display:block;width:100%;min-height:42px;font-size:16px;border:1px solid #b8c9de;border-radius:6px;background:#fff;color:#315075;padding:7px}
++.campus-insights details{margin-top:16px}.campus-insights summary{font-size:14px;min-height:36px;cursor:pointer;color:#285b9b}
++.campus-insights details a{display:block;font-size:14px;margin:10px 0}
++.campus-enrollment-list{list-style:none;padding:0;display:grid;gap:0;font-variant-numeric:tabular-nums}
++.campus-enrollment-list li{display:grid;grid-template-columns:1fr auto;gap:12px;padding:12px 0;border-bottom:1px solid #e5ebf3;font-size:14px;line-height:1.6}
++.campus-enrollment-list strong{white-space:nowrap;color:#263f61}
++.campus-enrollment-list .campus-relation-note{display:block;font-size:12px;line-height:1.6;color:#5d708b;margin-top:4px}
++.campus-detail-panel .campus-data-note{font-size:13px;color:#5d708b}
++.campus-detail-panel .campus-evidence-gap{background:#fff5e5;color:#79531b;padding:12px;border-radius:6px}
++#campus-filters .campus-related-toggle{grid-column:1/-1;display:flex;align-items:center;gap:8px;font-size:14px;min-height:36px}
++#campus-filters .campus-related-toggle input{width:18px;min-height:18px;margin:0;accent-color:#285eaa}
++#campus-suggestions{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}
++#campus-suggestions button{font-size:14px;padding:8px 12px;min-height:40px;background:#edf4fc;color:#285b9b;border:1px solid #becfe3}
++.campus-detail-active .map-toolbar{top:auto;bottom:84px}
++.campus-detail-panel :focus-visible{outline:3px solid #285eaa;outline-offset:3px}
++@media(max-width:720px){
++  .campus-detail-active .city-stage{height:auto;min-height:740px;padding-top:460px}
++  .campus-detail-panel{position:relative;top:auto;right:auto;bottom:auto;width:auto;margin:0 12px 30px;max-height:none}
++  .campus-detail-active #city-map{height:460px;bottom:auto}
++  .campus-detail-active .map-status-bar{top:410px;bottom:auto}
++  .campus-detail-active .city-bottom{display:none}
++  .campus-detail-active .map-toolbar{top:360px;bottom:auto}
++}
++
++.campus-department-list{list-style:none;padding:0;margin:8px 0 20px}
++.campus-department-list li{padding:12px 0;border-bottom:1px solid #e5ebf3;font-size:15px;line-height:1.7;overflow-wrap:anywhere}
++.campus-department-list .campus-relation-note{display:block;color:#5d708b;font-size:12px;margin-top:4px}
++.campus-detail-panel .campus-phone-number{font-size:16px;line-height:1.75;font-variant-numeric:tabular-nums}
+diff --git a/ui/static/campus-matching.js b/ui/static/campus-matching.js
+index 15a7155..ccb631f 100644
+--- a/ui/static/campus-matching.js
++++ b/ui/static/campus-matching.js
+@@ -1,4 +1,4 @@
+-/* Frontend demonstration adapter. No real school or skill-match claims. */
++/* Official campus directory; name searches do not imply job recommendations. */
+ (() => {
+   'use strict';
+   const $=id=>document.getElementById(id),workspace=document.querySelector('.radar-workspace');
+@@ -6,39 +6,45 @@
+   const tabs=document.createElement('div');tabs.className='campus-tabs';tabs.hidden=true;
+   tabs.innerHTML='<button type="button" aria-pressed="true" data-view="schools">學校清單</button><button type="button" aria-pressed="false" data-view="assistant">資料助理</button>';
+   const panel=document.createElement('section');panel.id='campus-panel';panel.hidden=true;
+-  panel.innerHTML=`<div class="campus-panel-heading"><h2>校園人才媒合</h2><span class="campus-demo-badge">展示版</span></div>
+-    <p class="campus-demo-note">虛構校區，非真實學校與媒合結果。</p>
+-    <form id="campus-filters"><label for="campus-roles">想招募的職務<input id="campus-roles" name="roles" maxlength="120" autocomplete="off" placeholder="例如：CNC 技術員、品管人員"></label>
+-    <label for="campus-radius">搜尋範圍<span class="campus-radius-field"><input id="campus-radius" name="radius" type="number" min="0.1" step="any" value="15" required inputmode="decimal" aria-describedby="campus-radius-unit"><span id="campus-radius-unit">公里</span></span></label><button type="submit">更新展示結果</button></form>
+-    <p id="campus-results-status" role="status" aria-live="polite"></p><div id="campus-results"></div>
+-    <details class="campus-basket"><summary id="campus-basket-summary">合作候選（0）</summary><p>此分頁的展示清單，加入不代表已聯絡或合作。</p><div id="campus-basket-list"></div></details>`;
++  panel.innerHTML=`<div class="campus-panel-heading"><h2>校園人才媒合</h2><span class="campus-source-badge" id="campus-source-label">官方校區名冊</span></div>
++    <p class="campus-directory-note">探索臺中真實校區與科系。依名稱查詢，尚未提供職務推薦。</p>
++    <form id="campus-filters"><label for="campus-query">學校或系所名稱<input id="campus-query" name="q" maxlength="80" autocomplete="off" placeholder="例如：逢甲、機械工程"></label>
++    <label for="campus-radius">搜尋範圍<span class="campus-radius-field"><input id="campus-radius" name="radius" type="number" min="0.1" step="any" value="15" required inputmode="decimal" aria-describedby="campus-radius-unit"><span id="campus-radius-unit">公里</span></span></label><button type="submit" id="campus-search">搜尋校區</button><label class="campus-related-toggle"><input id="campus-related" type="checkbox" checked>包含相關領域（分開標示）</label></form>
++    <p id="campus-results-status" role="status" aria-live="polite"></p><button type="button" id="campus-retry" hidden>重新查詢</button><div id="campus-suggestions"></div><div id="campus-results" aria-busy="false"></div>
++    <details class="campus-basket"><summary id="campus-basket-summary">合作候選（0）</summary><p>清單只保留於本次探索；加入不代表已聯絡或合作。</p><div id="campus-basket-list"></div></details>`;
+   chatHost.prepend(tabs,panel);
+   const context=document.createElement('div');context.className='campus-context';context.hidden=true;
+-  context.innerHTML='<div><strong>校園合作候選</strong><span>展示模式：虛構校區與示範距離</span></div><div><button type="button" id="campus-show-all">查看全部</button><button type="button" id="campus-exit">退出媒合</button></div>';
++  context.innerHTML='<div><strong>校園合作候選</strong><span>真實校區位置 · 直線距離，非通勤距離</span></div><div><button type="button" id="campus-show-all">查看全部</button><button type="button" id="campus-exit">退出媒合</button></div>';
+   $('city-stage').append(context);
+-  let active=false,view='schools',dataset=null,loading=null,results=[],nodes=[],popup=null,selectedId=null,frame=0,generation=0;
+-  let originKey='',basket=new Map();
++  let active=false,view='schools',results=[],nodes=[],popup=null,selectedId=null,frame=0,generation=0,controller=null;
++  let originKey='',releaseId='',academicYear=null,basket=new Map();
++  let camera=null,cancelInsights=null,focusTrigger=null;
++  const detailPanel=document.createElement('section');detailPanel.id='campus-detail-panel';detailPanel.className='campus-detail-panel';detailPanel.hidden=true;detailPanel.setAttribute('aria-label','校園詳情');$('city-stage').append(detailPanel);
+   const lineSource='campus-demo-connections',headSource='campus-demo-heads';
+   const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
+   function node(tag,text,cls){const el=document.createElement(tag);if(text!=null)el.textContent=text;if(cls)el.className=cls;return el;}
+   function status(text){$('campus-results-status').textContent=text;}
+-  const norm=s=>String(s).toLowerCase().replace(/\s+/g,'');
+-  function matchRoles(item,roles){return !roles.trim()||item.keywords.some(keyword=>norm(roles).includes(norm(keyword)));}
+-  function demoCoordinates(origin,offset){const [east,north]=offset;return [origin[0]+east/(111.32*Math.cos(origin[1]*Math.PI/180)),origin[1]+north/110.57];}
+-  function distance(a,b){const rad=x=>x*Math.PI/180;const dLat=rad(b[1]-a[1]),dLon=rad(b[0]-a[0]);const h=Math.sin(dLat/2)**2+Math.cos(rad(a[1]))*Math.cos(rad(b[1]))*Math.sin(dLon/2)**2;return 6371*2*Math.atan2(Math.sqrt(h),Math.sqrt(Math.max(0,1-h)));}
++  const campusName=item=>`${item.institution_name}・${item.name}`;
++  function link(label,url){
++    try{const parsed=new URL(url);if(!['http:','https:'].includes(parsed.protocol))return null;const a=node('a',label);a.href=parsed.href;a.target='_blank';a.rel='noopener noreferrer';return a;}catch{return null;}
++  }
+   function curve(a,b){const dx=b[0]-a[0],dy=b[1]-a[1];const control=[(a[0]+b[0])/2-dy*.18,(a[1]+b[1])/2+dx*.18];return Array.from({length:65},(_,i)=>{const t=i/64;return [(1-t)**2*a[0]+2*(1-t)*t*control[0]+t*t*b[0],(1-t)**2*a[1]+2*(1-t)*t*control[1]+t*t*b[1]];});}
+-  async function loadData(){
+-    if(dataset)return dataset;
+-    if(!loading)loading=fetch('/static/campus-demo.json').then(r=>{if(!r.ok)throw Error('展示資料載入失敗，請稍後重試。');return r.json();}).then(data=>{
+-      if(data.mode!=='demo'||!Array.isArray(data.campuses)||data.campuses.some(item=>!item.id||!item.name||!Array.isArray(item.keywords)||!Array.isArray(item.offset_km)||item.offset_km.length!==2||!item.offset_km.every(Number.isFinite)))throw Error('展示資料格式不完整。');dataset=data;return data;
+-    }).finally(()=>{loading=null;});
+-    return loading;
++  function readData(data){
++    if(!data?.release_id||!Number.isInteger(data.academic_year)||!Array.isArray(data.items))throw Error('校區資料格式不完整，請重新查詢。');
++    const ids=new Set();
++    return data.items.map(item=>{
++      if(!item.campus_id||ids.has(item.campus_id)||!item.institution_name||!item.name||!Array.isArray(item.departments)||!Number.isFinite(item.longitude)||!Number.isFinite(item.latitude)||item.longitude < -180||item.longitude > 180||item.latitude < -90||item.latitude > 90||!Number.isFinite(item.distance_km)||item.distance_km<0)throw Error('校區座標或資料不完整，請重新查詢。');
++      ids.add(item.campus_id);return {...item,id:item.campus_id,coordinates:[item.longitude,item.latitude]};
++    });
+   }
++  function cancelRequest(){++generation;controller?.abort();controller=null;}
++  function busy(value){$('campus-results').setAttribute('aria-busy',String(value));$('campus-search').disabled=value;$('campus-search').textContent=value?'查詢中…':'搜尋校區';}
++  function clearResults(){clearMap();results=[];$('campus-results').replaceChildren();$('campus-retry').hidden=true;$('campus-suggestions').replaceChildren();}
+   function selectView(next){view=next;panel.hidden=!active||view!=='schools';chat.hidden=active&&view==='schools';tabs.querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.view===view)));}
+   tabs.querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>selectView(b.dataset.view)));
+-  function closePopup(){popup?.remove();popup=null;}
++  function closePopup(restore=true,discard=true){cancelInsights?.();cancelInsights=null;popup?.remove();popup=null;detailPanel.hidden=true;workspace.classList.remove('campus-detail-active');window.streetMap.getMap()?.resize();if(camera){if(restore)camera.restore();else if(discard)camera.discard();}if(restore)focusTrigger?.focus({preventScroll:true});}
+   function clearMap(){
+-    cancelAnimationFrame(frame);closePopup();nodes.forEach(n=>n.remove());nodes=[];
++    cancelAnimationFrame(frame);closePopup(false);nodes.forEach(n=>n.remove());nodes=[];
+     const map=window.streetMap.getMap();
+     if(map){['campus-demo-head','campus-demo-line','campus-demo-halo'].forEach(id=>{if(map.getLayer(id))map.removeLayer(id);});[lineSource,headSource].forEach(id=>{if(map.getSource(id))map.removeSource(id);});}
+   }
+@@ -57,24 +63,43 @@
+     $('campus-basket-summary').textContent=`合作候選（${basket.size}）`;
+     const box=$('campus-basket-list');box.replaceChildren();
+     if(!basket.size)box.append(node('p','尚未加入候選校區。'));
+-    basket.forEach(item=>{const row=node('div',null,'campus-basket-row');row.append(node('span',item.name));const remove=node('button','移除');remove.type='button';remove.setAttribute('aria-label',`移除${item.name}`);remove.addEventListener('click',()=>{basket.delete(item.id);updateBasket();updateAddButton();});row.append(remove);box.append(row);});
++    basket.forEach(item=>{const row=node('div',null,'campus-basket-row');row.append(node('span',campusName(item)));const remove=node('button','移除');remove.type='button';remove.setAttribute('aria-label',`移除${campusName(item)}`);remove.addEventListener('click',()=>{basket.delete(item.id);updateBasket();updateAddButton();});row.append(remove);box.append(row);});
+   }
+   function updateAddButton(){if(popup){const button=popup.getElement().querySelector('.campus-add');if(button)button.textContent=basket.has(selectedId)?'已加入候選・點擊移除':'＋ 加入合作候選';}}
++  function departmentSection(box,title,departments,note){
++    box.append(node('h3',title));if(note)box.append(node('p',note,'campus-relation-note'));
++    const list=node('ul',null,'campus-departments');
++    departments.forEach(dept=>{const row=node('li');row.append(link(dept.name,dept.website)||node('span',dept.name));list.append(row);});box.append(list);
++  }
+   function openSchool(item){
+     const map=window.streetMap.getMap();if(!active||!map)return;
+-    closePopup();window.streetMap.closeCompany(false);highlight(item.id);
+-    const box=node('section',null,'campus-school-popup');box.setAttribute('aria-label',item.name+' 展示資訊');
+-    const head=node('div',null,'campus-popup-head');head.append(node('span','虛構校區・展示資料','campus-demo-badge'));const close=node('button','×');close.type='button';close.setAttribute('aria-label','關閉學校資訊');close.addEventListener('click',()=>{closePopup();nodes.find(m=>m.getElement().dataset.campusId===item.id)?.getElement().focus({preventScroll:true});});head.append(close);box.append(head,node('h2',item.name),node('p',item.campus_name));
+-    box.append(node('h3','為什麼找到這個校系？'));item.departments.forEach(dept=>box.append(node('span',dept,'campus-dept')));box.append(node('p',item.reason));
+-    const facts=node('dl');[['示範直線距離',item.distance_km.toFixed(1)+' 公里'],['相關職務示例',item.related_roles.join('、')],['畢業生與學年','待接正式資料'],['官方合作窗口','待接正式資料']].forEach(([title,value])=>{facts.append(node('dt',title),node('dd',value));});box.append(facts,node('p','座標以企業選點為中心產生，並非真實校址。','campus-popup-note'));
+-    const add=node('button',basket.has(item.id)?'已加入候選・點擊移除':'＋ 加入合作候選','campus-add');add.type='button';add.addEventListener('click',()=>{if(basket.has(item.id))basket.delete(item.id);else basket.set(item.id,item);updateBasket();updateAddButton();status(basket.has(item.id)?`${item.name}已加入展示合作候選，尚未聯絡。`:`已移除${item.name}。`);});box.append(add);
+-    popup=new maplibregl.Popup({closeButton:false,closeOnClick:false,anchor:'bottom',offset:23,maxWidth:'310px',focusAfterOpen:false}).setLngLat(item.coordinates).setDOMContent(box).addTo(map);
+-    $('city-stage').classList.add('campus-popup-open');popup.on('close',()=>{$('city-stage').classList.remove('campus-popup-open');});
+-    map.easeTo({center:item.coordinates,offset:[0,Math.max(0,map.getContainer().clientHeight/2-65)],duration:reduced?0:450});close.focus({preventScroll:true});
++    closePopup(false,false);window.streetMap.closeCompany(false);highlight(item.id);focusTrigger=document.activeElement;
++    if(!camera)camera=window.createCampusCamera(map,reduced,state=>{workspace.dataset.campusState=state;const message=$('campus-flight-status');if(message)message.textContent=state==='flying'?'正在飛往校園…':'已聚焦校園 · 可拖曳探索';});
++    const box=node('section',null,'campus-school-popup');box.setAttribute('aria-label',campusName(item)+' 校區資訊');
++    const head=node('div',null,'campus-popup-head');head.append(node('span',`${academicYear} 學年度 · 官方名冊`,'campus-source-badge'));const close=node('button','返回探索視角');close.type='button';close.className='campus-return';close.setAttribute('aria-label','返回探索視角');close.addEventListener('click',()=>{closePopup();});head.append(close);const flight=node('p','正在飛往校園…');flight.id='campus-flight-status';flight.setAttribute('role','status');box.append(head,flight,node('h2',item.institution_name),node('p',item.name));
++    const facts=node('dl');[['校區地址',item.address],['直線距離',item.distance_km.toFixed(1)+' 公里']].forEach(([title,value])=>facts.append(node('dt',title),node('dd',value)));box.append(facts);
++    const phone=item.school_phone,phoneValue=node('dd',phone?.status==='AVAILABLE'&&phone.display?phone.display:'電話資料待補','campus-phone-number');
++    facts.append(node('dt','學校總機'),phoneValue);
++    const sources=node('div',null,'campus-official-links');
++    if(phone?.status==='AVAILABLE'){
++      const phoneMeta=node('p',null,'campus-data-note'),phoneSource=link('電話來源：教育部名錄 ↗',phone.source_url);
++      if(phoneSource)phoneMeta.append(phoneSource);
++      sources.append(phoneMeta);
++    }
++    const source=link('教育部校區來源 ↗',item.source_url),website=link('學校官方網站 ↗',item.website),coordinate=link('校區座標來源 ↗',item.coordinate_reference?.source_url);
++    if(source)sources.append(source);if(website)sources.append(website);if(coordinate)sources.append(coordinate);
++    box.append(sources,node('p','距離由所選道路位置計算，非通勤距離。','campus-popup-note'));
++    const add=node('button',basket.has(item.id)?'已加入候選・點擊移除':'＋ 加入合作候選','campus-add');add.type='button';add.addEventListener('click',()=>{if(basket.has(item.id))basket.delete(item.id);else basket.set(item.id,item);updateBasket();updateAddButton();status(basket.has(item.id)?`${campusName(item)}已加入合作候選，尚未聯絡。`:`已移除${campusName(item)}。`);});box.append(add);
++    const insights=node('section',null,'campus-insights');insights.setAttribute('aria-label','學校科系資訊');box.insertBefore(insights,sources);
++    detailPanel.replaceChildren(box);detailPanel.hidden=false;workspace.classList.add('campus-detail-active');
++    popup={remove(){box.remove();},getElement(){return box;}};
++    map.resize();camera.focus(item.coordinates);cancelInsights=window.loadCampusInsights(insights,item,releaseId);
++    close.focus({preventScroll:true});
++    if(window.innerWidth<=720)$('city-stage').scrollIntoView({behavior:reduced?'auto':'smooth',block:'start'});
+   }
+   function renderList(){
+     const box=$('campus-results');box.replaceChildren();
+-    results.forEach(item=>{const button=node('button',null,'campus-result');button.type='button';button.dataset.campusId=item.id;button.setAttribute('aria-pressed','false');button.append(node('strong',item.name),node('span',item.departments.join('、')),node('small',`示範距離 ${item.distance_km.toFixed(1)} 公里・虛構校區`),node('span','查看校系與推薦理由','campus-result-action'));button.addEventListener('click',()=>openSchool(item));box.append(button);});
++    results.forEach(item=>{const button=node('button',null,'campus-result');button.type='button';button.dataset.campusId=item.id;button.setAttribute('aria-pressed','false');button.append(node('strong',item.institution_name),node('span',`${item.name} · ${item.district}`),node('small',`直線 ${item.distance_km.toFixed(1)} 公里 · ${academicYear} 學年度`));if(item.unlocated_department_matches?.length)button.append(node('span','同校系所符合名稱，教學校區待核驗','campus-result-caution'));button.append(node('span','進入 3D 校園與學校資訊','campus-result-action'));if(item.match_reason)button.append(node('small',item.match_reason,item.match_tier==='RELATED'?'campus-result-caution':''));button.addEventListener('click',()=>openSchool(item));box.append(button);});
+   }
+   function drawMap(location){
+     const map=window.streetMap.getMap();if(!map||!results.length)return;
+@@ -83,43 +108,59 @@
+     map.addLayer({id:'campus-demo-halo',type:'line',source:lineSource,paint:{'line-width':9,'line-color':'#8ebaff','line-opacity':.2,'line-blur':3}});
+     map.addLayer({id:'campus-demo-line',type:'line',source:lineSource,paint:{'line-width':2.6,'line-color':'#7ea9df','line-opacity':.9}});
+     map.addLayer({id:'campus-demo-head',type:'circle',source:headSource,paint:{'circle-radius':4,'circle-color':'#e4f4ff','circle-stroke-color':'#80b4ee','circle-stroke-width':2,'circle-blur':.15}});
+-    nodes=results.map(item=>{const button=node('button',null,'campus-node');button.type='button';button.dataset.campusId=item.id;button.disabled=!reduced;button.setAttribute('aria-label',item.name+'，虛構校區，查看學校資訊');button.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m2 9 10-5 10 5-10 5L2 9Z M6 11v6q6 5 12 0v-6 M22 9v7"/></svg>';button.append(node('span',item.name));button.addEventListener('click',()=>openSchool(item));return new maplibregl.Marker({element:button,anchor:'center'}).setLngLat(item.coordinates).addTo(map);});
++    nodes=results.map(item=>{const button=node('button',null,'campus-node');button.type='button';button.dataset.campusId=item.id;button.setAttribute('aria-label',campusName(item)+'，查看校區資訊');button.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m2 9 10-5 10 5-10 5L2 9Z M6 11v6q6 5 12 0v-6 M22 9v7"/></svg>';button.append(node('span',campusName(item)));button.classList.add('is-visible');button.addEventListener('click',()=>openSchool(item));return new maplibregl.Marker({element:button,anchor:'center'}).setLngLat(item.coordinates).addTo(map);});
+     const paths=results.map(item=>curve(location.coordinates,item.coordinates)),started=performance.now();
+     function draw(now){
+       if(!active||!map.getSource(lineSource))return;
+       let done=true;const heads=[];
+-      const features=results.map((item,i)=>{const progress=reduced?1:Math.min(1,Math.max(0,(now-started-i*180)/1300));if(progress<1)done=false;const count=Math.max(2,Math.ceil(progress*64)+1);const points=paths[i].slice(0,count);if(progress>0&&progress<1)heads.push({type:'Feature',geometry:{type:'Point',coordinates:points.at(-1)},properties:{}});if(progress===1){nodes[i].getElement().classList.add('is-visible');nodes[i].getElement().disabled=false;}return {type:'Feature',properties:{id:item.id},geometry:{type:'LineString',coordinates:points}};});
++      const features=results.map((item,i)=>{const progress=reduced?1:Math.min(1,Math.max(0,(now-started-i*45)/1000));if(progress<1)done=false;const count=Math.max(2,Math.ceil(progress*64)+1);const points=paths[i].slice(0,count);if(progress>0&&progress<1)heads.push({type:'Feature',geometry:{type:'Point',coordinates:points.at(-1)},properties:{}});return {type:'Feature',properties:{id:item.id},geometry:{type:'LineString',coordinates:points}};});
+       map.getSource(lineSource).setData({type:'FeatureCollection',features});map.getSource(headSource).setData({type:'FeatureCollection',features:heads});
+       if(!done)frame=requestAnimationFrame(draw);
+     }
+     draw(performance.now());fitAll();
+   }
+   async function refresh(){
+-    const request=++generation;clearMap();results=[];$('campus-results').replaceChildren();
++    camera?.restore(true);cancelRequest();const request=generation;clearResults();busy(false);
+     const location=window.streetMap.getLocation(),map=window.streetMap.getMap();
+-    if(!location||!map){status('等待所選道路定位完成；定位成功後會顯示展示校區。');return;}
+-    status('正在讀取展示資料…');
++    if(!location||!map){status('等待所選道路定位完成；定位成功後會查詢真實校區。');return;}
++    const nextOrigin=location.coordinates.join(',');
++    if(originKey!==nextOrigin){basket.clear();originKey=nextOrigin;updateBasket();}
++    const radiusInput=$('campus-radius'),radius=Number(radiusInput.value);
++    if(!radiusInput.checkValidity()||!Number.isFinite(radius)||radius<.1){status('請輸入至少 0.1 公里的有效搜尋範圍。');return;}
++    const params=new URLSearchParams({latitude:location.coordinates[1],longitude:location.coordinates[0],radius_km:radius,q:$('campus-query').value.trim(),include_related:$('campus-related').checked});
++    const pending=new AbortController();controller=pending;let timedOut=false;
++    const timeout=setTimeout(()=>{timedOut=true;pending.abort();},15000);
++    status('正在查詢官方校區資料…');busy(true);
+     try{
+-      const data=await loadData();if(!active||request!==generation)return;
+-      const nextOrigin=location.coordinates.join(',');
+-      if(originKey!==nextOrigin){basket.clear();originKey=nextOrigin;updateBasket();}
+-      const radiusInput=$('campus-radius');
+-      const radius=Number(radiusInput.value),roles=$('campus-roles').value;
+-      if(!radiusInput.checkValidity()||!Number.isFinite(radius)||radius<=0){status('請輸入至少 0.1 公里的有效搜尋範圍。');return;}
+-      results=data.campuses.map(item=>{const coordinates=demoCoordinates(location.coordinates,item.offset_km);return {...item,coordinates,distance_km:distance(location.coordinates,coordinates)};}).filter(item=>item.distance_km<=radius&&matchRoles(item,roles)).sort((a,b)=>a.distance_km-b.distance_km);
++      const response=await fetch('/api/education/campuses?'+params,{signal:pending.signal,cache:'no-store'});
++      if(!active||request!==generation)return;
++      if(!response.ok)throw Error(response.status===503?'校區資料目前無法讀取，請確認教育資料庫後重新查詢。':response.status===422?'查詢條件無效，請確認名稱與搜尋範圍。':`校區查詢失敗（HTTP ${response.status}），請重新查詢。`);
++      const data=await response.json();if(!active||request!==generation)return;
++      results=readData(data);
++      if(releaseId&&releaseId!==data.release_id){basket.clear();updateBasket();}
++      releaseId=data.release_id;academicYear=data.academic_year;
++      $('campus-source-label').textContent=`${academicYear} 學年度 · 官方名冊`;
++      const expansion=data.query_expansion;
++      const queryNote=expansion?.alias_applied&&Array.isArray(expansion.department_terms)?`「${expansion.input}」以「${expansion.department_terms.join('、')}」查詢。 `:'';
+       renderList();updateBasket();
+-      if(!results.length){status('展示資料中沒有符合條件的校區。可擴大範圍，或改用 CNC、品管、設備等示範職務；不代表附近沒有真實學校。');return;}
+-      status(`顯示 ${results.length} 個虛構展示校區，非正式媒合結果。`);drawMap(location);
+-    }catch(error){if(active&&request===generation)status(error.message);}
++      (data.suggestions||[]).forEach(name=>{const b=node('button','試試：'+name);b.type='button';b.addEventListener('click',()=>{$('campus-query').value=name;refresh();});$('campus-suggestions').append(b);});
++      if(!results.length){status(queryNote+'已收錄的臺中校區中沒有符合條件的結果。可擴大範圍或調整學校／系所名稱；未確認校區的系所不代表附近沒有學校。');return;}
++      status(queryNote+`找到 ${results.length} 個校區，直接符合優先，同層依距離排序。校區與系所關聯仍有待核驗項目，詳見個別來源。`);drawMap(location);
++    }catch(error){
++      if(!active||request!==generation)return;
++      clearResults();status(timedOut?'校區查詢逾時，請重新查詢。':error.name==='AbortError'?'查詢已取消，可重新查詢。':error.message||'無法連線至校區服務，請重新查詢。');$('campus-retry').hidden=false;
++    }finally{clearTimeout(timeout);if(request===generation){controller=null;busy(false);}}
+   }
+-  function activate(){active=true;workspace.classList.add('campus-active');tabs.hidden=false;context.hidden=false;window.radarFeatures.select('校園人才媒合');window.streetMap.closeCompany(false);$('campus-roles').value=$('company-roles').textContent||'';selectView('schools');refresh();}
+-  function deactivate(){if(!active)return;active=false;++generation;clearMap();workspace.classList.remove('campus-active');tabs.hidden=true;context.hidden=true;panel.hidden=true;chat.hidden=false;window.radarFeatures.select(null);}
++  function activate(){active=true;workspace.classList.add('campus-active');tabs.hidden=false;context.hidden=false;window.radarFeatures.select('校園人才媒合');window.streetMap.closeCompany(false);selectView('schools');refresh();}
++  function deactivate(){if(!active)return;active=false;camera?.restore(true);cancelRequest();clearResults();busy(false);workspace.classList.remove('campus-active');tabs.hidden=true;context.hidden=true;panel.hidden=true;chat.hidden=false;window.radarFeatures.select(null);}
+   window.campusMatching={toggle(){active?deactivate():activate();},deactivate};
+   $('campus-filters').addEventListener('submit',event=>{event.preventDefault();refresh();});
++  $('campus-retry').addEventListener('click',refresh);
+   $('campus-exit').addEventListener('click',deactivate);$('campus-show-all').addEventListener('click',()=>{closePopup();fitAll();});
+   document.addEventListener('streetmap:location',()=>{if(active)refresh();});
+-  document.addEventListener('streetmap:location-changing',()=>{if(active){++generation;clearMap();$('campus-results').replaceChildren();status('正在切換探索地點…');}});
+-  document.addEventListener('streetmap:location-error',event=>{if(active)status(event.detail+' 校園展示需要先完成道路定位。');});
+-  document.addEventListener('streetmap:company-open',closePopup);
++  document.addEventListener('streetmap:location-changing',()=>{if(active){cancelRequest();clearResults();busy(false);basket.clear();originKey='';updateBasket();status('正在切換探索地點，定位完成後重新查詢校區…');}});
++  document.addEventListener('streetmap:location-error',event=>{if(active)status(event.detail+' 校園地圖需先完成道路定位，請使用地圖重試。');});
++  document.addEventListener('streetmap:company-open',()=>closePopup());
+   document.addEventListener('keydown',event=>{if(event.key==='Escape'&&popup&&!document.querySelector('dialog[open]'))closePopup();});
++  updateBasket();
+ })();

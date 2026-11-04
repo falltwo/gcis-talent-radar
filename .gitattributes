@@ -1,0 +1,3 @@
+# Keep reference-file checksums stable across Git checkouts on every platform.
+/.gitattributes text eol=lf
+/docs/frontend-reference/* text eol=lf

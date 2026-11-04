@@ -1,0 +1,29 @@
+{
+  "base_main": "595f2e27bc8556eb41b916389e4b19d7f454918d",
+  "kind": "optional-frontend-reference",
+  "includes_uncommitted_worktree": true,
+  "changed_paths": [
+    "ui/home.html",
+    "ui/static/campus-matching.js",
+    "ui/static/campus-matching.css",
+    "ui/static/campus-camera.js",
+    "ui/static/campus-insights.js",
+    "tests/test_campus_frontend.py",
+    "tests/test_campus_camera.py",
+    "tests/campus_frontend_harness.cjs",
+    "tests/campus_camera_harness.cjs"
+  ],
+  "files": [
+    {
+      "path": "frontend-reference.patch",
+      "bytes": 65636,
+      "sha256": "63afd6899969b52fb1f3a3d4b9cfb0efda9a1a5af2365ecd1d7c059fad188469"
+    },
+    {
+      "path": "README.zh-TW.md",
+      "bytes": 2436,
+      "sha256": "7ed4ff26b0b4cfd458f81b96ccb479e3fba1233890af946277fe6cbf96c16b0e"
+    }
+  ],
+  "text_line_endings": "LF"
+}

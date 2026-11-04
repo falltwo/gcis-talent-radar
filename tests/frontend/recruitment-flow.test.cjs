@@ -1,0 +1,35 @@
+const {test}=require('node:test');const assert=require('node:assert/strict');
+const {PostingFlow}=require('../../ui/static/recruitment-flow.js');
+const draft=()=>({company:'示範企業',role:'CNC 技術員',address:'臺中市大雅區中清路三段',salaryMin:35000,salaryMax:45000,hires:2,skills:'機械加工經驗'});
+test('filling completes at preview and cannot publish without confirmation',()=>{const f=new PostingFlow();f.start(draft());for(let i=0;i<10;i++)f.advance();assert.equal(f.state,'preview');assert.throws(()=>f.publish(false));assert.equal(f.state,'preview');f.publish(true);assert.equal(f.state,'published');assert.throws(()=>f.publish(true));});
+test('validation rejects missing role and reversed salary',()=>{for(const d of [{...draft(),role:' '},{...draft(),salaryMin:50000},{...draft(),hires:0},{...draft(),salaryMin:NaN}])assert.throws(()=>new PostingFlow().start(d));});
+test('cannot publish while filling and cancel invalidates pending work',()=>{const f=new PostingFlow();f.start(draft());assert.throws(()=>f.publish(true));f.advance();f.cancel();assert.equal(f.advance(),null);assert.equal(f.state,'idle');assert.throws(()=>f.publish(true));});
+test('restart requires fresh preview and snapshots user inputs',()=>{const f=new PostingFlow(),d=draft();f.start(d);d.role='改寫';assert.equal(f.draft.role,'CNC 技術員');for(let i=0;i<10;i++)f.advance();f.start({...draft(),role:'品管'});assert.equal(f.state,'filling');assert.throws(()=>f.publish(true));});
+test('scenario recruitment counts retain thousands separators correctly',()=>{const {scenarioHires}=require('../../ui/static/recruitment-flow.js');assert.equal(scenarioHires('1,000 人'),1000);assert.equal(scenarioHires('100,000'),100000);assert.equal(scenarioHires('20 人'),20);assert.equal(scenarioHires('尚未提供'),2);});
+test('minimal brief produces a review draft without inventing salary',()=>{const f=new PostingFlow();f.start({role:'品管人員',hires:5,company:'範例企業',address:'大雅區'});for(let i=0;i<6;i++)f.advance();assert.equal(f.state,'preview');assert.equal(f.draft.salaryMin,null);assert.equal(f.sources.skills,'template');assert.deepEqual(f.missing(),['salary']);assert.throws(()=>f.publish(true));f.revise({salaryMin:36000,salaryMax:42000});assert.equal(f.state,'preview');assert.deepEqual(f.missing(),[]);f.publish(true);assert.equal(f.state,'published');});
+test('pause prevents advancing and skip reaches review without publishing',()=>{const f=new PostingFlow();f.start(draft());f.pause();assert.equal(f.advance(),null);assert.equal(f.state,'paused');f.resume();assert.equal(f.state,'filling');f.complete();assert.equal(f.state,'preview');});
+test('revision cannot silently erase user requirements',()=>{const f=new PostingFlow();f.start(draft());f.complete();assert.throws(()=>f.revise({hires:0}));assert.equal(f.draft.hires,2);f.revise({role:'品管技術員'});assert.equal(f.draft.role,'品管技術員');assert.equal(f.sources.role,'human');});
+test('review focus highlights generated or invalid fields without calling user inputs unverified',()=>{const {needsReview}=require('../../ui/static/recruitment-flow.js');assert.equal(needsReview('template',true),true);assert.equal(needsReview('pending',true),true);assert.equal(needsReview('user',true),false);assert.equal(needsReview('company',true),false);assert.equal(needsReview('human',true),false);assert.equal(needsReview('human',false),true);});
+test('browser navigation cannot fill until address entered and page ready',()=>{const {DemoNavigation}=require('../../ui/static/recruitment-flow.js'),n=new DemoNavigation();assert.equal(n.canFill,false);n.begin('http://127.0.0.1:8888/static/recruitment-demo.html','http://127.0.0.1:8888');assert.throws(()=>n.open());while(n.state==='typing')n.typeNext();assert.equal(n.canFill,false);n.open();assert.equal(n.state,'loading');assert.equal(n.canFill,false);n.ready();assert.equal(n.canFill,true);n.reset();assert.equal(n.canFill,false);});
+test('navigation refuses external and executable URLs',()=>{const {DemoNavigation}=require('../../ui/static/recruitment-flow.js');assert.equal(typeof DemoNavigation,'function');for(const url of ['https://www.104.com.tw/','javascript:alert(1)'])assert.throws(()=>new DemoNavigation().begin(url,'http://127.0.0.1:8888'));});
+test('archive only stores published snapshots and ignores duplicate callbacks',()=>{const {PostingArchive}=require('../../ui/static/recruitment-flow.js');const a=new PostingArchive(),f=new PostingFlow();f.start(draft());assert.throws(()=>a.add(f,'origin-a'));f.complete();f.publish(true);const r=a.add(f,'origin-a');assert.equal(a.add(f,'origin-a').id,r.id);assert.equal(a.all().length,1);assert.equal(r.draft.role,'CNC 技術員');f.start({...draft(),role:'品管'});assert.equal(a.all()[0].draft.role,'CNC 技術員');});
+test('archive returns newest first without exposing mutable array',()=>{const {PostingArchive}=require('../../ui/static/recruitment-flow.js');const a=new PostingArchive();for(const role of ['CNC','品管']){const f=new PostingFlow();f.start({...draft(),role});f.complete();f.publish(true);a.add(f,'origin-a');}const list=a.all();assert.equal(list[0].draft.role,'品管');list.pop();assert.equal(a.all().length,2);assert.equal(a.countForOrigin('origin-a'),2);assert.equal(a.countForOrigin('other'),0);});
+
+test('batch brief creates separate jobs with counts and explicit salaries',()=>{
+ const {parseBrief}=require('../../ui/static/recruitment-flow.js');
+ assert.deepEqual(parseBrief('我需要20位會計、20位工程師').map(d=>[d.role,d.hires]),[['會計',20],['工程師',20]]);
+ assert.deepEqual(parseBrief('招3位工程師，月薪50000至60000；5位助理，月薪35000')[0],{role:'工程師',hires:3,salaryMin:50000,salaryMax:60000});
+ assert.equal(parseBrief('工程師需要幾個？').length,0);
+ assert.equal(parseBrief('0位會計').length,0);
+ assert.equal(parseBrief('20位會計、20位工程師，在大雅區工作')[1].role,'工程師');
+});
+test('batch approval validates every job before publishing any',()=>{
+ const {PostingBatch}=require('../../ui/static/recruitment-flow.js');
+ const b=new PostingBatch([{company:'示範',role:'會計',hires:20,address:'台中'},{company:'示範',role:'工程師',hires:20,address:'台中'}]);
+ b.flows.forEach(f=>f.complete());
+ assert.throws(()=>b.publish([{salaryMin:35000,salaryMax:40000},{salaryMin:'',salaryMax:''}]),/薪資|月薪/);
+ assert.ok(b.flows.every(f=>f.state==='preview'));
+ b.publish([{salaryMin:35000,salaryMax:40000},{salaryMin:50000,salaryMax:60000}]);
+ assert.ok(b.flows.every(f=>f.state==='published'));
+ assert.deepEqual(b.flows.map(f=>f.draft.hires),[20,20]);
+});
