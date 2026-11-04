@@ -277,6 +277,8 @@ def stream(prep: Prepared, *, browser_factory: Optional[Callable[[], SourcingBro
                 return "blocked"
             cand = summarize(site, card.url, browser.title(), browser.text(), browser.links(), plan,
                              fallback_name=card.name)
+            if plan.terms.location and not site.location_filter:
+                cand.location_note = f"此網站無法依地點篩選，不一定在{location_label(plan.terms.location)}"
             if cand.fit == "不符合":
                 yield {"type": "candidate_skipped", "site": site.id, "name": cand.name, "reason": cand.fit_reason}
             else:
@@ -297,11 +299,18 @@ def stream(prep: Prepared, *, browser_factory: Optional[Callable[[], SourcingBro
         with browser_factory() as browser:
             if not browser.jev_ready:
                 yield {"type": "notice", "message": "未設定 OPENROUTER_API_KEY：改用確定性操作（不經 Jev），需求與摘要改用規則版。"}
-            for i, site in enumerate(browser_sites):
+            for site, group_left in _site_order(browser_sites, bool(plan.terms.location)):
                 remaining = prep.max_candidates - len(candidates)
                 if remaining <= 0 or stopped():
                     break
-                quota = math.ceil(remaining / (len(browser_sites) - i))
+                unlocated = [s for s in browser_sites if not s.location_filter]
+                if plan.terms.location and unlocated and site is unlocated[0]:
+                    lead = ("能依地點篩選的網站找到的人不夠，改用 " if len(unlocated) < len(browser_sites)
+                            else "改用 ")
+                    yield {"type": "notice", "message": f"{lead}{'、'.join(s.name for s in unlocated)} 補足；"
+                                                        f"這些網站無法依地點篩選，找到的人不一定在"
+                                                        f"{location_label(plan.terms.location)}。"}
+                quota = math.ceil(remaining / group_left)
                 try:
                     yield from search_site(browser, site, quota)
                 except Exception as exc:  # 一個網站出錯不影響其他網站，例如 ORCID 頁面卡住造成 WebSocket 逾時
@@ -318,6 +327,23 @@ def stream(prep: Prepared, *, browser_factory: Optional[Callable[[], SourcingBro
 
     yield {"type": "done", "count": len(candidates), "plan": plan.as_dict(), "message": DONE_MESSAGE,
                "usage": prep.usage.as_dict(), "cancelled": stopped()}
+
+
+def _site_order(sites: list[Site], has_location: bool) -> Iterator[tuple[Site, int]]:
+    """瀏覽器網站的順序與分配：(網站, 這一組含自己還剩幾個網站)。
+
+    指定地點時，能依地點篩選的網站（GitHub）先跑並分掉全部名額；不能篩地點的網站
+    （Hugging Face、Kaggle、Dribbble）只補不足的部分。沒指定地點就照原順序平分。"""
+    groups = ([[s for s in sites if s.location_filter], [s for s in sites if not s.location_filter]]
+              if has_location else [list(sites)])
+    for group in groups:
+        for i, site in enumerate(group):
+            yield site, len(group) - i
+
+
+def location_label(location: str) -> str:
+    """英文地名換回中文給 HR 看（Taichung → 台中），沒有對照就用原文。"""
+    return next((zh for zh, en in planner.LOCATIONS.items() if en == location), location)
 
 
 _IDLE = object()

@@ -129,6 +129,7 @@ await fetch(`/api/sourcing/runs/${run_id}`, {method: 'DELETE'});
 | `name`、`headline` | 顯示名稱、一句話介紹 |
 | `skills`、`matched_skills` | 頁面上的技能；其中符合需求的 |
 | `summary`、`summary_source` | 專長摘要；`llm`、`rules` 或 `api` |
+| `location_note` | 指定地點、但來源網站無法依地點篩選時的提醒（Hugging Face、Kaggle、Dribbble），例如「此網站無法依地點篩選，不一定在台中」；其他情況是空字串 |
 | `fit`、`fit_reason` | gpt-6-luna 判斷：`符合`、`部分符合`、`未判斷`；判斷根據。官方 API 來的候選人（Stack Overflow、OpenAlex、ORCID）用 API 給的標籤、研究主題、關鍵字判斷 |
 | `location` | 候選人自己公開填的地點（目前只有 Stack Overflow），沒有就是空字串 |
 

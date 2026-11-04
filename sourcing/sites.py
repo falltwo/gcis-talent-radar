@@ -139,6 +139,8 @@ class Site:
     query_url: Optional[Callable[[str], str]] = None
     # 搜尋結果怎麼看下一頁：(第一頁網址, 第幾頁) → 網址；None 表示往下捲動載入更多
     page_url: Optional[Callable[[str, int], str]] = None
+    # 能不能依地點篩選（GitHub 的 location:、官方 API 的機構或自填地點）；不能的網站找到的人不一定在指定地點
+    location_filter: bool = False
     available: bool = True
     unavailable_reason: str = ""
 
@@ -185,10 +187,11 @@ SITES: dict[str, Site] = {s.id: s for s in [
     Site("github", "GitHub", ("software", "ai_data"), ("github.com",), _github,
          re.compile(r"^https://github\.com/([A-Za-z0-9](?:[A-Za-z0-9-]{0,38}))$"), _GITHUB_RESERVED,
          entry_url="https://github.com/search?type=users", typed_query=_github_typed, query_url=_github_url,
-         page_url=lambda url, n: _with_param(url, "p", str(n))),
+         page_url=lambda url, n: _with_param(url, "p", str(n)), location_filter=True),
     # 網頁版連排行頁都會跳 Cloudflare 驗證，排行與個人資料都改用官方 Stack Exchange API，不開瀏覽器
     Site("stackoverflow", "Stack Overflow", ("software",), ("stackoverflow.com",), None,
-         re.compile(r"^https://stackoverflow\.com/users/(\d+)/[^/]+$"), profile_api="stackexchange"),
+         re.compile(r"^https://stackoverflow\.com/users/(\d+)/[^/]+$"), profile_api="stackexchange",
+         location_filter=True),
     Site("huggingface", "Hugging Face", ("ai_data",), ("huggingface.co",), _huggingface,
          re.compile(r"^https://huggingface\.co/([A-Za-z0-9][A-Za-z0-9._-]*)$"), _HF_RESERVED,
          work_pattern=re.compile(r"^https://huggingface\.co/([A-Za-z0-9][A-Za-z0-9._-]*)/[A-Za-z0-9._-]+$"),
@@ -205,10 +208,11 @@ SITES: dict[str, Site] = {s.id: s for s in [
          query_url=lambda q: f"https://dribbble.com/search/{quote(q)}"),
     # ORCID 網頁很重、常讓瀏覽器連線逾時，改用官方公開 API（不需金鑰），不開瀏覽器
     Site("orcid", "ORCID", ("research",), ("orcid.org", "pub.orcid.org"), None,
-         re.compile(r"^https://orcid\.org/(\d{4}-\d{4}-\d{4}-\d{3}[\dX])$"), profile_api="orcid"),
+         re.compile(r"^https://orcid\.org/(\d{4}-\d{4}-\d{4}-\d{3}[\dX])$"), profile_api="orcid",
+         location_filter=True),
     # Google Scholar 沒有官方 API 且禁止自動化，研究類改用 OpenAlex 官方 API
     Site("openalex", "OpenAlex", ("research",), ("openalex.org", "api.openalex.org"), None, None,
-         profile_api="openalex"),
+         profile_api="openalex", location_filter=True),
     Site("gitlab", "GitLab", ("software",), ("gitlab.com",), None, None, available=False,
          unavailable_reason="使用 Cloudflare 機器人驗證，系統不繞過驗證"),
     Site("behance", "Behance", ("design",), ("www.behance.net", "behance.net"), None, None, available=False,
@@ -258,8 +262,9 @@ def catalog() -> list[dict]:
             "id": s.id, "name": s.name,
             "categories": [CATEGORIES[c] for c in s.categories],
             "available": s.available, "unavailable_reason": s.unavailable_reason or None,
+            "location_filter": s.location_filter,
         }
         for s in SITES.values()
     ] + [{"id": "personal", "name": "個人網站、部落格、作品集", "categories": ["所有職類"],
-          "available": True, "unavailable_reason": None,
+          "available": True, "unavailable_reason": None, "location_filter": False,
           "note": "不主動搜尋；只開候選人個人頁上自己留的網站連結"}]

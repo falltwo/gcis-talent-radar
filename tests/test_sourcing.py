@@ -919,3 +919,47 @@ def test_bot_check_on_profile_stops_the_whole_site():
     events = list(service.stream(prep, browser_factory=lambda: browser))
     assert any(e["type"] == "site_error" and "機器人驗證" in e["reason"] for e in events)
     assert not any(u.endswith("/a1") for u in browser.opened) and not any(e["type"] == "candidate" for e in events)
+
+
+class HostBrowser(FakeBrowser):
+    """搜尋結果頁依網站回傳候選人，不管搜尋字是什麼。"""
+
+    def __init__(self, people):
+        pages = {}
+        for url, name in people:
+            pages[url] = {"title": name, "text": [f"{name} machine learning"], "links": []}
+        super().__init__(pages)
+        self.people = people
+
+    def result_cards(self):
+        if "search" not in self.current:
+            return []
+        host = self.current.split("/")[2]
+        return [(u, n, f"{n} card") for u, n in self.people if u.split("/")[2] == host]
+
+
+def _location_run(github_people):
+    people = [(f"https://github.com/gh{i}", f"gh{i}") for i in range(github_people)] + [
+        ("https://huggingface.co/hf1", "hf1"), ("https://www.kaggle.com/kg1", "kg1")]
+    browser = HostBrowser(people)
+    prep = service.prepare("找機器學習工程師 在台中", max_candidates=3, site_ids=["github", "huggingface", "kaggle"])
+    return list(service.stream(prep, browser_factory=lambda: browser)), browser
+
+
+def test_location_sites_get_the_quota_first():
+    events, browser = _location_run(github_people=3)
+    cands = [e["candidate"] for e in events if e["type"] == "candidate"]
+    assert [c["site"] for c in cands] == ["github"] * 3 and all(c["location_note"] == "" for c in cands)
+    assert not any("huggingface" in u or "kaggle" in u for u in browser.opened)
+    assert not any(e["type"] == "notice" and "補足" in e["message"] for e in events)
+
+
+def test_sites_without_location_only_fill_the_gap_and_are_flagged():
+    events, _ = _location_run(github_people=1)
+    cands = [e["candidate"] for e in events if e["type"] == "candidate"]
+    assert [c["site"] for c in cands] == ["github", "huggingface", "kaggle"]
+    assert cands[0]["location_note"] == ""
+    assert all("無法依地點篩選" in c["location_note"] and "台中" in c["location_note"] for c in cands[1:])
+    notices = [e["message"] for e in events if e["type"] == "notice" and "補足" in e["message"]]
+    assert len(notices) == 1 and "Hugging Face、Kaggle" in notices[0]
+    assert {s["id"]: s["location_filter"] for s in catalog()}["github"] is True

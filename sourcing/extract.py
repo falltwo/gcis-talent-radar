@@ -42,6 +42,7 @@ class Candidate:
     fit: str = "未判斷"  # 符合 | 部分符合 | 不符合 | 未判斷（gpt-6-luna 判斷）
     fit_reason: str = ""
     location: str = ""  # 候選人自己公開填的地點（Stack Overflow 等）
+    location_note: str = ""  # 來源網站無法依地點篩選時的提醒，例如「此網站無法依地點篩選，不一定在台中」
 
     def as_dict(self) -> dict:
         data = asdict(self)
