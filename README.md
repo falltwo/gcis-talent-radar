@@ -2,6 +2,8 @@
 
 # 產業人才雷達
 
+**新增：批次招募 MVP 與404徵才網。** OpenRouter 解析、公司隔離、薪資來源優先序、HR 確認與交易式刊登位於獨立的 `/api/recruitment/mvp`，保留原有 PR22 招募與 Computer Use 流程。[批次 API 說明](docs/RECRUITMENT_BATCH_MVP.md) · [404公開展示站](https://evaeva12021202-sys.github.io/404-jobs/) · [部署與更新方式](docs/404_CLOUD_DEPLOYMENT.md)。公開站為靜態展示，不包含 AI、登入或資料保存。
+
 **新增：企業多區比較報告。** 開啟 `/compare`，可比較2–3區、固定資料期別、查看GCIS同業證據、分配每月招募目標，並對同一份報告追問及列印／下載。沒有AI金鑰也能使用。操作、API、資料限制與驗證見 [實作交接](docs/REPORT_IMPLEMENTATION.md)。
 
 [![Tests](https://github.com/falltwo/gcis-talent-radar/actions/workflows/tests.yml/badge.svg)](https://github.com/falltwo/gcis-talent-radar/actions/workflows/tests.yml)
@@ -67,7 +69,7 @@
 git clone https://github.com/falltwo/gcis-talent-radar.git
 cd gcis-talent-radar
 python -m venv .venv && source .venv/bin/activate
-pip install fastapi uvicorn pandas numpy requests xlrd openpyxl statsmodels pytest
+pip install fastapi uvicorn pandas numpy requests xlrd openpyxl statsmodels pytest -r requirements-recruitment.txt
 
 cp .env.example .env      # 在 .env 填入 OPENROUTER_API_KEY
 python server.py
@@ -98,6 +100,8 @@ python -m pytest tests -q
 目前共 496 項測試，涵蓋資料整理、官方比較、固定報告、GCIS事件、事實與主張、模型故障備援、前端、預測、護欄與稽核。GitHub Actions 會在每個 PR 和 push 到 `main` 時執行。
 
 ## 頁面與 API
+
+招募流程後端（需求整理、HR 核准、授權履歷匯入、比對、邀請與回覆追蹤）位於 `/api/recruitment/*`。需另外設定企業服務憑證；104／1111 目前採人工操作登記模式。設定與完整操作流程見 [docs/RECRUITMENT_BACKEND.md](docs/RECRUITMENT_BACKEND.md)。
 
 | 路徑 | 內容 |
 |---|---|

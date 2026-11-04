@@ -4,6 +4,7 @@ FastAPI Backend Application
 """
 import sys
 import json
+import hashlib
 from pathlib import Path
 from typing import Dict, Any, List, Optional
 from fastapi import FastAPI, Header, Query, HTTPException
@@ -14,6 +15,10 @@ from pydantic import BaseModel, Field
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from api.recruitment import router as recruitment_router
+from api.recruitment_demo import router as recruitment_demo_router
+from api.mock104 import router as mock104_router
+from api.recruitment_agent import router as recruitment_agent_router
 from config import (
     BASE_DIR, TARGET_CITY, TAICHUNG_DISTRICTS, TARGET_INDUSTRIES,
     HISTORICAL_YEARS, BASE_ACADEMIC_YEAR, TARGET_PROJECTION_YEAR
@@ -44,6 +49,15 @@ app = FastAPI(
     description="台中市區域產業動能 × 高教人才供給結構性錯配預警系統 (System Spec v1.0)",
     version="1.0.0"
 )
+
+app.include_router(recruitment_router)
+app.include_router(recruitment_demo_router)
+app.include_router(mock104_router)
+app.include_router(recruitment_agent_router)
+
+# Isolated SQLAlchemy batch MVP; preserve all existing PR22 recruitment routes.
+from recruitment.backend.integration import install_recruitment
+install_recruitment(app)
 
 # Constructing this service does not initialise or mutate either database.
 comparison_report_service = ComparisonReportService()
@@ -619,6 +633,33 @@ def serve_sourcing_live():
 @app.get("/demo")
 def serve_expansion_demo():
     return FileResponse(UI_DIR / "expansion-demo.html")
+
+
+@app.get("/recruitment-demo")
+def serve_recruitment_demo():
+    return FileResponse(UI_DIR / "recruitment-demo.html", headers={"Cache-Control": "no-store"})
+
+
+@app.get("/mock104")
+def serve_mock_job_board():
+    return FileResponse(UI_DIR / "mock104.html", headers={"Cache-Control": "no-store"})
+
+
+@app.get("/recruitment-agent")
+def serve_recruitment_agent():
+    script=(STATIC_DIR / 'recruitment-agent.js').read_bytes()
+    version=hashlib.sha256(script).hexdigest()[:16]
+    html=(UI_DIR / 'recruitment-agent.html').read_text(encoding='utf-8')
+    html=html.replace('/static/recruitment-agent.js', f'/recruitment-agent/assets/{version}.js')
+    return HTMLResponse(html, headers={"Cache-Control":"no-store"})
+
+
+@app.get('/recruitment-agent/assets/{version}.js', include_in_schema=False)
+def serve_recruitment_agent_script(version: str):
+    script=STATIC_DIR / 'recruitment-agent.js'
+    if version!=hashlib.sha256(script.read_bytes()).hexdigest()[:16]:
+        raise HTTPException(404, '頁面版本已更新，請重新整理工作台。')
+    return FileResponse(script, media_type='text/javascript', headers={'Cache-Control':'no-store'})
 
 @app.get("/architecture")
 @app.get("/architecture/index.html")
