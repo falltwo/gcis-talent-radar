@@ -1,0 +1,327 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>找人 agent 操作回放</title>
+<!--
+  回放 scripts/record_sourcing_demo.py 錄下的事件（recording/events.js）。
+  畫面全部由 handle(event) 產生，事件格式與 POST /api/sourcing/search 的 SSE 相同；
+  前端接真的串流時，把每個 SSE 事件丟給 handle() 即可，見檔案最下方的 connectLive()。
+-->
+<style>
+  :root {
+    --bg: #f5f6f8; --card: #ffffff; --ink: #1d2433; --muted: #667085; --line: #e4e7ec;
+    --accent: #2f6fde; --accent-soft: #e8f0fd; --ok: #2e7d4f; --ok-soft: #e6f4ec;
+    --warn: #b54708; --warn-soft: #fef0e1; --bad: #b42318; --bad-soft: #fde8e7; --jev: #7a4fd6; --jev-soft: #f1ebfd;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #11141a; --card: #1a1f28; --ink: #e8ebf1; --muted: #98a2b3; --line: #2b3240;
+      --accent: #6f9ff0; --accent-soft: #1c2a42; --ok: #63c08b; --ok-soft: #16301f; --warn: #f0a356; --warn-soft: #3a2614;
+      --bad: #f2867c; --bad-soft: #3b1a18; --jev: #b39af2; --jev-soft: #2a2140; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+    font: 15px/1.55 "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", system-ui, sans-serif; }
+  header { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; padding: 18px 24px;
+    background: var(--card); border-bottom: 1px solid var(--line); }
+  h1 { margin: 0; font-size: 19px; }
+  .query { padding: 6px 12px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+  .status { color: var(--muted); font-size: 14px; }
+  .status b { color: var(--ink); }
+  .controls { margin-left: auto; display: flex; gap: 8px; }
+  button { font: inherit; padding: 6px 14px; border-radius: 8px; border: 1px solid var(--line); background: var(--card);
+    color: var(--ink); cursor: pointer; }
+  button:hover { border-color: var(--accent); }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  main { max-width: 1400px; margin: 0 auto; padding: 20px 24px 40px; display: grid; gap: 20px;
+    grid-template-columns: minmax(0, 2fr) minmax(300px, 1fr); }
+  section { background: var(--card); border: 1px solid var(--line); border-radius: 14px; }
+  section > h2 { margin: 0; padding: 14px 18px; font-size: 15px; border-bottom: 1px solid var(--line); }
+  .plan { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 12px 18px; }
+  .plan .label { color: var(--muted); margin-right: 4px; }
+  .chip { display: inline-block; padding: 2px 10px; border-radius: 999px; background: var(--bg); border: 1px solid var(--line);
+    font-size: 13px; }
+  .chip.match { background: var(--ok-soft); border-color: transparent; color: var(--ok); }
+  .banner { grid-column: 1 / -1; padding: 10px 16px; border-radius: 10px; background: var(--warn-soft); color: var(--warn); }
+  .banner.bad { background: var(--bad-soft); color: var(--bad); }
+  .banner.ok { background: var(--ok-soft); color: var(--ok); }
+
+  /* 即時操作畫面 */
+  .screen { overflow: hidden; }
+  .browserbar { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 1px solid var(--line); }
+  .dots span { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: var(--line); margin-right: 5px; }
+  .url { flex: 1; min-width: 0; padding: 5px 12px; border-radius: 8px; background: var(--bg); color: var(--muted);
+    font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .badge { padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; white-space: nowrap; }
+  .viewport { position: relative; aspect-ratio: 1440 / 900; background: var(--bg); }
+  .viewport img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: top;
+    transition: opacity .35s ease; }
+  .viewport .empty { position: absolute; inset: 0; display: grid; place-items: center; color: var(--muted); text-align: center; padding: 20px; }
+  .caption { padding: 12px 16px; border-top: 1px solid var(--line); min-height: 48px; }
+
+  /* 時間軸 */
+  .timeline { list-style: none; margin: 0; padding: 8px 0; max-height: 640px; overflow: auto; }
+  .timeline li { display: grid; grid-template-columns: 34px 1fr auto; gap: 10px; align-items: start; padding: 10px 16px;
+    cursor: default; animation: in .3s ease; }
+  .timeline li.clickable { cursor: pointer; }
+  .timeline li.active { background: var(--accent-soft); }
+  .timeline .icon { width: 30px; height: 30px; border-radius: 8px; display: grid; place-items: center; font-size: 15px; }
+  .timeline .t { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+  .timeline .detail { word-break: break-word; }
+  .timeline .sub { color: var(--muted); font-size: 12px; }
+  @keyframes in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
+  /* 候選人 */
+  .candidates { grid-column: 1 / -1; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; padding: 16px; }
+  .card { border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; display: flex; flex-direction: column; gap: 8px;
+    animation: in .3s ease; }
+  .card .top { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+  .card .name { font-weight: 700; font-size: 16px; }
+  .card .site { font-size: 12px; color: var(--muted); }
+  .card .headline { color: var(--muted); font-size: 14px; }
+  .card .links { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 13px; }
+  .card a { color: var(--accent); text-decoration: none; }
+  .card a:hover { text-decoration: underline; }
+  .none { padding: 18px; color: var(--muted); }
+  @media (max-width: 900px) { main { grid-template-columns: 1fr; padding: 16px; } header { padding: 14px 16px; } .controls { margin-left: 0; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>找人 agent · 操作回放</h1>
+  <span class="query" id="query">—</span>
+  <span class="status" id="status">準備中</span>
+  <div class="controls">
+    <button class="primary" id="play">▶ 播放</button>
+    <button id="restart">↺ 重播</button>
+    <button id="speed">速度 1×</button>
+  </div>
+</header>
+
+<main id="main">
+  <section class="plan" id="plan"><span class="label">搜尋計畫</span><span class="none">尚未開始</span></section>
+  <div id="banners" style="display:contents"></div>
+
+  <section class="screen">
+    <div class="browserbar">
+      <div class="dots"><span></span><span></span><span></span></div>
+      <div class="url" id="url">about:blank</div>
+      <span class="badge" id="badge" hidden></span>
+    </div>
+    <div class="viewport" id="viewport"><div class="empty">按「播放」看 agent 操作瀏覽器的過程</div></div>
+    <div class="caption" id="caption"></div>
+  </section>
+
+  <section>
+    <h2>每一步</h2>
+    <ol class="timeline" id="timeline"></ol>
+  </section>
+
+  <section class="candidates">
+    <h2 id="cand-title">候選人</h2>
+    <div class="cards" id="cards"><div class="none">還沒有候選人</div></div>
+  </section>
+</main>
+
+<script src="recording/events.js"></script>
+<script>
+const SITE_NAMES = {github: "GitHub", stackoverflow: "Stack Overflow", huggingface: "Hugging Face", kaggle: "Kaggle",
+                    dribbble: "Dribbble", orcid: "ORCID", openalex: "OpenAlex"};
+const ACTIONS = {
+  open_search: {icon: "🔍", label: "開搜尋頁", color: "accent"},
+  open_profile: {icon: "🖱️", label: "點進個人頁", color: "accent"},
+  read_api: {icon: "🔌", label: "官方 API", color: "ok"},
+};
+const $ = (id) => document.getElementById(id);
+const safeUrl = (u) => (/^https?:\/\//i.test(String(u || "").trim()) ? String(u).trim() : null);  // 擋 javascript: 等網址
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"}[c]));
+const state = {steps: 0, candidates: 0};
+
+function action(a) {
+  if (ACTIONS[a]) return ACTIONS[a];
+  if (a.startsWith("jev_")) return {icon: "🤖", label: "Jev：" + a.slice(4), color: "jev"};
+  return {icon: "•", label: a, color: "accent"};
+}
+
+function showScreen(ev) {
+  const a = action(ev.action);
+  $("url").textContent = ev.url || "";
+  const badge = $("badge");
+  badge.hidden = false;
+  badge.textContent = a.icon + " " + a.label;
+  badge.style.background = `var(--${a.color}-soft)`;
+  badge.style.color = `var(--${a.color})`;
+  const vp = $("viewport");
+  if (ev.screenshot) {
+    const img = new Image();
+    img.alt = ev.detail;
+    img.style.opacity = 0;
+    img.onload = () => { vp.querySelectorAll("img, .empty").forEach((n) => n.remove()); vp.append(img);
+                         requestAnimationFrame(() => (img.style.opacity = 1)); };
+    img.src = ev.screenshot;
+  } else {
+    vp.innerHTML = `<div class="empty">${esc(a.label)}：這一步沒有瀏覽器畫面</div>`;
+  }
+  $("caption").textContent = ev.detail || "";
+  document.querySelectorAll(".timeline li").forEach((li) => li.classList.toggle("active", li.dataset.n == ev.n));
+}
+
+function addTimeline(icon, color, text, sub, t, ev) {
+  const li = document.createElement("li");
+  li.innerHTML = `<span class="icon" style="background:var(--${color}-soft);color:var(--${color})">${icon}</span>
+    <div><div class="detail">${esc(text)}</div>${sub ? `<div class="sub">${esc(sub)}</div>` : ""}</div>
+    <span class="t">${t != null ? t.toFixed(1) + "s" : ""}</span>`;
+  if (ev) { li.dataset.n = ev.n; li.classList.add("clickable"); li.onclick = () => showScreen(ev); }
+  $("timeline").append(li);
+  li.scrollIntoView({block: "nearest"});
+}
+
+function banner(text, kind = "") {
+  const div = document.createElement("div");
+  div.className = "banner " + kind;
+  div.textContent = text;
+  $("banners").append(div);
+}
+
+function renderCandidate(c) {
+  const cards = $("cards");
+  if (!state.candidates) cards.innerHTML = "";
+  state.candidates += 1;
+  $("cand-title").textContent = `候選人（${state.candidates}）`;
+  const matched = new Set((c.matched_skills || []).map((s) => s.toLowerCase()));
+  const skills = (c.skills || []).map((s) => `<span class="chip ${matched.has(s.toLowerCase()) ? "match" : ""}">${esc(s)}</span>`).join(" ");
+  const links = (c.evidence || []).filter((e) => safeUrl(e.url))
+    .map((e) => `<a href="${esc(safeUrl(e.url))}" target="_blank" rel="noopener noreferrer">${esc(e.label)} ↗</a>`).join("");
+  const card = document.createElement("article");
+  card.className = "card";
+  card.innerHTML = `<div class="top"><span class="name">${esc(c.name)}</span><span class="site">${esc(SITE_NAMES[c.site] || c.site)}</span></div>
+    ${c.headline ? `<div class="headline">${esc(c.headline)}</div>` : ""}
+    ${skills ? `<div>${skills}</div>` : ""}
+    ${c.summary ? `<div>${esc(c.summary)}</div>` : ""}
+    <div class="links">${links}</div>`;
+  cards.append(card);
+}
+
+/** 單一入口：回放與即時串流都把事件丟進來。 */
+function handle(ev) {
+  switch (ev.type) {
+    case "plan": {
+      const p = ev.plan;
+      $("plan").innerHTML = `<span class="label">搜尋計畫</span>
+        ${p.categories.map((c) => `<span class="chip">${esc(c.name)}</span>`).join(" ")}
+        <span class="label" style="margin-left:10px">技能</span>${p.skills.map((s) => `<span class="chip">${esc(s)}</span>`).join(" ")}
+        ${p.location ? `<span class="label" style="margin-left:10px">地點</span><span class="chip">${esc(p.location)}</span>` : ""}
+        <span class="label" style="margin-left:10px">網站</span>${ev.sites.map((s) => `<span class="chip">${esc(s.name)}</span>`).join(" ")}`;
+      $("status").innerHTML = "<b>搜尋中</b>";
+      break;
+    }
+    case "step": {
+      state.steps += 1;
+      const a = action(ev.action);
+      addTimeline(a.icon, a.color, ev.detail, (SITE_NAMES[ev.site] || ev.site) + (ev.confidence != null ? ` · 信心 ${ev.confidence}` : ""), ev.t, ev);
+      showScreen(ev);
+      break;
+    }
+    case "candidate":
+      renderCandidate(ev.candidate);
+      addTimeline("👤", "ok", "找到候選人：" + ev.candidate.name, SITE_NAMES[ev.candidate.site] || ev.candidate.site, ev.t);
+      break;
+    case "site_skipped":
+      addTimeline("⏭️", "warn", `${ev.name} 已跳過：${ev.reason}`, "", ev.t);
+      break;
+    case "site_error":
+      addTimeline("⚠️", "warn", ev.reason, SITE_NAMES[ev.site] || ev.site, ev.t);
+      break;
+    case "notice":
+      banner(ev.message);
+      break;
+    case "rejected":
+      banner("已拒絕：" + ev.reason, "bad");
+      $("status").innerHTML = "<b>已拒絕</b>";
+      break;
+    case "no_public_work":
+      banner(ev.advice || "這類職缺網路上少有公開作品，建議改用其他管道。");
+      $("status").innerHTML = "<b>結束</b>";
+      break;
+    case "error":
+      banner(ev.reason, "bad");
+      $("status").innerHTML = "<b>發生錯誤</b>";
+      break;
+    case "done":
+      banner(`完成：找到 ${ev.count} 位候選人。${ev.message || ""}`, "ok");
+      $("status").innerHTML = `<b>完成</b> · ${state.steps} 步 · ${ev.count} 位`;
+      break;
+  }
+}
+
+// ---------------------------------------------------------------- 回放
+const REC = window.SOURCING_RECORDING;
+let timer = null, index = 0, speed = 1, playing = false;
+
+function reset() {
+  clearTimeout(timer);
+  index = 0; state.steps = 0; state.candidates = 0;
+  $("timeline").innerHTML = ""; $("banners").innerHTML = "";
+  $("cards").innerHTML = '<div class="none">還沒有候選人</div>';
+  $("cand-title").textContent = "候選人";
+  $("plan").innerHTML = '<span class="label">搜尋計畫</span><span class="none">尚未開始</span>';
+  $("viewport").innerHTML = '<div class="empty">按「播放」看 agent 操作瀏覽器的過程</div>';
+  $("url").textContent = "about:blank"; $("badge").hidden = true; $("caption").textContent = "";
+  $("status").textContent = "準備中";
+}
+
+function tick() {
+  if (!playing || index >= REC.events.length) { setPlaying(false); return; }
+  const ev = REC.events[index];
+  handle(ev);
+  index += 1;
+  const next = REC.events[index];
+  if (!next) { setPlaying(false); return; }
+  // 依錄影的實際時間間隔播放，但每一步至少停留一下，讓截圖看得清楚
+  const gap = Math.max((next.t - ev.t) * 1000 / speed, ev.type === "step" ? 1400 / speed : 350 / speed);
+  timer = setTimeout(tick, gap);
+}
+
+function setPlaying(on) {
+  playing = on;
+  $("play").textContent = on ? "⏸ 暫停" : "▶ 播放";
+  if (on) tick(); else clearTimeout(timer);
+}
+
+if (!REC) {
+  $("viewport").innerHTML = '<div class="empty">還沒有錄影。請先執行：<br><code>python scripts/record_sourcing_demo.py "找會 Python 的軟體工程師，在台中" --sites github</code></div>';
+  document.querySelectorAll("button").forEach((b) => (b.disabled = true));
+} else {
+  $("query").textContent = REC.query;
+  $("status").textContent = `錄於 ${REC.recorded_at} · 共 ${REC.events.length} 個事件`;
+  $("play").onclick = () => { if (index >= REC.events.length) reset(); setPlaying(!playing); };
+  $("restart").onclick = () => { reset(); setPlaying(true); };
+  $("speed").onclick = () => { speed = speed >= 4 ? 1 : speed * 2; $("speed").textContent = `速度 ${speed}×`; };
+}
+
+// ---------------------------------------------------------------- 接真的串流（給前端參考）
+async function connectLive(query, maxCandidates = 5) {
+  reset();
+  const res = await fetch("/api/sourcing/search", {method: "POST", headers: {"Content-Type": "application/json"},
+                                                   body: JSON.stringify({query, max_candidates: maxCandidates})});
+  if (!res.ok) { handle({type: "error", reason: `HTTP ${res.status}`}); return; }
+  const started = performance.now();
+  const reader = res.body.pipeThrough(new TextDecoderStream()).getReader();
+  let buf = "";
+  for (;;) {
+    const {value, done} = await reader.read();
+    if (done) break;
+    buf += value;
+    let i;
+    while ((i = buf.indexOf("\n\n")) >= 0) {
+      const frame = buf.slice(0, i); buf = buf.slice(i + 2);
+      const line = frame.split("\n").find((l) => l.startsWith("data: "));
+      if (line) handle({...JSON.parse(line.slice(6)), t: (performance.now() - started) / 1000});
+    }
+  }
+}
+</script>
+</body>
+</html>

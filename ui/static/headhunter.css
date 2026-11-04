@@ -1,0 +1,172 @@
+/* Headhunter workbench: glass panels that slide over the map from both sides. */
+@font-face{font-family:"JetBrains Mono";src:url(/static/vendor/jetbrains-mono/jetbrains-mono-latin-400-normal.woff2) format("woff2");font-weight:400;font-display:swap}
+.hunter-side{--panel:rgba(255,255,255,.75);--well:rgba(0,0,0,.03);--line:rgba(0,0,0,.06);--text:#1E293B;--muted:#475569;--blue:#0070F3;--ok:#16A34A;--warn:#B45309;--err:#DC2626;--idle:rgba(0,0,0,.07);--mono:"JetBrains Mono","Fira Code","SF Mono",ui-monospace,Consolas,monospace;position:absolute;top:12px;bottom:12px;z-index:4;display:flex;flex-direction:column;gap:10px;color:var(--text);font-size:13px;line-height:1.6;visibility:hidden;opacity:0;transition:transform .4s cubic-bezier(.16,1,.3,1),opacity .3s ease-out,visibility 0s .4s}
+.hunter-left{left:12px;width:320px;transform:translateX(-100%)}
+.hunter-right{right:12px;width:380px;bottom:36px;transform:translateX(100%)}
+.hunter-active .hunter-side{visibility:visible;opacity:1;transform:none;transition:transform .4s cubic-bezier(.16,1,.3,1),opacity .3s ease-out,visibility 0s}
+.hunter-center{left:344px;right:404px;bottom:36px;transform:none}
+/* The browser itself animates between the two spots, so the empty centre just switches off. */
+.hunter-active:not(.hunter-big) .hunter-center{visibility:hidden;transition:none}
+.hunter-browser{will-change:transform}
+/* Frames are usually about 16:10 (the real ratio is set from each frame), so the enlarged screen keeps that shape instead of leaving blank bands. */
+.hunter-center{justify-content:center}
+.hunter-center .hunter-browser{flex:0 1 auto;max-height:100%}
+.hunter-center .hunter-screen{flex:0 1 auto;aspect-ratio:var(--frame-ratio,16 / 10)}
+.hunter-zoom{margin-left:auto}
+.hunter-active .city-topbar,.hunter-active .map-toolbar,.hunter-active .map-status-bar,.hunter-active .district-toggle,.hunter-active .district-panel,.hunter-active .map-hud-coords,.hunter-active .maplibregl-ctrl-top-right,.hunter-active .sidebar-toggle{visibility:hidden}
+
+.hunter-pane{display:flex;flex-direction:column;min-height:0;overflow:hidden;border:1px solid var(--line);border-radius:10px;background:var(--panel);-webkit-backdrop-filter:blur(0);backdrop-filter:blur(0);box-shadow:0 8px 24px rgba(15,23,42,.08);transition:border-color .3s,box-shadow .3s,backdrop-filter .4s cubic-bezier(.16,1,.3,1),-webkit-backdrop-filter .4s cubic-bezier(.16,1,.3,1)}
+.hunter-active .hunter-pane{-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px)}
+.hunter-pane h3{flex:none;display:flex;align-items:center;gap:8px;margin:0;padding:8px 12px;border-bottom:1px solid var(--line);color:#334155;font-size:12px;font-weight:600}
+.hunter-grow{flex:1 1 0}.hunter-body{flex:1;min-height:0;padding:10px 12px;overflow:auto}
+.hunter-head{flex:none;display:flex;flex-direction:row;flex-wrap:wrap;align-items:center;gap:6px 8px;padding:9px 12px}
+.hunter-head strong{flex:1 1 100%;color:#0F172A;font-size:20px;font-weight:700;line-height:1.3}
+.hunter-mode{position:relative;display:inline-flex;align-items:center;gap:7px;padding:2px 13px;letter-spacing:.5px;border:1px solid rgba(180,83,9,.35);border-radius:999px;background:rgba(245,158,11,.14);color:#92400E;font-size:11.5px}
+.hunter-mode:before{content:"";flex:none;width:6px;height:6px;border-radius:50%;background:#D97706}
+.hunter-mode:after{content:"";position:absolute;left:13px;top:50%;width:6px;height:6px;margin-top:-3px;border-radius:50%;background:#D97706;animation:hunter-ping 2s cubic-bezier(0,0,.2,1) infinite}
+@keyframes hunter-ping{from{opacity:.65;transform:scale(1)}80%,to{opacity:0;transform:scale(3.4)}}
+.hunter-pill{min-height:0;padding:2px 10px;border:1px solid rgba(0,0,0,.12);border-radius:999px;background:none;color:var(--muted);font-size:11.5px;font-weight:500}
+.hunter-pill:hover{background:rgba(0,112,243,.08);color:var(--blue)}
+.hunter-pill:focus-visible,.hunter-start:focus-visible,.hunter-detail:focus-visible{outline:2px solid #0070F3;outline-offset:2px}
+#hunter-exit{margin-left:auto}
+.radar-workspace.sidebar-instant{transition:none}
+
+.hunter-field{display:block;margin-bottom:8px;color:var(--muted);font-size:12px}
+.hunter-field[hidden]{display:none}
+.hunter-field input[type=text],.hunter-field input[type=number]{display:block;width:100%;min-height:34px;margin-top:3px;padding:6px 9px;border:1px solid var(--line);border-radius:7px;background:var(--well);color:var(--text);font-size:13px}
+.hunter-tag{display:inline-block;margin-bottom:8px;padding:1px 10px;border:1px solid rgba(0,112,243,.4);border-radius:999px;background:rgba(0,112,243,.08);color:var(--blue);font-size:12px;font-weight:650}
+.hunter-sites{display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;margin-top:4px}
+.hunter-site{position:relative;display:flex;align-items:center;gap:5px;min-width:0;padding:3px 7px;border:1px solid var(--line);border-radius:6px;background:var(--well);color:var(--muted);font-size:11.5px;cursor:pointer}
+.hunter-site input{position:absolute;opacity:0}.hunter-site:has(input:focus-visible){outline:2px solid var(--blue);outline-offset:2px}
+.hunter-site:has(input:not(:checked)){opacity:.42;border-style:dashed;background:none}
+.hunter-site i{flex:none;width:7px;height:7px;border-radius:50%;background:#94A3B8}
+.hunter-site.is-active{color:var(--text);border-color:var(--blue);background:rgba(0,112,243,.08);animation:hunter-site .7s ease-in-out infinite}.hunter-site.is-active i{background:var(--blue)}
+.hunter-site.is-done{color:var(--ok);border-color:rgba(22,163,74,.4);background:rgba(22,163,74,.08)}
+.hunter-site.is-failed{color:var(--err);border-color:rgba(220,38,38,.4);background:rgba(220,38,38,.08);animation:none}
+.hunter-site.is-done i,.hunter-site.is-failed i{width:auto;height:auto;background:none;font-style:normal}.hunter-site.is-done i:before{content:"✓"}.hunter-site.is-failed i:before{content:"✕"}
+@keyframes hunter-site{50%{box-shadow:0 0 0 2px rgba(0,112,243,.2),0 0 8px rgba(0,112,243,.35)}}
+@keyframes hunter-soft{50%{opacity:.45}}
+.hunter-progress{display:flex;justify-content:space-between;margin:10px 0 3px;color:var(--muted);font-size:12px;font-variant-numeric:tabular-nums}
+.hunter-track{height:10px;border-radius:4px;overflow:hidden;background:var(--well);box-shadow:inset 0 0 0 1px var(--line)}
+.hunter-fill{height:100%;width:0;background:linear-gradient(90deg,rgba(255,255,255,.4) 1px,transparent 1px) 0 0/10px 100%,linear-gradient(rgba(255,255,255,.28) 1px,transparent 1px) 0 0/100% 4px,linear-gradient(90deg,#0052CC,var(--blue));animation:hunter-grid .8s linear infinite;transition:width .4s ease-out}
+@keyframes hunter-grid{to{background-position:10px 0,0 4px,0 0}}
+.hunter-state{margin:7px 0 8px;font-size:12.5px}
+.hunter-start{width:100%;min-height:36px;border:0;border-radius:8px;background:var(--blue);color:#fff;font-weight:650;cursor:pointer}
+.hunter-start:hover{background:#0060D6}.hunter-start:disabled{opacity:.55;cursor:wait}
+
+.hunter-terminal{background:#F8FAFC}
+.hunter-log{margin:0;padding:0;list-style:none;color:#334155;font:12px/1.7 var(--mono);font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+/* Two columns keep wrapped messages lined up after the timestamp. */
+.hunter-log li{display:grid;grid-template-columns:auto minmax(0,1fr);gap:0 7px}
+.hunter-log time{color:#64748B}.hunter-log .ok{color:var(--ok)}.hunter-log .warn{color:var(--warn)}.hunter-log .err{color:var(--err)}
+.hunter-prompt{margin-top:3px;color:var(--ok);font:12px var(--mono)}.hunter-prompt:after{content:"_";animation:hunter-blink 1s step-end infinite}.is-hunting .hunter-prompt:after{animation-duration:.36s}
+@keyframes hunter-blink{50%{opacity:0}}
+
+.hunter-url{flex:none;display:flex;align-items:center;gap:6px;padding:5px 10px;border-bottom:1px solid var(--line);background:var(--well);color:var(--muted);font:11.5px var(--mono)}
+.hunter-url i{flex:none;width:8px;height:8px;border-radius:50%;background:rgba(0,0,0,.14)}.hunter-url span{overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.hunter-screen{position:relative;flex:1;min-height:0;overflow:hidden;background:rgba(255,255,255,.4)}
+.hunter-feed{padding:10px;transition:transform .6s ease-in-out}
+.running .hunter-feed{animation:hunter-marquee 3.2s linear infinite}
+@keyframes hunter-marquee{to{transform:translateY(-50%)}}
+.hunter-row{display:flex;gap:9px;align-items:center;padding:7px 9px;margin-bottom:6px;border:1px solid var(--line);border-radius:4px;background:var(--well);transition:box-shadow .25s,border-color .25s}
+.hunter-row.hot{border-color:rgba(0,112,243,.55);box-shadow:0 0 8px rgba(0,112,243,.22)}
+.hunter-row b{flex:none;width:26px;height:26px;border-radius:50%;background:var(--idle)}.hunter-row div{flex:1}
+.hunter-row span{display:block;height:7px;margin:4px 0;border-radius:4px;background:var(--idle)}.hunter-row span:not(:first-child){height:5px}
+.hunter-cursor{position:absolute;left:14px;top:14px;width:13px;height:13px;border-radius:50%;background:#FF6B00;box-shadow:0 0 0 4px rgba(255,107,0,.25);transition:left .55s ease-in-out,top .55s ease-in-out}
+.hunter-ripple{position:absolute;width:56px;height:56px;margin:-22px 0 0 -22px;border:2px solid var(--blue);border-radius:50%;pointer-events:none;animation:hunter-ripple .7s ease-out forwards}
+@keyframes hunter-ripple{from{opacity:.9;transform:scale(.15)}to{opacity:0;transform:scale(1)}}
+/* Live geometry: the cursor sits above the frame only once a real click position has arrived. */
+.hunter-cursor.is-live{z-index:3}
+.hunter-frame:not([hidden]) ~ .hunter-cursor:not(.is-live){display:none}
+.hunter-beacon{position:absolute;z-index:3;width:56px;height:56px;margin:-28px 0 0 -28px;border:2px solid #FF6B00;border-radius:50%;pointer-events:none;box-shadow:0 0 12px rgba(255,107,0,.45);animation:hunter-ripple .8s ease-out forwards}
+.hunter-box{position:absolute;z-index:2;border:2px solid var(--blue);border-radius:4px;background:rgba(0,112,243,.08);pointer-events:none;animation:hunter-box 1.4s ease-out forwards}
+.hunter-box.is-found{border-color:var(--ok);background:rgba(22,163,74,.1);box-shadow:0 0 14px rgba(22,163,74,.35)}
+@keyframes hunter-box{from{opacity:0;transform:scale(1.08)}15%{opacity:1;transform:none}70%{opacity:1}to{opacity:0}}
+.hunter-log li.is-linked{border-radius:4px;animation:hunter-linked 1.4s ease-out}
+@keyframes hunter-linked{15%,60%{background:rgba(22,163,74,.14);box-shadow:inset 2px 0 0 var(--ok)}}
+.hunter-scan,.hunter-flag,.hunter-sim{display:none}
+.hunter-frame{position:absolute;inset:0;z-index:1;width:100%;height:100%;object-fit:contain;background:#fff}
+.hunter-frame[hidden]{display:none}
+.running .hunter-sim,.running .hunter-flag{z-index:2}
+.hunter-card p.hunter-fit.is-unknown{background:rgba(100,116,139,.12);color:#475569}
+.hunter-site.is-off{opacity:.45;cursor:not-allowed}
+.hunter-links a{color:inherit;text-decoration:underline;text-underline-offset:2px}
+.running .hunter-scan{display:block;position:absolute;left:0;right:0;top:0;height:56px;pointer-events:none;background:linear-gradient(transparent,rgba(0,112,243,.07) 80%,rgba(0,112,243,.4) 98%,transparent);animation:hunter-scan 5s linear infinite}
+@keyframes hunter-scan{from{transform:translateY(-60px)}to{transform:translateY(420px)}}
+.running .hunter-flag{display:block;position:absolute;top:7px;left:50%;transform:translateX(-50%);padding:1px 10px;border:1px solid var(--err);border-radius:6px;background:rgba(255,255,255,.85);color:var(--err);font-size:11px;font-weight:700;letter-spacing:.14em;animation:hunter-flag 3s ease-in-out infinite}
+@keyframes hunter-flag{50%{opacity:.72}}
+.running .hunter-sim{display:block;position:absolute;right:7px;bottom:7px;padding:2px 8px;border-radius:6px;background:rgba(255,255,255,.88);box-shadow:0 0 0 1px var(--line);color:var(--muted);font-size:11px}
+.hunter-screen.glitch .hunter-feed{animation:hunter-glitch .5s steps(2) both}
+.hunter-screen.glitch:after{z-index:2}
+/* A bright band sweeps top to bottom over scanlines while the frame jolts sideways. */
+.hunter-screen.wipe:after{content:"";position:absolute;inset:0;z-index:2;pointer-events:none;background:linear-gradient(transparent 40%,rgba(0,112,243,.35) 49%,rgba(255,255,255,.7) 50%,transparent 60%) 0 100%/100% 200% no-repeat,repeating-linear-gradient(0deg,rgba(0,112,243,.12) 0 2px,transparent 2px 5px);animation:hunter-wipe .15s linear both}
+@keyframes hunter-wipe{to{background-position:0 0,0 0;opacity:.4}}
+.hunter-screen.wipe .hunter-frame{animation:hunter-jolt .15s steps(3) both}
+@keyframes hunter-jolt{33%{transform:translateX(-2px);filter:saturate(1.6) hue-rotate(-12deg)}66%{transform:translateX(2px)}}
+.hunter-screen.glitch:after{content:"";position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(0deg,rgba(0,112,243,.22) 0 3px,transparent 3px 9px),linear-gradient(90deg,rgba(220,38,38,.14),rgba(0,112,243,.14));animation:hunter-flash .5s linear both}
+@keyframes hunter-glitch{0%,100%{transform:translateX(0);filter:none}20%{transform:translateX(-12px) skewX(6deg);filter:hue-rotate(90deg);clip-path:inset(12% 0 42% 0)}40%{transform:translateX(10px) skewX(-5deg);clip-path:inset(46% 0 8% 0)}60%{transform:translateX(-6px);filter:hue-rotate(220deg);clip-path:inset(4% 0 62% 0)}80%{opacity:.5;clip-path:inset(0)}}
+@keyframes hunter-flash{0%,100%{opacity:0}25%,70%{opacity:1}}
+
+.hunter-count{flex:none;white-space:nowrap;color:var(--text);font-variant-numeric:tabular-nums}
+.hunter-view{margin-left:auto;max-width:128px;min-height:0;padding:1px 4px;border:1px solid var(--line);border-radius:6px;background:rgba(255,255,255,.8);color:var(--text);font-size:11.5px}
+.hunter-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:7px;align-content:start}
+.hunter-empty{grid-column:1/-1;margin:0;color:var(--muted);font-size:12.5px}
+.hunter-note{flex:none;margin:0;padding:4px 12px;border-top:1px solid var(--line);color:#64748B;font-size:11px}
+.hunter-card{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:0 8px;padding:7px 9px;border:1px solid var(--line);border-radius:8px;background:rgba(255,255,255,.7);cursor:pointer;transition:transform .16s ease-out,border-color .16s ease-out,box-shadow .16s ease-out,background-color .2s ease;animation:hunter-card-up .42s cubic-bezier(.2,.8,.2,1.25),hunter-card-flash .9s ease-out}
+.hunter-card[hidden]{display:none}
+@keyframes hunter-card-up{from{opacity:0;transform:translateY(22px) scale(.97)}to{opacity:1;transform:none}}
+@keyframes hunter-card-flash{0%,35%{border-color:var(--blue);box-shadow:0 0 0 1px var(--blue),0 0 14px rgba(0,112,243,.4)}}
+.hunter-card:hover{border-color:#00A3FF;background:#fff;box-shadow:0 0 0 1px rgba(0,163,255,.35),0 10px 22px rgba(15,23,42,.16);transform:translateY(-3px)}
+.hunter-card p{margin:0}.hunter-who{font-size:12.5px;font-weight:650}
+.hunter-card p.hunter-fit{grid-row:1;grid-column:2;align-self:start;padding:1px 8px;border-radius:999px;background:rgba(180,83,9,.1);color:#92400E;font-size:11px;font-weight:650;white-space:nowrap}
+.hunter-card p.hunter-fit.is-strong{background:rgba(22,163,74,.12);color:#166534}
+.hunter-card.is-selected p.hunter-fit,.hunter-card.is-selected p.hunter-fit.is-strong{background:rgba(255,255,255,.22);color:#fff}
+.hunter-summary{color:var(--muted);font-size:11.5px}
+.hunter-detail{grid-column:1/-1;justify-self:start;min-height:0;margin-top:3px;padding:0;border:0;background:none;color:var(--blue);font-size:11.5px;font-weight:500;cursor:pointer}
+.hunter-detail:hover{background:none}
+.hunter-more{grid-column:1/-1;margin-top:3px!important;font-size:11.5px}
+.hunter-card.is-selected,.hunter-card.is-selected:hover{border-color:#FF6B00;background:#FF6B00;box-shadow:0 4px 14px rgba(255,107,0,.4);animation:none}
+.hunter-card.is-selected *{color:#fff}
+
+/* Markers reuse the campus crosshair so both modes share one map language. */
+.hunter-node[hidden]{display:none}
+.hunter-node:focus-visible{outline:2px solid #0070F3;outline-offset:2px}
+.campus-node.is-focus{color:#ea6a12}
+.campus-node.is-focus svg{transform:scale(1.2)}
+.campus-node.is-focus i,.campus-node.is-focus i:first-child{border-color:#f0762b;animation:campus-ring 1.3s ease-out infinite}.campus-node.is-focus i:nth-child(2){animation-delay:.65s}
+
+/* Run finished: lock-on rings and a stamp over the last frame, then a green wave down the cards. */
+.hunter-done{position:absolute;inset:0;z-index:3;display:grid;place-content:center;justify-items:center;gap:2px;pointer-events:none;background:rgba(248,250,252,.6);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);animation:hunter-done-in .35s ease-out both;transition:opacity .5s ease-in}
+.hunter-done.is-out{opacity:0}
+.hunter-done i{position:absolute;left:50%;top:50%;width:220px;height:220px;margin:-110px 0 0 -110px;border:2px solid var(--ok);border-radius:50%;animation:hunter-lock 1.1s cubic-bezier(.16,1,.3,1) both}
+.hunter-done i:nth-child(2){animation-delay:.18s;border-width:1px}
+.hunter-done-card{position:relative;display:grid;justify-items:center;gap:3px;padding:14px 28px;border:1px solid rgba(22,163,74,.35);border-radius:10px;background:rgba(255,255,255,.94);box-shadow:0 12px 32px rgba(15,23,42,.14),0 0 0 4px rgba(22,163,74,.06)}
+.hunter-done small{color:var(--muted);font:10.5px var(--mono);letter-spacing:.3em;animation:hunter-done-in .3s ease-out .05s both}
+.hunter-done b{display:flex;align-items:center;gap:12px;color:#15803D;font:400 24px/1.25 var(--mono);letter-spacing:.28em;text-shadow:0 0 14px rgba(22,163,74,.45);animation:hunter-stamp .45s cubic-bezier(.2,.8,.2,1.4) .12s both}
+.hunter-done b:before,.hunter-done b:after{content:"";width:26px;height:1px;background:currentColor;opacity:.6}
+.hunter-done span{color:var(--text);font:11.5px var(--mono);letter-spacing:.2em;animation:hunter-done-in .4s ease-out .35s both}
+.hunter-done em{margin-right:2px;color:#15803D;font-style:normal;font-size:15px}
+@keyframes hunter-done-in{from{opacity:0}}
+@keyframes hunter-lock{from{opacity:0;transform:scale(2.6)}55%{opacity:1}to{opacity:.85;transform:scale(1)}}
+@keyframes hunter-stamp{from{opacity:0;transform:scale(1.6)}}
+.hunter-track.is-done{animation:hunter-track-done 1.2s ease-out}
+.hunter-track.is-failed .hunter-fill{background:linear-gradient(90deg,#B91C1C,var(--err));animation:none}
+.hunter-track.is-done .hunter-fill{background:linear-gradient(90deg,#15803D,var(--ok))}
+@keyframes hunter-track-done{30%{box-shadow:inset 0 0 0 1px var(--ok),0 0 12px rgba(22,163,74,.55)}}
+.hunter-card.is-cheer{animation:hunter-cheer .8s ease-out var(--cheer,0ms) both}
+@keyframes hunter-cheer{30%{border-color:var(--ok);box-shadow:0 0 0 1px var(--ok),0 0 14px rgba(22,163,74,.35);transform:translateX(4px)}}
+
+@media(max-width:900px){
+ .hunter-left,.hunter-right{left:8px;right:8px;width:auto}
+ .hunter-left{top:8px;bottom:50%}.hunter-right{top:50%;bottom:8px}
+ .hunter-zoom{display:none}
+}
+@media(prefers-reduced-motion:reduce){
+ .hunter-side,.hunter-active .hunter-side,.hunter-pane,.hunter-fill,.hunter-feed,.hunter-card,.hunter-cursor{transition:none}
+ .hunter-mode:after,.hunter-site.is-active,.hunter-fill,.hunter-prompt:after,.running .hunter-flag,.hunter-card,.hunter-screen.glitch .hunter-feed{animation:none}
+ .hunter-card:hover{transform:none}
+ .hunter-box,.hunter-log li.is-linked,.hunter-done,.hunter-done *,.hunter-track.is-done,.hunter-card.is-cheer{animation:none}
+ .running .hunter-feed,.campus-node.is-focus i,.campus-node.is-focus i:first-child{animation:none}
+ .running .hunter-scan,.hunter-ripple,.hunter-screen.glitch:after,.hunter-screen.wipe:after{display:none}
+ .hunter-screen.wipe .hunter-frame{animation:none}
+}

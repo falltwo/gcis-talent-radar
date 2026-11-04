@@ -7,11 +7,11 @@ import json
 import hashlib
 from pathlib import Path
 from typing import Dict, Any, List, Optional
-from fastapi import FastAPI, Query, HTTPException
+from fastapi import FastAPI, Header, Query, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
-from pydantic import BaseModel
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, StreamingResponse
+from pydantic import BaseModel, Field
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
@@ -27,8 +27,15 @@ from database.db_manager import db
 from agent.audit_log import AuditLogError
 from agent.agent_service import OpenRouterError, agent_service
 from engine.gcis_live_verifier import verify_company_live
+from sourcing import runs as sourcing_runs
+from sourcing import service as sourcing_service
+from sourcing.sites import catalog as sourcing_catalog
 from engine.expansion_demo import build_expansion_report
+from engine.street_geocoder import locate_road, StreetLookupError
+from engine.comparison_report import ComparisonReportService
+from engine.report_scenario import ReportError
 from engine.official_labor_market import (
+    get_district_job_comparison,
     get_gcis_new_company_trend,
     get_regional_job_demand,
     get_wage_baseline,
@@ -47,6 +54,18 @@ app.include_router(recruitment_demo_router)
 app.include_router(mock104_router)
 app.include_router(recruitment_agent_router)
 
+# Isolated SQLAlchemy batch MVP; preserve all existing PR22 recruitment routes.
+from recruitment.backend.integration import install_recruitment
+install_recruitment(app)
+
+# Constructing this service does not initialise or mutate either database.
+comparison_report_service = ComparisonReportService()
+
+
+@app.exception_handler(ReportError)
+async def comparison_report_error_handler(request, exc):
+    return JSONResponse(status_code=exc.status, content={"detail": {"error_code": exc.code, "reason": exc.message}})
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -61,6 +80,40 @@ class ChatRequest(BaseModel):
 
 class VerifyRequest(BaseModel):
     query: str
+
+class SourcingRequest(BaseModel):
+    query: str = Field(..., min_length=2, max_length=300)
+    max_candidates: int = Field(5, ge=1, le=20)
+    sites: Optional[List[str]] = None
+    live: bool = True          # 送 Chrome 即時畫面（frame 事件）
+    screenshots: bool = False  # 每一步另附截圖（不需要即時畫面時用）
+
+class SourcingRunRequest(BaseModel):
+    query: str = Field(..., min_length=2, max_length=300, description="HR 的需求，例如「找會 Python 的軟體工程師，在台中」")
+    max_candidates: int = Field(5, ge=1, le=20, description="最多找幾位")
+    sites: Optional[List[str]] = Field(None, description="只搜這些網站 id（見 /api/sourcing/sites）；不給就依職類自動挑")
+    screenshots: bool = Field(False, description="每一步另附截圖；即時畫面另外由 events 的 frame 事件提供")
+
+class SourcingRunCreated(BaseModel):
+    run_id: str
+    status: str = Field(..., description="running | done | error | cancelled | rejected | no_public_work")
+    events_url: str = Field(..., description="GET 這個網址取得 SSE 事件，可直接用 EventSource")
+    snapshot_url: str
+    message: Optional[str] = Field(None, description="被拒絕或沒有公開作品時的原因")
+
+class SourcingRunSnapshot(BaseModel):
+    run_id: str
+    status: str
+    query: str
+    created_at: float
+    finished_at: Optional[float] = None
+    plan: Optional[Dict[str, Any]] = None
+    steps: int
+    candidates: List[Dict[str, Any]]
+    skipped: List[Dict[str, Any]]
+    message: Optional[str] = None
+    usage: Optional[Dict[str, Any]] = None
+    event_count: int
 
 
 OFFICIAL_DATA_REFRESH_QUERIES = {
@@ -325,6 +378,78 @@ def agent_chat(req: ChatRequest) -> Dict[str, Any]:
     except (OpenRouterError, AuditLogError) as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
 
+@app.get("/api/sourcing/sites")
+def sourcing_sites() -> Dict[str, Any]:
+    """找人 agent 的網站目錄：職類、可用與否、不可用原因。"""
+    return {"sites": sourcing_catalog()}
+
+@app.post("/api/sourcing/search")
+def sourcing_search(req: SourcingRequest) -> StreamingResponse:
+    """找人 agent：以 SSE 串流回傳每一步（含截圖）、候選人與結束事件。"""
+    try:
+        prepared = sourcing_service.prepare(req.query, max_candidates=req.max_candidates,
+                                            site_ids=req.sites, screenshots=req.screenshots)
+    except AuditLogError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+    events = sourcing_service.stream_live(prepared) if req.live else sourcing_service.stream(prepared)
+
+    def frames():
+        for event in events:
+            yield f"event: {event['type']}\ndata: {json.dumps(event, ensure_ascii=False)}\n\n"
+
+    return StreamingResponse(frames(), media_type="text/event-stream",
+                             headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+
+def _sourcing_run(run_id: str) -> sourcing_runs.Run:
+    run = sourcing_runs.registry.get(run_id)
+    if run is None:
+        raise HTTPException(status_code=404, detail="找不到這個搜尋任務（可能已過期或伺服器重啟）。")
+    return run
+
+@app.post("/api/sourcing/runs", response_model=SourcingRunCreated, status_code=201)
+def create_sourcing_run(req: SourcingRunRequest) -> Dict[str, Any]:
+    """建立一次找人搜尋並在背景執行。被公平招募護欄擋下、或職類沒有公開作品時，任務會直接結束並寫明原因。"""
+    try:
+        prepared = sourcing_service.prepare(req.query, max_candidates=req.max_candidates,
+                                            site_ids=req.sites, screenshots=req.screenshots)
+        run = sourcing_runs.registry.start(prepared)
+    except AuditLogError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except sourcing_runs.RunnerBusy as exc:
+        raise HTTPException(status_code=429, detail=str(exc)) from exc
+    snap = run.snapshot()
+    return {"run_id": run.id, "status": snap["status"], "message": snap["message"] if run.finished else None,
+            "events_url": f"/api/sourcing/runs/{run.id}/events", "snapshot_url": f"/api/sourcing/runs/{run.id}"}
+
+@app.get("/api/sourcing/runs/{run_id}/events")
+def sourcing_run_events(run_id: str, frames: bool = Query(True, description="是否送即時畫面（frame 事件）"),
+                        last_event_id: Optional[str] = Header(None, alias="Last-Event-ID")) -> StreamingResponse:
+    """SSE 事件串流（GET，可直接用 EventSource）。斷線重連時瀏覽器會帶 Last-Event-ID，從下一個事件接著送。"""
+    run = _sourcing_run(run_id)
+    after = int(last_event_id) if (last_event_id or "").isdigit() else 0
+
+    def stream():
+        yield "retry: 3000\n\n"
+        for event_id, event in sourcing_runs.follow(run, after=after, frames=frames):
+            head = f"id: {event_id}\n" if event_id is not None else ""
+            yield f"{head}event: {event['type']}\ndata: {json.dumps(event, ensure_ascii=False)}\n\n"
+        yield "event: end\ndata: {}\n\n"
+
+    return StreamingResponse(stream(), media_type="text/event-stream",
+                             headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+
+@app.get("/api/sourcing/runs/{run_id}", response_model=SourcingRunSnapshot)
+def sourcing_run_snapshot(run_id: str) -> Dict[str, Any]:
+    """目前狀態與已找到的候選人；前端重新整理頁面後可以用來還原畫面。"""
+    return _sourcing_run(run_id).snapshot()
+
+@app.delete("/api/sourcing/runs/{run_id}", response_model=SourcingRunSnapshot)
+def cancel_sourcing_run(run_id: str) -> Dict[str, Any]:
+    """取消搜尋；背景流程會在下一步停下並關掉瀏覽器，狀態變成 cancelled。"""
+    sourcing_runs.registry.cancel(run_id)
+    return _sourcing_run(run_id).snapshot()
+
 @app.post("/api/agent/verify-company")
 def verify_company_api(req: VerifyRequest) -> Dict[str, Any]:
     """Tool: GCIS Single Company Verification"""
@@ -333,7 +458,10 @@ def verify_company_api(req: VerifyRequest) -> Dict[str, Any]:
 
 
 def _raise_official_tool_error(result: Dict[str, Any]) -> None:
-    status_code = 400 if result.get("error_code") == "UNSUPPORTED_INDUSTRY" else 503
+    invalid_request_codes = {
+        "UNSUPPORTED_INDUSTRY", "INVALID_DISTRICTS", "INVALID_OCCUPATION_KEYWORD",
+    }
+    status_code = 400 if result.get("error_code") in invalid_request_codes else 503
     raise HTTPException(status_code=status_code, detail=result)
 
 
@@ -357,6 +485,28 @@ def official_job_demand(
     if district and district not in TAICHUNG_DISTRICTS:
         raise HTTPException(status_code=400, detail="district 必須是台中市 29 行政區之一")
     result = get_regional_job_demand(district, industry_id, occupation_keyword)
+    if not result.get("available"):
+        _raise_official_tool_error(result)
+    return result
+
+@app.get("/api/official/district-comparison")
+def official_district_comparison(
+    districts: Optional[List[str]] = Query(None),
+    industry_id: Optional[str] = Query(None),
+    occupation_keyword: Optional[str] = Query(None),
+    snapshot_date: Optional[str] = Query(None),
+) -> Dict[str, Any]:
+    """Compare 2–3 districts within the same audited official vacancy snapshot."""
+    if snapshot_date:
+        from datetime import date
+        import re
+        try:
+            if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", snapshot_date):
+                raise ValueError("invalid date format")
+            date.fromisoformat(snapshot_date)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail="snapshot_date須為YYYY-MM-DD日期。") from exc
+    result = get_district_job_comparison(districts, industry_id, occupation_keyword, snapshot_date=snapshot_date)
     if not result.get("available"):
         _raise_official_tool_error(result)
     return result
@@ -400,6 +550,53 @@ def get_benchmark_summary() -> Dict[str, Any]:
             return json.load(f)
     return run_benchmark_validation()
 
+# ----------------- Immutable enterprise comparison reports -----------------
+
+@app.get("/api/comparison-options")
+def comparison_options():
+    return comparison_report_service.options()
+
+
+@app.post("/api/reports/expansion-comparison/resolve")
+def resolve_comparison_report(payload: Dict[str, Any]):
+    return comparison_report_service.resolve(payload)
+
+
+@app.post("/api/reports/expansion-comparison", status_code=201)
+def create_comparison_report(payload: Dict[str, Any], idempotency_key: Optional[str] = Header(None, alias="Idempotency-Key")):
+    return comparison_report_service.build(payload, idempotency_key)
+
+
+@app.get("/api/reports/{report_id}")
+def read_comparison_report(report_id: str):
+    return comparison_report_service.get(report_id)
+
+
+@app.post("/api/reports/{report_id}/questions")
+def question_comparison_report(report_id: str, payload: Dict[str, Any]):
+    return comparison_report_service.question(report_id, payload)
+
+
+@app.get("/api/reports/{report_id}/export")
+def export_comparison_report(report_id: str, format: str = Query("html")):
+    if format == "html":
+        return HTMLResponse(comparison_report_service.export_html(report_id), headers={"Cache-Control": "no-store"})
+    if format == "json":
+        report = comparison_report_service.get(report_id)
+        return JSONResponse(report, headers={"Content-Disposition": f'attachment; filename="{report["report_id"]}.json"', "Cache-Control": "no-store"})
+    raise ReportError("UNSUPPORTED_EXPORT", "匯出僅提供html與json。")
+
+
+@app.get("/api/map/location")
+def get_map_location(district: str = Query(..., max_length=10), road: str = Query(..., max_length=40)):
+    try:
+        return locate_road(district, road)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except StreetLookupError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+
 # ----------------- Frontend Web Serving -----------------
 UI_DIR = BASE_DIR / "ui"
 STATIC_DIR = UI_DIR / "static"
@@ -408,12 +605,28 @@ if STATIC_DIR.exists():
 
 @app.get("/")
 def serve_frontend():
-    return FileResponse(UI_DIR / "home.html")
+    # The versioned asset URLs live here, so a cached copy would pin every script to an old build.
+    return FileResponse(UI_DIR / "home.html", headers={"Cache-Control": "no-cache"})
+
+
+@app.get("/compare")
+def serve_enterprise_comparison():
+    return FileResponse(UI_DIR / "compare.html")
+
+
+@app.get("/reports/{report_id}")
+def serve_enterprise_report(report_id: str):
+    return FileResponse(UI_DIR / "report.html")
 
 
 @app.get("/legacy")
 def serve_legacy_prototype():
     return FileResponse(UI_DIR / "legacy.html")
+
+@app.get("/sourcing")
+def serve_sourcing_live():
+    """找人 agent 即時頁：輸入需求後直接看 agent 操作瀏覽器。"""
+    return FileResponse(UI_DIR / "sourcing.html")
 
 @app.get("/demo")
 def serve_expansion_demo():

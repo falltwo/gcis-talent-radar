@@ -1,0 +1,102 @@
+{
+  "notice": "All numerical observations and IDs in this file are synthetic design fixtures. They are not official observations, forecasts or production results.",
+  "production_allowed": false,
+  "scenario": {
+    "schema_version": "1.0",
+    "districts": ["大雅區", "潭子區", "神岡區"],
+    "manufacturing": {"division_code": "29", "classification_version": "catalog-design-v1"},
+    "occupation": {"type": "KEYWORD", "keyword": "CNC", "retrieval_profile_version": "job-rules-design-v1"},
+    "observation": {"mode": "LATEST_AVAILABLE", "month": null, "window_months": 3, "knowledge_cutoff": null},
+    "hiring_plan": {"net_hires": 31, "start_month": "2026-11", "end_month": "2027-01"}
+  },
+  "expected_planning_output": {
+    "data_kind": "USER_PLAN",
+    "monthly_targets": [{"month": "2026-11", "people": 11}, {"month": "2026-12", "people": 10}, {"month": "2027-01", "people": 10}],
+    "disclosure": "你的淨到職目標，不代表預測可招到的人數。"
+  },
+  "fact": {
+    "fact_id": "f_design_daya_workers",
+    "report_id": "rep_design_example",
+    "manifest_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "metric_id": "jobs.requested_workers",
+    "value": {"kind": "COUNT", "amount": "200", "lower": null, "upper": null},
+    "unit": "person",
+    "subject": {"city": "臺中市", "district": "大雅區", "geography_role": "WORK_LOCATION"},
+    "period": {"kind": "SNAPSHOT", "start": "2026-10-05", "end": "2026-10-05", "calendar": "GREGORIAN_NORMALIZED"},
+    "selection": {
+      "manufacturing_division": null,
+      "occupation_keyword": "CNC",
+      "classification_basis": "OCCUPATION_TEXT_PROXY",
+      "classification_version": "job-rules-design-v1",
+      "filter_spec_id": "filter_cnc_design_v1",
+      "filter_digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    },
+    "data_kind": "SYNTHETIC_FIXTURE",
+    "quality": {
+      "purpose": "POINT_DESCRIPTION",
+      "population_scope": "SYNTHETIC_FIXTURE",
+      "qualification": "QUALIFIED",
+      "value_status": "EXACT_WITHIN_SCOPE",
+      "comparison_status": "COMPARABLE_SAMPLE",
+      "classification_denominator_scope": null,
+      "classification_ratio": null,
+      "reason_codes": ["DESIGN_FIXTURE_NOT_PRODUCTION"]
+    },
+    "evidence_ids": ["ev_design_jobs"]
+  },
+  "assessment": {
+    "assessment_id": "as_design_point",
+    "report_id": "rep_design_example",
+    "purpose": "POINT_DESCRIPTION",
+    "population_scope": "SYNTHETIC_FIXTURE",
+    "fact_refs": ["f_design_daya_workers"],
+    "scope_digest": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+    "period_digest": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+    "source_release": "design-fixture-release",
+    "classification_version": "job-rules-design-v1",
+    "qualification": "QUALIFIED",
+    "comparison_status": "COMPARABLE_SAMPLE",
+    "reason_codes": ["DESIGN_FIXTURE_NOT_PRODUCTION"]
+  },
+  "filter_registry": {
+    "filter_cnc_design_v1": {
+      "operator": "AND",
+      "children": [
+        {"operator": "CONTAINS_ANY", "fields": ["occupation_title", "occupation_minor_name"], "values": ["cnc"]},
+        {"operator": "PROFILE_REF", "profile_id": "manufacturing-design-profile", "profile_version": "job-rules-design-v1"}
+      ]
+    }
+  },
+  "claim": {
+    "claim_id": "cl_jobs_example",
+    "report_id": "rep_design_example",
+    "type": "OBSERVATION",
+    "fact_refs": ["f_design_daya_workers"],
+    "operands": null,
+    "assessment_refs": ["as_design_point"],
+    "rule_id": "OBSERVED_VALUE_V1",
+    "operation": "IDENTITY",
+    "template_id": "job_requested_workers_snapshot",
+    "required_disclosures": ["DESIGN_FIXTURE_NOT_PRODUCTION", "PUBLIC_SNAPSHOT_NOT_SHORTAGE"],
+    "evidence_refs": ["ev_design_jobs"],
+    "rules_version": "claims-design-v1"
+  },
+  "answer_plan": {
+    "report_id": "rep_design_example",
+    "catalog_hash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "sections": [{"heading_id": "PUBLIC_JOB_OBSERVATIONS", "claim_ids": ["cl_jobs_example"]}]
+  },
+  "expected_fixture_render": "【合成設計範例】2026-10-05，大雅區符合本次CNC職務檢索的刊登需求為200人。這是公開刊登樣本，不是缺工統計。",
+  "rejected_plan_extra_text": {
+    "report_id": "rep_design_example",
+    "catalog_hash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "sections": [{"heading_id": "PUBLIC_JOB_OBSERVATIONS", "claim_ids": ["cl_jobs_example"], "text": "潭子人才充足，放心擴廠"}]
+  },
+  "gcis_ablation_specification": {
+    "fixed": ["scenario", "job_facts", "wage_facts", "planning_targets"],
+    "variants": ["NO_GCIS", "CITY_DIRECTION_ONLY", "CITY_PLUS_LOCAL_PARTIAL_SAMPLE"],
+    "allowed_to_change": ["gcis_claim_ids", "blocked_comparisons", "evidence_gaps", "next_actions"],
+    "must_not_change": ["official_job_values", "user_net_hires", "monthly_targets"],
+    "must_never_appear": ["single_company_hiring_success_probability", "district_total_shortage", "sample_promoted_to_census"]
+  }
+}
