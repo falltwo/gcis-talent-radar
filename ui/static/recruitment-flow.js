@@ -56,5 +56,34 @@
     countForOrigin(origin){return this.records.filter(record=>record.origin===origin).length;}
     get(id){return this.records.find(record=>record.id===id)||null;}
   }
-  const api={PostingFlow,scenarioHires,needsReview,DemoNavigation,PostingArchive};if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.RecruitmentFlow=api;
+  function parseBrief(text){
+    const clean=String(text||'').normalize('NFKC'),jobs=[];
+    // Locate each count/title independently; a later count always starts another job.
+    const starts=[...clean.matchAll(/(\d[\d,]*)\s*[位名個人]\s*/g)];
+    for(let i=0;i<starts.length;i++){
+      const m=starts[i],count=Number(m[1].replace(/,/g,''));
+      if(!Number.isInteger(count)||count<1||count>100000)continue;
+      const segment=clean.slice(m.index+m[0].length,starts[i+1]?.index??clean.length);
+      const role=segment.split(/[、，,；;。\n]|月薪|薪資|待遇|在|於|需要|希望/)[0].replace(/[及與和\s]+$/,'').trim();
+      if(!role||role.length>80)continue;
+      const job={role,hires:count},salary=segment.match(/(?:月薪|薪資)\s*(?:NT\$|新台幣)?\s*(\d[\d,]*)(?:\s*(?:至|到|[-~～–])\s*(\d[\d,]*))?/i);
+      if(salary){job.salaryMin=Number(salary[1].replace(/,/g,''));job.salaryMax=Number((salary[2]||salary[1]).replace(/,/g,''));}
+      jobs.push(job);
+    }
+    return jobs;
+  }
+  class PostingBatch{
+    constructor(drafts){
+      if(!drafts.length||drafts.length>20)throw Error('每次請提供 1 至 20 筆職缺。');
+      this.flows=drafts.map(d=>{const f=new PostingFlow();f.start(d);return f;});
+    }
+    publish(patches){
+      if(patches.length!==this.flows.length||this.flows.some(f=>f.state!=='preview'))throw Error('請先完成所有職缺草稿。');
+      const checked=this.flows.map((f,i)=>normalized({...f.draft,...patches[i]}));
+      if(checked.some(d=>d.salaryMin===null))throw Error('請先補齊每筆職缺的月薪範圍。');
+      this.flows.forEach((f,i)=>f.revise(patches[i]));
+      return this.flows.map(f=>f.publish(true));
+    }
+  }
+  const api={PostingFlow,scenarioHires,needsReview,DemoNavigation,PostingArchive,parseBrief,PostingBatch};if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.RecruitmentFlow=api;
 })(globalThis);
