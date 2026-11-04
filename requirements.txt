@@ -1,0 +1,17 @@
+# 人才雷達後端（server.py／api.main）完整安裝，部署平台的 Build Command 用這份：
+#   pip install -r requirements.txt
+# 需要 Python 3.12 以上。另外選用的功能各有自己的 requirements-*.txt（校園地理資料、Playwright 截圖等）。
+
+# 分析、資料庫與報表
+pandas
+numpy
+requests
+xlrd
+openpyxl
+statsmodels
+
+# 招募後端（FastAPI、SQLAlchemy、uvicorn…）
+-r requirements-recruitment.txt
+
+# 找人 agent 的 computer use 瀏覽器（從 GitHub 安裝，部署環境需要 git；伺服器另需 Chrome）
+-r requirements-sourcing.txt

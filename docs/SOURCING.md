@@ -19,8 +19,10 @@ HR 輸入職缺需求，agent 依職類挑網站，用 computer use 操作瀏覽
 ## 安裝與設定
 
 ```bash
-pip install -r requirements-sourcing.txt   # typesafe-computer-use，需要 Python 3.12 以上
+pip install -r requirements.txt   # 已包含 requirements-sourcing.txt（typesafe-computer-use，需要 Python 3.12 以上）
 ```
+
+typesafe-computer-use 沒有上 PyPI，是從 GitHub 安裝（鎖定 commit），所以安裝環境要有 git。部署時一樣在 Build Command 用 `pip install -r requirements.txt`，HR 與前端使用者不用安裝任何東西；伺服器另外要有 Chrome（見下一點）。
 
 - 本機要有 Chrome。Windows、macOS 的預設安裝路徑會自動找到，其他位置用 `CHROME_PATH` 指定。
 - `.env` 的 `OPENROUTER_API_KEY` 同時給兩個模型用：

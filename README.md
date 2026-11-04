@@ -63,13 +63,13 @@
 
 ## 快速開始
 
-需要 Python 3.10 以上。AI 問答要有 OpenRouter API key。
+需要 Python 3.12 以上（找人 agent 的瀏覽器套件需要）。AI 問答要有 OpenRouter API key。
 
 ```bash
 git clone https://github.com/falltwo/gcis-talent-radar.git
 cd gcis-talent-radar
 python -m venv .venv && source .venv/bin/activate
-pip install fastapi uvicorn pandas numpy requests xlrd openpyxl statsmodels pytest -r requirements-recruitment.txt
+pip install -r requirements.txt   # 全部後端套件，含招募後端與找人 agent
 
 cp .env.example .env      # 在 .env 填入 OPENROUTER_API_KEY
 python server.py
