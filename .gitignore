@@ -63,6 +63,8 @@ data/skills/
 
 # 真實資料 ETL：稅籍精簡檔約 200 萬列，可由 etl.sources.gcis_registry.fetch_tax_registry() 重新產生
 data/raw/tax_registry/
+data/recruitment-history/
+
 
 # Local immutable report storage and source-release caches.
 database/comparison_reports.sqlite3*
@@ -79,3 +81,7 @@ test-results/
 
 # 找人流程錄影：真實個人頁截圖，不進版控
 docs/demo/recording/
+
+# Separate batch recruitment MVP database and test data
+database/recruitment.sqlite3*
+.test-data/
