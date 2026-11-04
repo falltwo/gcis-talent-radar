@@ -35,12 +35,11 @@
       <label class="hunter-field">職缺<input type="text" id="hunter-job" value="CNC 技術員"></label>
       <span class="hunter-tag" id="hunter-tag">CNC 技術員</span>
       <label class="hunter-field" id="hunter-max-field" hidden>要找幾位（1～20，每位約 4 秒）<input type="number" id="hunter-max" min="1" max="20" step="1" value="10" inputmode="numeric"></label>
-      <div class="hunter-field">目標網站<div class="hunter-sites">${['104','1111','LinkedIn','CakeResume'].map(name => siteChip(name,true)).join('')}${['GitHub','國科會'].map(name => siteChip(name,false)).join('')}</div></div>
+      <details class="hunter-field hunter-sites-details"><summary>目標網站<span>展開／收合</span></summary><div class="hunter-sites">${['104','1111','LinkedIn','CakeResume'].map(name => siteChip(name,true)).join('')}${['GitHub','國科會'].map(name => siteChip(name,false)).join('')}</div></details>
       <p class="hunter-progress"><span>進度</span><span id="hunter-percent">0%</span></p>
       <div class="hunter-track" role="progressbar" aria-label="任務進度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="hunter-track"><div class="hunter-fill" id="hunter-fill"></div></div>
       <p class="hunter-state" id="hunter-state" role="status">目前狀態：等待發起任務</p>
-      <button class="hunter-start" id="hunter-start" type="button">開始任務</button>
-    </div></section>
+    </div><div class="hunter-actions"><button class="hunter-start" id="hunter-start" type="button">開始任務</button></div></section>
     <section class="hunter-pane hunter-grow"><h3>3. 實時思維鏈（CoT）與錯誤排除</h3><div class="hunter-body hunter-terminal" id="hunter-terminal"><ol class="hunter-log" id="hunter-log" aria-live="off"></ol><div class="hunter-prompt">&gt; </div></div></section>`;
   right.innerHTML = `<section class="hunter-pane hunter-grow hunter-browser"><h3>2. Agent 即時實況虛擬瀏覽器<button class="hunter-pill hunter-zoom" id="hunter-zoom" type="button" aria-pressed="false">放大</button></h3>
       <div class="hunter-url"><i></i><i></i><i></i><span id="hunter-url">about:blank</span></div>
@@ -532,7 +531,7 @@
       const res = await fetch('/api/sourcing/sites');
       if(!res.ok)throw 0;
       // Personal sites are only read from profile links, never searched, so they get no chip.
-      const list = (await res.json()).sites.filter(site => site.id !== 'personal');
+      const list = (await res.json()).sites.filter(site => !['personal','gitlab','behance'].includes(site.id));
       live = true;
       // Nothing ticked means the backend picks sites by job category.
       const chips = list.map(site => {

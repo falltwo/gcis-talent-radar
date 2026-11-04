@@ -14,3 +14,22 @@ test('browser navigation cannot fill until address entered and page ready',()=>{
 test('navigation refuses external and executable URLs',()=>{const {DemoNavigation}=require('../../ui/static/recruitment-flow.js');assert.equal(typeof DemoNavigation,'function');for(const url of ['https://www.104.com.tw/','javascript:alert(1)'])assert.throws(()=>new DemoNavigation().begin(url,'http://127.0.0.1:8888'));});
 test('archive only stores published snapshots and ignores duplicate callbacks',()=>{const {PostingArchive}=require('../../ui/static/recruitment-flow.js');const a=new PostingArchive(),f=new PostingFlow();f.start(draft());assert.throws(()=>a.add(f,'origin-a'));f.complete();f.publish(true);const r=a.add(f,'origin-a');assert.equal(a.add(f,'origin-a').id,r.id);assert.equal(a.all().length,1);assert.equal(r.draft.role,'CNC 技術員');f.start({...draft(),role:'品管'});assert.equal(a.all()[0].draft.role,'CNC 技術員');});
 test('archive returns newest first without exposing mutable array',()=>{const {PostingArchive}=require('../../ui/static/recruitment-flow.js');const a=new PostingArchive();for(const role of ['CNC','品管']){const f=new PostingFlow();f.start({...draft(),role});f.complete();f.publish(true);a.add(f,'origin-a');}const list=a.all();assert.equal(list[0].draft.role,'品管');list.pop();assert.equal(a.all().length,2);assert.equal(a.countForOrigin('origin-a'),2);assert.equal(a.countForOrigin('other'),0);});
+
+test('batch brief creates separate jobs with counts and explicit salaries',()=>{
+ const {parseBrief}=require('../../ui/static/recruitment-flow.js');
+ assert.deepEqual(parseBrief('我需要20位會計、20位工程師').map(d=>[d.role,d.hires]),[['會計',20],['工程師',20]]);
+ assert.deepEqual(parseBrief('招3位工程師，月薪50000至60000；5位助理，月薪35000')[0],{role:'工程師',hires:3,salaryMin:50000,salaryMax:60000});
+ assert.equal(parseBrief('工程師需要幾個？').length,0);
+ assert.equal(parseBrief('0位會計').length,0);
+ assert.equal(parseBrief('20位會計、20位工程師，在大雅區工作')[1].role,'工程師');
+});
+test('batch approval validates every job before publishing any',()=>{
+ const {PostingBatch}=require('../../ui/static/recruitment-flow.js');
+ const b=new PostingBatch([{company:'示範',role:'會計',hires:20,address:'台中'},{company:'示範',role:'工程師',hires:20,address:'台中'}]);
+ b.flows.forEach(f=>f.complete());
+ assert.throws(()=>b.publish([{salaryMin:35000,salaryMax:40000},{salaryMin:'',salaryMax:''}]),/薪資|月薪/);
+ assert.ok(b.flows.every(f=>f.state==='preview'));
+ b.publish([{salaryMin:35000,salaryMax:40000},{salaryMin:50000,salaryMax:60000}]);
+ assert.ok(b.flows.every(f=>f.state==='published'));
+ assert.deepEqual(b.flows.map(f=>f.draft.hires),[20,20]);
+});
