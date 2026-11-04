@@ -85,3 +85,6 @@ docs/demo/recording/
 # Separate batch recruitment MVP database and test data
 database/recruitment.sqlite3*
 .test-data/
+
+# Local education database backups created by the ETL.
+/data/backups/education/

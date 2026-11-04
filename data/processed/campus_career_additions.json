@@ -1,0 +1,141 @@
+{
+  "evidence": [
+    {
+      "department_id": "1069:07151021:1f5693be92263bc4",
+      "source_url": "https://me.hust.edu.tw/?isEn=0",
+      "related": ["CNC 銑床技術員", "CNC 車床技術員"]
+    },
+    {
+      "department_id": "1069:07151021:1f5693be92263bc4",
+      "source_url": "https://me.hust.edu.tw/?custom=1748&isEn=0&item=29&type=detail",
+      "related": ["CNC 程式設計師", "精密量測技術員"]
+    },
+    {
+      "department_id": "0043:07151016:3fc8fcd0fe6c652d",
+      "source_url": "https://me2.ncut.edu.tw/var/file/44/1044/img/194/303945180.pdf",
+      "related": ["模具設計工程師"]
+    },
+    {
+      "department_id": "0043:07151016:3fc8fcd0fe6c652d",
+      "source_url": "https://me2.ncut.edu.tw/var/file/44/1044/img/205/492925550.pdf",
+      "related": ["CNC 程式設計師", "CNC 銑床技術員"]
+    },
+    {
+      "department_id": "0043:07151016:3fc8fcd0fe6c652d",
+      "source_url": "https://elearn.ncut.edu.tw/info/10098851?lang=Big5",
+      "related": ["精密量測技術員"]
+    },
+    {
+      "department_id": "0043:07141012:e8b2e8c21d2d6827",
+      "source_url": "https://www.techadmi.edu.tw/schools_detail_search.php?psrid=110&seq=1005",
+      "direct": ["自動化工程師", "機器人工程師"]
+    },
+    {
+      "department_id": "0043:07141012:e8b2e8c21d2d6827",
+      "source_url": "https://eet.ncut.edu.tw/content_teacher_detail.php?teacher_rkey=5O9LF636A0",
+      "related": ["PLC 工程師"]
+    },
+    {
+      "department_id": "1018:07191026:5de3dc3abe21ae4e",
+      "source_url": "https://iem.cyut.edu.tw/var/file/32/1032/img/567/436931305.pdf",
+      "related": ["供應商品質工程師"]
+    },
+    {
+      "department_id": "1007:07191072:f798974af651d6b9",
+      "source_url": "https://collego.edu.tw/Highschool/DepartmentIntro?dept_id=015003",
+      "related": ["供應商品質工程師"]
+    },
+    {
+      "department_id": "1008:07141050:472839dffbf7eb2b",
+      "source_url": "https://icd.pu.edu.tw/p/426-1092-9.php?Lang=zh-tw",
+      "related": ["IC 驗證工程師"]
+    },
+    {
+      "department_id": "0006:07141116:a90248b36d6f6349",
+      "source_url": "https://ace.nchu.edu.tw/department_about/6",
+      "related": ["製程整合工程師"]
+    },
+    {
+      "department_id": "0006:07112057:b0571ce0abc7fd9b",
+      "source_url": "https://www.mse.nchu.edu.tw/uploads/asset/data/5f896534b3378137270003a8/U049.pdf",
+      "related": ["製程整合工程師"]
+    },
+    {
+      "department_id": "1008:06131027:96d1b44ba8c11453",
+      "source_url": "https://csim.pu.edu.tw/p/16-1141-47973.php?Lang=zh-tw",
+      "direct": ["前端工程師", "後端工程師", "全端工程師"]
+    },
+    {
+      "department_id": "1007:06131048:0866ad27f4f43c96",
+      "source_url": "https://www.iecs.fcu.edu.tw/about/resource/",
+      "related": ["DevOps 工程師"]
+    },
+    {
+      "department_id": "1007:06131048:0866ad27f4f43c96",
+      "source_url": "https://www.iecs.fcu.edu.tw/about/",
+      "direct": ["資料工程師"]
+    },
+    {
+      "department_id": "1008:05499037:9f048e590113710b",
+      "source_url": "https://c047.pu.edu.tw/p/412-1080-1246.php?Lang=zh-tw",
+      "direct": ["資料工程師"]
+    },
+    {
+      "department_id": "1048:06111057:6af4041e0201c5e9",
+      "source_url": "https://mcma.asia.edu.tw/uploads/asset/data/69057c8d905fc3603df57411/1%E5%A4%A7_251030_AI%E7%B3%BB%E7%89%88_114AI%E8%AA%B2%E8%A6%8F_Chinese.pdf",
+      "related": ["機器學習工程師"]
+    },
+    {
+      "department_id": "0039:06131042:0866ad27f4f43c96",
+      "source_url": "https://cs.ntcu.edu.tw/data/2?cate=8",
+      "direct": ["軟體測試工程師"]
+    },
+    {
+      "department_id": "0050:04111012:05d5013ed127e124",
+      "source_url": "https://acct.nutc.edu.tw/p/404-1048-12840.php",
+      "related": ["會計助理", "審計助理", "記帳士"]
+    },
+    {
+      "department_id": "0050:04122028:58744e13d2f0ec71",
+      "source_url": "https://www.techadmi.edu.tw/schools_detail_search.php?psrid=113&seq=532",
+      "direct": ["記帳士"]
+    },
+    {
+      "department_id": "1018:04121010:db4422f9024196f3",
+      "source_url": "https://www.techadmi.edu.tw/schools_detail_search.php?psrid=201&seq=4108",
+      "direct": ["財務分析師"]
+    },
+    {
+      "department_id": "1048:04212027:9b139285cc2451a6",
+      "source_url": "https://collego.edu.tw/Highschool/DepartmentIntro?dept_id=134036",
+      "related": ["專利工程師", "專利師", "法遵專員"]
+    },
+    {
+      "department_id": "1007:04212038:aced95b5a5a9e1fa",
+      "source_url": "https://web.admission.fcu.edu.tw/110/research/110DepIntro.pdf",
+      "related": ["專利工程師", "專利師", "法遵專員"]
+    },
+    {
+      "department_id": "0043:07132026:a51c51e92a3eca22",
+      "source_url": "https://recruit.ncut.edu.tw/var/file/33/1033/img/217479282.pdf",
+      "direct": ["空調工程師"]
+    },
+    {
+      "department_id": "0043:07132026:a51c51e92a3eca22",
+      "source_url": "https://www.techadmi.edu.tw/schools_detail_search.php?psrid=110&seq=1003",
+      "related": ["冷凍空調技術員"]
+    },
+    {
+      "department_id": "1035:07193031:73db9f26ec9f24a9",
+      "source_url": "https://bme.cmu.edu.tw/page/95",
+      "direct": ["醫療器材法規專員"]
+    }
+  ],
+  "aliases": {
+    "韌體工程師": "韌體設計工程師",
+    "品管檢驗員": "品管檢驗人員",
+    "職安衛管理員": "勞工安全衛生管理員",
+    "人資專員": "人力資源專員",
+    "雲端工程師": "雲端服務工程師"
+  }
+}
