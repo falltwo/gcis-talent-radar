@@ -1,0 +1,2 @@
+# Optional local headed browser for screenshot-based Computer Use.
+playwright>=1.50,<2

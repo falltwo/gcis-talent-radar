@@ -27,11 +27,11 @@
   <section class="posting-live" aria-labelledby="posting-live-title"><div class="posting-section-title"><span id="posting-phase-dot"></span><h3 id="posting-live-title">Agent 操作實況</h3><span class="posting-live-pill" id="posting-live-pill">等待任務</span><button type="button" class="posting-map-dismiss" id="posting-map-dismiss" hidden>收回地圖</button></div>
     <div class="posting-handoff" id="posting-handoff" hidden><div><span aria-hidden="true">✎</span><div><strong>現在輪到你</strong><p id="posting-focus-summary">請核對範本補寫與待補欄位。</p></div></div><div class="posting-review-filters" aria-label="審核顯示方式"><button type="button" data-review-view="all" aria-pressed="true">完整職缺</button><button type="button" data-review-view="focus" aria-pressed="false">只看待確認</button></div></div>
     <p id="posting-context-note" class="posting-context-note" role="status" hidden></p><div class="posting-browser"><div class="posting-browser-tabs"><span>▣ <span id="posting-tab-title">新的分頁</span></span><i aria-hidden="true">＋</i></div><div class="posting-url"><span class="posting-nav-icons" aria-hidden="true">‹　›　↻</span><input id="posting-url" aria-label="模擬瀏覽器網址列" readonly value="about:blank" tabindex="-1"><span class="posting-enter-key" id="posting-enter-key" hidden>Enter ↵</span><b>模擬瀏覽器</b></div><div class="posting-nav-page" id="posting-nav-page"><div class="posting-nav-emblem" aria-hidden="true">◎</div><h4 id="posting-nav-heading">新的分頁</h4><p id="posting-nav-description">收到需求後，Agent 會先輸入本機模擬站網址。</p><div class="posting-nav-loading" id="posting-nav-loading" hidden></div></div>
-      <div class="posting-browser-screen" id="posting-screen" hidden><div class="posting-platform-head"><strong>104 模擬人才招募網 <small>自建展示站</small></strong><span>企業後台 / 職缺草稿</span></div>
-        <div class="posting-page-top"><div><p id="posting-page-subtitle">從一個需求開始</p><h4 id="posting-page-title">準備建立下一個職缺</h4></div><span class="posting-demo">模擬 104 刊登流程</span></div>
+      <div class="posting-browser-screen" id="posting-screen" hidden><div class="posting-platform-head"><strong>404徵才網 <small>自建展示站</small></strong><span>企業後台 / 職缺草稿</span></div>
+        <div class="posting-page-top"><div><p id="posting-page-subtitle">從一個需求開始</p><h4 id="posting-page-title">準備建立下一個職缺</h4></div><span class="posting-demo">404徵才網・模擬刊登</span></div>
         <div class="posting-welcome" id="posting-welcome"><div class="posting-document-icon" aria-hidden="true">＋</div><h4>你的招募需求，即將成為完整職缺</h4><p>提出需求 → 補成草稿 → 審核一次</p><div class="posting-welcome-skeleton"><i></i><i></i><i></i></div></div>
         <form id="posting-review-form" hidden><div class="posting-fields" id="posting-fields"></div></form>
-        <div class="posting-success" id="posting-success" hidden><span aria-hidden="true">✓</span><h4>職缺已模擬刊登</h4><p id="posting-success-title"></p><p>只保留在目前展示頁，未傳送至 104 或其他外部網站。</p></div>
+        <div class="posting-success" id="posting-success" hidden><span aria-hidden="true">✓</span><h4>職缺已模擬刊登</h4><p id="posting-success-title"></p><p>只保留在目前展示頁，未傳送至外部網站。</p></div>
         <i class="posting-cursor" id="posting-cursor" aria-hidden="true" hidden></i>
       </div></div>
     <div class="posting-progress"><div><span id="posting-state" role="status" aria-live="polite">等待提出招募需求</span><span id="posting-count">0 / 6</span></div><progress id="posting-progress" max="6" value="0" aria-label="職缺填寫進度"></progress><div class="posting-run-actions" id="posting-run-actions" hidden><button type="button" id="posting-pause">暫停操作</button><button type="button" id="posting-skip">直接看草稿</button></div></div>
@@ -43,7 +43,7 @@
   archivePanel.innerHTML='<header><h3 id="posting-archive-title">已刊登職缺 <span id="posting-archive-count">0</span></h3><span>本頁模擬紀錄</span></header><div id="posting-archive-list"></div><p class="posting-archive-note">僅保留目前頁面，尚未同步後端。</p>';
   panel.querySelector('.posting-columns').append(archivePanel);
   const detail=document.createElement('dialog');detail.className='posting-record-dialog';detail.setAttribute('aria-labelledby','posting-record-title');
-  detail.innerHTML='<header><span>已模擬刊登・職缺快照</span><button type="button" id="posting-record-close" aria-label="關閉刊登詳情">×</button></header><h2 id="posting-record-title"></h2><p id="posting-record-meta"></p><dl id="posting-record-facts"></dl><p class="posting-record-note">此為刊登當時的展示快照，未傳送至 104 或外部網站。</p>';
+  detail.innerHTML='<header><span>已模擬刊登・職缺快照</span><button type="button" id="posting-record-close" aria-label="關閉刊登詳情">×</button></header><h2 id="posting-record-title"></h2><p id="posting-record-meta"></p><dl id="posting-record-facts"></dl><p class="posting-record-note">此為刊登當時的展示快照，未傳送至外部網站。</p>';
   document.body.append(detail);let recordTrigger=null;
   $('posting-record-close').addEventListener('click',()=>detail.close());detail.addEventListener('close',()=>recordTrigger?.focus({preventScroll:true}));
   const labels={company:'公司名稱',role:'職缺名稱',address:'工作地點',salary:'月薪範圍',hires:'招募人數',skills:'工作內容與技能'};
@@ -164,12 +164,12 @@
   function openedDemo(run){
     if(!active||run!==epoch||flow.state==='paused')return;
     if(navigation.state==='loading')navigation.ready();
-    panel.dataset.browserPhase='ready';$('posting-nav-page').hidden=true;$('posting-screen').hidden=false;$('posting-enter-key').hidden=true;$('posting-nav-loading').hidden=true;$('posting-tab-title').textContent='104 模擬招募站';$('posting-state').textContent='模擬站已開啟，準備填寫職缺';
+    panel.dataset.browserPhase='ready';$('posting-nav-page').hidden=true;$('posting-screen').hidden=false;$('posting-enter-key').hidden=true;$('posting-nav-loading').hidden=true;$('posting-tab-title').textContent='404徵才網';$('posting-state').textContent='模擬站已開啟，準備填寫職缺';
     log('已開啟本機模擬站（前端頁面渲染），開始逐欄填寫。');timer=setTimeout(()=>next(run),reduced?0:400);
   }
   function navigateDemo(run){
     if(!active||run!==epoch||flow.state==='paused')return;
-    if(navigation.state==='blank'){navigation.begin(DEMO_URL,location.origin);panel.dataset.browserPhase='address';$('posting-nav-heading').textContent='Agent 正在輸入網址';$('posting-nav-description').textContent='目標為我們自建的本機模擬招募站，不連接 104 官方網站。';$('posting-state').textContent='點擊網址列，輸入模擬站網址';log('開始輸入本機模擬招募站網址。');}
+    if(navigation.state==='blank'){navigation.begin(DEMO_URL,location.origin);panel.dataset.browserPhase='address';$('posting-nav-heading').textContent='Agent 正在輸入網址';$('posting-nav-description').textContent='目標為我們自建的404徵才網展示站，不連接外部求職平台。';$('posting-state').textContent='點擊網址列，輸入模擬站網址';log('開始輸入本機模擬招募站網址。');}
     if(navigation.state==='typing'){if(reduced){while(navigation.state==='typing')navigation.typeNext();}else navigation.typeNext();$('posting-url').value=navigation.address;timer=setTimeout(()=>navigateDemo(run),reduced?0:70);return;}
     if(navigation.state==='entered'){navigation.open();panel.dataset.browserPhase='loading';$('posting-enter-key').hidden=false;$('posting-nav-heading').textContent='按下 Enter，開啟模擬站';$('posting-nav-description').textContent='載入企業後台 / 新增職缺';$('posting-nav-loading').hidden=false;$('posting-state').textContent='Enter ↵・正在開啟本機模擬招募站';log('網址輸入完成，模擬按下 Enter 並載入頁面。');}
     if(navigation.state==='loading'){timer=setTimeout(()=>openedDemo(run),reduced?0:750);return;}
@@ -184,7 +184,7 @@
     if(flow.state==='paused'){flow.resume();mapEffects.pause(false);panel.dataset.paused='false';$('posting-pause').textContent='暫停操作';$('posting-live-pill').textContent='模擬操作中';if(!navigation.canFill){navigateDemo(epoch);return;}if(flow.index){const key=Object.keys(labels)[flow.index-1];fillRow(key);}timer=setTimeout(()=>{if(flow.index===6){flow.complete();readyReview();}else next(epoch);},250);}
     else if(['filling','preview'].includes(flow.state)){stop();flow.pause();mapEffects.pause(true);panel.dataset.paused='true';$('posting-pause').textContent='繼續操作';$('posting-live-pill').textContent='已暫停';$('posting-state').textContent='操作已暫停，可繼續或直接看草稿';}
   });
-  $('posting-skip').addEventListener('click',()=>{stop();if(!navigation.canFill){navigation.begin(DEMO_URL,location.origin);while(navigation.state==='typing')navigation.typeNext();navigation.open();navigation.ready();$('posting-nav-page').hidden=true;$('posting-screen').hidden=false;$('posting-tab-title').textContent='104 模擬招募站';log('使用者略過導航與操作動畫，直接查看草稿。');}flow.complete();readyReview();});
+  $('posting-skip').addEventListener('click',()=>{stop();if(!navigation.canFill){navigation.begin(DEMO_URL,location.origin);while(navigation.state==='typing')navigation.typeNext();navigation.open();navigation.ready();$('posting-nav-page').hidden=true;$('posting-screen').hidden=false;$('posting-tab-title').textContent='404徵才網';log('使用者略過導航與操作動畫，直接查看草稿。');}flow.complete();readyReview();});
   $('posting-missing').addEventListener('click',()=>{reviewView='all';panel.querySelectorAll('[data-review-view]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.reviewView==='all')));updateReviewFocus();inputs.salaryMin.focus();});
   function back(){
     if(flow.state==='preview'){for(const key of ['company','role','address','hires'])$(`posting-${key}`).value=inputs[key].value;$('posting-known').value=inputs.skills.value;reviewCarry={salaryMin:inputs.salaryMin.value,salaryMax:inputs.salaryMax.value};}

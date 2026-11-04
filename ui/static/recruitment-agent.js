@@ -1,0 +1,42 @@
+'use strict';
+(() => {
+ const $=id=>document.getElementById(id),first=$('needs-form'),review=$('review-form');
+ let busy=false,runId=null,timer=null;
+ function setBusy(value){busy=value;for(const id of ['prepare','approve'])$(id).disabled=value;}
+ async function req(path,body,method='POST',timeoutMs=15000){
+  const controller=new AbortController(),deadline=setTimeout(()=>controller.abort(),timeoutMs);
+  try{
+   const r=await fetch('/api/mock104/'+path,{method,signal:controller.signal,credentials:'same-origin',cache:'no-store',headers:body?{'Content-Type':'application/json'}:{},body:body?JSON.stringify(body):undefined});
+   const d=await r.json();if(!r.ok)throw new Error(typeof d.detail==='string'?d.detail:'請確認欄位格式與薪資方式。');return d;
+  }catch(e){
+   if(controller.signal.aborted)throw new Error(path==='agent/prepare'&&timeoutMs>15000?'網路研究等待已超過60秒，請稍後重試，或填寫更明確的職稱。尚未產生新的招募建議。':'服務回應逾時，請重新整理頁面後再試。');
+   if(e instanceof TypeError)throw new Error('無法連線至招募服務，請確認本機網站仍在執行後重試。');
+   throw e;
+  }finally{clearTimeout(deadline);}
+ }
+ function salary(){const nego=$('r-salary-mode').value==='NEGOTIABLE';for(const id of ['r-min','r-max']){$(id).disabled=nego;$(id).required=!nego;$(id).closest('.field').hidden=nego;$(id).setCustomValidity('');if(nego)$(id).value='';}}
+ function fitSkills(){if(review.hidden)return;for(const id of ['r-skills','r-trainable']){const el=$(id);el.style.height='auto';el.style.height=Math.max(112,el.scrollHeight+2)+'px';}}
+ async function refreshHistory(){try{const data=await req('agent/history',null,'GET');$('history-summary').textContent='歷史搜尋範本（'+data.items.length+'）';$('history-message').textContent=data.items.length?'重用歷史範本不會再次搜尋或消耗整理用的模型token。':'目前沒有已保存的職位研究。';const list=$('history-list');list.replaceChildren();for(const item of data.items){const li=document.createElement('li'),button=document.createElement('button'),note=document.createElement('small');button.type='button';button.className='secondary';button.textContent=item.role;button.addEventListener('click',()=>{if(busy)return;$('role').value=item.role;$('status').textContent='已選取歷史範本「'+item.role+'」，請確認本次條件後按產生招募建議。';$('role').scrollIntoView({behavior:'smooth',block:'center'});$('role').focus();});note.textContent='搜尋日期：'+new Date(item.saved_at).toLocaleDateString('zh-TW')+'｜'+item.sources.length+'個來源';li.append(button,note);list.append(li);}}catch(e){$('history-message').textContent='歷史範本暫時無法載入：'+e.message;}}
+ function usageText(r){const u=r.usage;if(!u)return '';if(!u.model_called)return '本次建議未呼叫模型：0 token。';const tokens=u.total_tokens==null?'token用量未回報':u.total_tokens+' token';return '本次網路研究：'+tokens+'；'+(u.cost_usd==null?'費用以OpenRouter帳單為準。':'服務回報費用 US$'+u.cost_usd+'。');}
+ function sources(result){const box=$('research-sources');box.replaceChildren();box.hidden=false;const title=document.createElement('strong');title.textContent='參考來源與待確認建議';box.append(title);const ul=document.createElement('ul');for(const item of result.sources||[]){if(!item.url?.startsWith('https://'))continue;const li=document.createElement('li'),a=document.createElement('a');a.href=item.url;a.target='_blank';a.rel='noopener noreferrer';a.textContent=item.title||item.url;li.append(a);if(item.status==='CURATED_REFERENCE')li.append('（已整理的職業範本，非本次即時搜尋）');if(item.status==='HISTORICAL_REFERENCE')li.append('（歷史搜尋：'+new Date(item.retrieved_at).toLocaleDateString('zh-TW')+'，非本次即時搜尋）');ul.append(li);}for(const text of result.review_notes||[]){const li=document.createElement('li');li.textContent=text;ul.append(li);}box.append(ul);}
+ async function prepare(){
+  if(busy||!first.reportValidity())return;setBusy(true);review.hidden=true;$('research-sources').hidden=true;$('error').hidden=true;$('status').textContent='正在確認職稱與服務連線…';
+  try{await req('start',{});const strategy=await req('agent/strategy?role='+encodeURIComponent($('role').value),null,'GET');
+   $('status').textContent=strategy.source==='HISTORICAL_TEMPLATE'?'正在重用「'+strategy.template_name+'」歷史搜尋範本，不需再次搜尋…':strategy.source==='OCCUPATIONAL_TEMPLATE'?'正在套用「'+strategy.template_name+'」本機範本，不需網路搜尋…':'此職稱尚無本機範本，正在搜尋網路資料；最多等待60秒，請勿重複送出。';
+   const r=await req('agent/prepare',{company_name:$('company-name').value,company_intro:$('company-intro').value,district:$('district').value,role:$('role').value,needs:$('needs').value,mode:'AUTO'},'POST',strategy.max_wait_seconds*1000);
+   for(const[name,value]of Object.entries(r.job)){const el=review.elements.namedItem(name);if(el){el.value=Array.isArray(value)?value.join('\n'):value??'';el.closest('.field')?.classList.toggle('suggested',r.field_provenance?.[name]==='SUGGESTED');}}
+   salary();sources(r);$('source').textContent=r.source==='HISTORICAL_TEMPLATE'?'歷史搜尋範本':r.source==='LIVE_WEB_RESEARCH'?'即時網路搜尋建議':'具來源的職業範本';$('review-note').textContent='已保留你提供的人數與薪資方式。標示「建議／待確認」的內容請核對公司需求。'+usageText(r)+'後續Computer Use看圖操作另有模型用量。';review.hidden=false;fitSkills();$('status').textContent='招募建議已產生，請確認或修改。';review.scrollIntoView({behavior:'smooth',block:'start'});refreshHistory();
+  }catch(e){$('error').textContent=e.message;$('error').hidden=false;$('status').textContent='尚未建立招募建議。';}finally{setBusy(false);}
+ }
+ async function poll(){try{const r=await req('agent/run',null,'GET');$('browser-phase').textContent=r.phase;$('browser-message').textContent=r.message||'正在準備獨立瀏覽器…';$('browser-resume').hidden=r.phase!=='AWAITING_CONFIRMATION';if(r.screenshot){$('browser-shot').src='data:image/jpeg;base64,'+r.screenshot;$('browser-shot').hidden=false;}if(['PUBLISHED','FAILED','CANCELLED'].includes(r.phase)){clearInterval(timer);$('browser-stop').disabled=r.phase!=='FAILED';}}catch(e){$('browser-message').textContent=e.message;clearInterval(timer);}}
+ first.addEventListener('submit',e=>{e.preventDefault();prepare();});$('r-salary-mode').addEventListener('change',salary);
+ review.addEventListener('submit',async e=>{e.preventDefault();if(busy)return;salary();if($('r-salary-mode').value==='RANGE')$('r-max').setCustomValidity(Number($('r-max').value)<Number($('r-min').value)?'薪資上限不能低於下限。':'');if(!review.reportValidity())return;
+  const job=Object.fromEntries(new FormData(review));for(const k of ['salary_min','salary_max','headcount','min_experience_months'])job[k]=['salary_min','salary_max'].includes(k)&&job.salary_mode==='NEGOTIABLE'?null:Number(job[k]);for(const k of ['required_skills','trainable_skills'])job[k]=job[k].split(/[,，、\n]/).map(x=>x.trim()).filter(Boolean);
+  setBusy(true);$('error').hidden=true;try{const r=await req('agent/approve',{job,hr_confirmed:true,confirm_before_publish:$('second-confirm').checked,scenario:'SUCCESS'});runId=r.run_id;await req('agent/browser/start',{run_id:runId});$('browser-panel').hidden=false;$('browser-message').textContent='正在開啟獨立Chrome，請觀看實際的滑鼠鍵盤操作。';clearInterval(timer);timer=setInterval(poll,1500);await poll();$('browser-panel').scrollIntoView({behavior:'smooth'});}catch(e){$('error').textContent=e.message;$('error').hidden=false;}finally{setBusy(false);}
+ });
+ $('browser-resume').addEventListener('click',async()=>{try{await req('agent/browser/resume',{run_id:runId});await poll();}catch(e){$('browser-message').textContent=e.message;}});
+ $('browser-stop').addEventListener('click',async()=>{try{await req('agent/cancel',{run_id:runId});await poll();}catch(e){$('browser-message').textContent=e.message;}});
+ for(const id of ['r-min','r-max'])$(id).addEventListener('input',()=>$('r-max').setCustomValidity(''));
+ for(const id of ['r-skills','r-trainable'])$(id).addEventListener('input',fitSkills);
+ window.addEventListener('resize',fitSkills);refreshHistory();
+})();
