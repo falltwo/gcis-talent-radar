@@ -3,7 +3,7 @@
   'use strict';
   const $=id=>document.getElementById(id),workspace=document.querySelector('.radar-workspace');
   const navigation=new RecruitmentFlow.DemoNavigation(),DEMO_URL=new URL('/static/recruitment-demo.html',location.href).href;
-  let flow=new RecruitmentFlow.PostingFlow(),batch=null,batchIndex=0,batchEdits=[],pendingJobs=[];
+  let flow=new RecruitmentFlow.PostingFlow(),batch=null,batchIndex=0,batchEdits=[],pendingJobs=[],returnedDrafts=null;
   const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
   const panel=document.createElement('section');panel.className='posting-workspace map-layout';panel.hidden=true;panel.dataset.act='brief';panel.setAttribute('aria-label','刊登召募展示工作台');
   panel.innerHTML=`<div class="posting-map-shade" aria-hidden="true"></div><header class="posting-header"><div><h2>刊登召募</h2><p>交代需求，觀看補齊，最後只審核一次。</p></div><div><span class="posting-demo">前端模擬・未連接後端</span><button type="button" id="posting-exit">退出</button></div></header>
@@ -91,7 +91,7 @@
   panel.querySelectorAll('.posting-source').forEach(el=>el.addEventListener('click',()=>{$('posting-source-detail').textContent=notes[el.dataset.source];}));
   function showProvenance(key){const s=panel.querySelector(`[data-field="${key}"]`).dataset.source||flow.sources[key];const text=s==='pending'?'企業條件尚未提供，請由審核者補齊，不能以行情代填。':s==='template'?notes.template:s==='company'?notes.company:s==='human'?'這個欄位已由審核者修改。':'來自本次需求卡片或補充條件。';$('posting-source-detail').textContent=text;$('posting-context-note').textContent=text;$('posting-context-note').hidden=false;}
   function reset(){
-    stop();batch?.flows.forEach(f=>f.cancel());batch=null;batchIndex=0;batchEdits=[];pendingJobs=[];$('posting-batch-nav').hidden=true;mapEffects.stop();navigation.reset();panel.dataset.browserPhase='blank';$('posting-nav-page').hidden=false;$('posting-screen').hidden=true;$('posting-nav-heading').textContent='新的分頁';$('posting-nav-description').textContent='收到需求後，Agent 會先輸入本機模擬站網址。';$('posting-tab-title').textContent='新的分頁';$('posting-enter-key').hidden=true;$('posting-nav-loading').hidden=true;flow.cancel();panel.dataset.paused='false';reviewView='all';panel.classList.remove('posting-context-open');$('posting-task-detail').setAttribute('aria-expanded','false');$('posting-task-detail').textContent='查看任務詳情';$('posting-context-note').hidden=true;panel.querySelectorAll('[data-review-view]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.reviewView==='all')));$('posting-pause').textContent='暫停操作';act('brief');$('posting-intake').hidden=false;$('posting-task').hidden=true;$('posting-review-hint').hidden=true;
+    stop();returnedDrafts=null;$('posting-start').hidden=true;batch?.flows.forEach(f=>f.cancel());batch=null;batchIndex=0;batchEdits=[];pendingJobs=[];$('posting-batch-nav').hidden=true;mapEffects.stop();navigation.reset();panel.dataset.browserPhase='blank';$('posting-nav-page').hidden=false;$('posting-screen').hidden=true;$('posting-nav-heading').textContent='新的分頁';$('posting-nav-description').textContent='收到需求後，Agent 會先輸入本機模擬站網址。';$('posting-tab-title').textContent='新的分頁';$('posting-enter-key').hidden=true;$('posting-nav-loading').hidden=true;flow.cancel();panel.dataset.paused='false';reviewView='all';panel.classList.remove('posting-context-open');$('posting-task-detail').setAttribute('aria-expanded','false');$('posting-task-detail').textContent='查看任務詳情';$('posting-context-note').hidden=true;panel.querySelectorAll('[data-review-view]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.reviewView==='all')));$('posting-pause').textContent='暫停操作';act('brief');$('posting-intake').hidden=false;$('posting-task').hidden=true;$('posting-review-hint').hidden=true;
     for(const id of ['posting-confirm','posting-finished','posting-success','posting-review-form','posting-run-actions','posting-handoff'])$(id).hidden=true;
     $('posting-welcome').hidden=false;$('posting-state').textContent='等待提出招募需求';$('posting-progress').value=0;$('posting-count').textContent='0 / 6';$('posting-source-detail').textContent='點來源節點查看說明。';$('posting-log').replaceChildren();$('posting-error').textContent='';$('posting-url').value='about:blank';$('posting-page-title').textContent='準備建立下一個職缺';$('posting-live-pill').textContent='等待任務';$('posting-screen').scrollTop=0;source(null);
     panel.querySelectorAll('.posting-field').forEach(row=>{row.classList.remove('is-writing','is-filled','needs-review','review-attention','review-confirmed');row.hidden=false;row.querySelector('.posting-field-complete').hidden=true;row.querySelector('.posting-field-edit').hidden=true;row.querySelector('.posting-field-display').hidden=false;row.querySelector('.posting-field-display').textContent='等待填寫';row.querySelector('.posting-provenance').textContent='等待填寫';});
@@ -173,14 +173,22 @@
     const p=document.createElement('p');p.textContent=text;box.append(label,p);$('posting-chat-messages').append(box);
     $('posting-chat-messages').scrollTop=$('posting-chat-messages').scrollHeight;
   }
+  function returnedJobs(){
+    const edited={};
+    for(const key of ['company','role','address','hires'])edited[key]=$(`posting-${key}`).value;
+    edited.skills=$('posting-known').value;
+    return returnedDrafts.jobs.map((job,i)=>i===returnedDrafts.index?{...job,...edited}:{...job});
+  }
   $('posting-parse').addEventListener('click',()=>{
     const text=$('posting-brief').value.trim();if(!text){$('posting-brief').focus();return;}
     chatMessage('user',text);
+    // Unchanged chat resumes the returned drafts, including all per-job edits.
+    if(returnedDrafts&&text===returnedDrafts.brief){pendingJobs=returnedJobs();$('posting-form').requestSubmit();return;}
     const jobs=RecruitmentFlow.parseBrief(text);
     if(!jobs.length||jobs.length>20){chatMessage('assistant','請用「20位會計、20位工程師」這樣的方式列出每筆職稱與人數，一次最多20筆。這是本機規則展示，尚未接上AI解析。');return;}
     const district=text.match(/(西屯|南屯|北屯|大雅|大里|太平|豐原|神岡|潭子|沙鹿|梧棲|清水|烏日|霧峰|大肚|龍井|后里|大甲|東勢|新社|石岡|外埔|大安|和平|中|東|西|南|北)區/);
     if(district)$('posting-address').value=`臺中市${district[0]}`;
-    pendingJobs=jobs;$('posting-role').value=jobs[0].role;$('posting-hires').value=jobs[0].hires;
+    returnedDrafts=null;pendingJobs=jobs;$('posting-role').value=jobs[0].role;$('posting-hires').value=jobs[0].hires;
     chatMessage('assistant',`已建立 ${jobs.length} 筆招募任務：${jobs.map(d=>d.role+' '+d.hires+'人').join('、')}。即將依序填寫草稿，全部完成後再由你一次審核。未提供的薪資不會自行編造。`);
     $('posting-form').requestSubmit();
   });
@@ -219,7 +227,7 @@
   }
   $('posting-form').addEventListener('submit',event=>{
     event.preventDefault();const draft=Object.fromEntries(new FormData(event.currentTarget));
-    try{batch=new RecruitmentFlow.PostingBatch((pendingJobs.length?pendingJobs:[draft]).map(job=>({...draft,...job})));batchIndex=0;batchEdits=[];flow=batch.flows[0];pendingJobs=[];}catch(error){$('posting-error').textContent=error.message;return;}
+    try{const jobs=returnedDrafts?returnedJobs():pendingJobs.length?pendingJobs:[draft];batch=new RecruitmentFlow.PostingBatch(jobs.map(job=>({...draft,...job})));returnedDrafts=null;$('posting-start').hidden=true;batchIndex=0;batchEdits=[];flow=batch.flows[0];pendingJobs=[];}catch(error){$('posting-error').textContent=error.message;return;}
     stop();act('working');$('posting-error').textContent='';$('posting-intake').hidden=true;$('posting-task').hidden=false;$('posting-welcome').hidden=true;$('posting-review-form').hidden=false;$('posting-run-actions').hidden=false;$('posting-live-pill').textContent='模擬操作中';$('posting-state').textContent='正在整理需求與範本…';$('posting-url').value='about:blank';$('posting-page-title').textContent='正在建立職缺草稿';$('posting-task-role').textContent=`本批 ${batch.flows.length} 筆職缺`;$('posting-task-summary').textContent=batch.flows.map(f=>`${f.draft.role} ${f.draft.hires}人`).join('、');renderBatchNav();briefText=$('posting-brief').value.trim();$('posting-task-brief').textContent=briefText||'依需求卡片建立任務';$('posting-log').replaceChildren();log('接收需求，開始前端模擬。');log('網路搜尋尚未串接，本次僅使用企業情境與本機範本。');source('template');mapEffects.start(window.streetMap.getLocation()?.coordinates,panel.querySelector('.posting-live'));const run=epoch;taskOrigin=window.streetMap.getLocation()?.coordinates?.join(',')||null;timer=setTimeout(()=>navigateDemo(run),reduced?100:1050);
   });
   $('posting-pause').addEventListener('click',()=>{
@@ -229,9 +237,21 @@
   $('posting-skip').addEventListener('click',()=>{stop();if(!navigation.canFill){navigation.begin(DEMO_URL,location.origin);while(navigation.state==='typing')navigation.typeNext();navigation.open();navigation.ready();$('posting-nav-page').hidden=true;$('posting-screen').hidden=false;$('posting-tab-title').textContent='104 模擬招募站';log('使用者略過導航與操作動畫，直接查看草稿。');}flow.complete();readyReview();});
   $('posting-missing').addEventListener('click',()=>{reviewView='all';panel.querySelectorAll('[data-review-view]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.reviewView==='all')));updateReviewFocus();inputs.salaryMin.focus();});
   function back(){
-    if(flow.state==='preview'){for(const key of ['company','role','address','hires'])$(`posting-${key}`).value=inputs[key].value;$('posting-known').value=inputs.skills.value;reviewCarry={salaryMin:inputs.salaryMin.value,salaryMax:inputs.salaryMax.value};}
-    else reviewCarry=null;
-    reset();$('posting-brief').focus({preventScroll:true});
+    let retained=null;
+    if(flow.state==='preview'&&batch){
+      saveBatchEdit();
+      retained={brief:briefText,index:batchIndex,jobs:batch.flows.map((f,i)=>({...f.draft,...batchEdits[i]}))};
+      const selected=retained.jobs[retained.index];
+      for(const key of ['company','role','address','hires'])$(`posting-${key}`).value=selected[key];
+      $('posting-known').value=selected.skills;
+    }
+    reviewCarry=null;reset();returnedDrafts=retained;
+    if(retained){
+      $('posting-brief').value=retained.brief;$('posting-draft-details').open=true;
+      $('posting-start').hidden=false;$('posting-start').textContent=`依修改後明細重新產生 ${retained.jobs.length} 筆`;
+      chatMessage('assistant',`已保留 ${retained.jobs.length} 筆人工編輯草稿：${retained.jobs.map(j=>j.role+' '+j.hires+'人').join('、')}。下方明細編輯第 ${retained.index+1} 筆，其他筆的內容也會保留。直接重新產生或重送原訊息可沿用；改寫訊息則建立新需求。`);
+    }
+    $('posting-brief').focus({preventScroll:true});
   }
   $('posting-edit').addEventListener('click',back);$('posting-again').addEventListener('click',back);
   $('posting-review-form').addEventListener('submit',event=>event.preventDefault());
@@ -246,11 +266,13 @@
       catch(error){batchIndex=i;flow=batch.flows[i];reviewCarry=null;readyReview();$('posting-state').textContent=`第 ${i+1} 筆 ${flow.draft.role}：${error.message}`;return;}
     }
     try{batch.publish(batch.flows.map((f,i)=>batchEdits[i]||{}));}catch(error){$('posting-state').textContent=error.message;return;}
+    // Persist the complete approved batch before any presentation timer or dismiss action.
+    batch.flows.forEach(f=>archive.add(f,taskOrigin));renderArchive();renderMapResult();
     stop();act('published');$('posting-confirm').hidden=true;$('posting-handoff').hidden=true;$('posting-review-hint').hidden=true;$('posting-review-form').hidden=true;$('posting-success').hidden=false;$('posting-finished').hidden=true;$('posting-live-pill').textContent='逐筆模擬刊登';
     const run=epoch;let index=0;
     function publishNext(){
       if(!active||run!==epoch)return;
-      flow=batch.flows[index];batchIndex=index;archive.add(flow,taskOrigin);renderArchive();renderMapResult();renderBatchNav();
+      flow=batch.flows[index];batchIndex=index;renderBatchNav();
       $('posting-url').value=DEMO_URL+'#published-'+(index+1);$('posting-success-title').textContent=`${index+1}/${batch.flows.length} · ${flow.draft.role} ${flow.draft.hires}人`;
       $('posting-state').textContent=`已模擬刊登 ${index+1}/${batch.flows.length} 筆：${flow.draft.role}`;log(`已模擬刊登 ${flow.draft.role} ${flow.draft.hires}人。`);index++;
       if(index<batch.flows.length){timer=setTimeout(publishNext,reduced?0:900);return;}
