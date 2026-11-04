@@ -133,5 +133,3 @@ def test_concurrent_publish(c):
     with ThreadPoolExecutor(max_workers=2) as pool: statuses=list(pool.map(publish,range(2)))
     assert sorted(statuses)==[200,409]
     assert len(c.get('/job-postings',headers=h).json())==1
-
-

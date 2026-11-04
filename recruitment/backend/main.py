@@ -215,4 +215,3 @@ def create_app(database_url=None):
     def audits(limit:int=100,u=Depends(current),s:Session=Depends(db)):
         return [serialize(r) for r in s.scalars(select(AuditLog).where(AuditLog.company_id==u.company_id).order_by(AuditLog.id.desc()).limit(max(1,min(limit,200))))]
     return app
-
