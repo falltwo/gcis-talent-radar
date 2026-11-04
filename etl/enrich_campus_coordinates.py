@@ -242,11 +242,19 @@ def import_coordinates(folder,db_path=DB_PATH):
                 raise ValueError('Active snapshot changed before publish')
             conn.execute('INSERT INTO education_releases VALUES (?,?,?,?,?,?)',
                 (release_id,parent['academic_year'],VERSION,now(),parent['source_as_of'],json.dumps(summary,ensure_ascii=False)))
+            source_keys = [source['source_key'] for source in manifest['sources']]
             for table in COPY_TABLES:
                 columns=[r['name'] for r in conn.execute('PRAGMA table_info('+table+')') if r['name']!='release_id']
                 names=','.join(columns)
-                conn.execute(f'INSERT INTO {table} (release_id,{names}) SELECT ?,{names} FROM {table} WHERE release_id=?',
-                             (release_id,parent['release_id']))
+                where = 'release_id=?'
+                params = (release_id, parent['release_id'])
+                if table == 'education_sources':
+                    # Incoming evidence replaces matching source keys in the new release.
+                    placeholders = ','.join('?' for _ in source_keys)
+                    where += f' AND source_key NOT IN ({placeholders})'
+                    params += tuple(source_keys)
+                conn.execute(
+                    f'INSERT INTO {table} (release_id,{names}) SELECT ?,{names} FROM {table} WHERE {where}', params)
             conn.executemany('INSERT INTO education_sources VALUES (?,?,?,?,?,?)',[
                 (release_id,s['source_key'],s['url'],s['fetched_at'],s['sha256'],s['raw_path']) for s in manifest['sources']])
             for p in points:

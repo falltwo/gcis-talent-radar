@@ -85,6 +85,41 @@ class CampusCoordinateTests(unittest.TestCase):
         self.assertTrue(repeat['already_imported'])
         self.assertEqual(repeat['release_id'],result['release_id'])
 
+    def test_refresh_publishes_new_sources_without_changing_parent(self):
+        first = geo.import_coordinates(self.folder, self.db)
+        first_id = first['release_id']
+        with closing(sqlite3.connect(self.db)) as conn:
+            first_sources = dict(conn.execute(
+                'SELECT source_key,sha256 FROM education_sources WHERE release_id=?', (first_id,)))
+
+        self.folder = self.folder / 'refresh'
+        self.folder.mkdir()
+        self.manifest['parent_release_id'] = first_id
+        self.selection['matches'][0]['note'] = 'Updated match rationale'
+        self.points[0]['match_note'] = 'Updated match rationale'
+        selection = _source(self.folder, 'coordinates-selection', 'urn:fixture',
+                            json.dumps(self.selection, ensure_ascii=False).encode(), '.json')
+        self.sources[1] = selection
+        self.save()
+
+        refreshed = geo.import_coordinates(self.folder, self.db)
+        refreshed_id = refreshed['release_id']
+        self.assertNotEqual(refreshed_id, first_id)
+        self.assertEqual(refreshed['parent_release_id'], first_id)
+        self.assertEqual(get_education_coverage(self.db)['release_id'], refreshed_id)
+        with closing(sqlite3.connect(self.db)) as conn:
+            previous_sources = dict(conn.execute(
+                'SELECT source_key,sha256 FROM education_sources WHERE release_id=?', (first_id,)))
+            current_sources = dict(conn.execute(
+                'SELECT source_key,sha256 FROM education_sources WHERE release_id=?', (refreshed_id,)))
+            self.assertEqual(previous_sources, first_sources)
+            self.assertNotEqual(selection['sha256'], first_sources['coordinates-selection'])
+            self.assertEqual(current_sources, {**first_sources, 'coordinates-selection': selection['sha256']})
+            self.assertEqual(conn.execute(
+                'SELECT COUNT(*) FROM education_coordinate_evidence WHERE release_id=?',
+                (refreshed_id,)).fetchone()[0], len(self.points))
+            self.assertEqual(conn.execute('PRAGMA foreign_key_check').fetchall(), [])
+
     def test_coordinate_tampering_is_rejected_before_write(self):
         self.manifest['points'][0]['latitude']+=.1
         self.save()
