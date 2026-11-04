@@ -184,7 +184,9 @@
     chatMessage('user',text);
     // Unchanged chat resumes the returned drafts, including all per-job edits.
     if(returnedDrafts&&text===returnedDrafts.brief){pendingJobs=returnedJobs();$('posting-form').requestSubmit();return;}
-    const jobs=RecruitmentFlow.parseBrief(text);
+    let jobs;
+    try{jobs=RecruitmentFlow.parseBrief(text);}
+    catch(error){chatMessage('assistant',error.message);return;}
     if(!jobs.length||jobs.length>20){chatMessage('assistant','請用「20位會計、20位工程師」這樣的方式列出每筆職稱與人數，一次最多20筆。這是本機規則展示，尚未接上AI解析。');return;}
     const district=text.match(/(西屯|南屯|北屯|大雅|大里|太平|豐原|神岡|潭子|沙鹿|梧棲|清水|烏日|霧峰|大肚|龍井|后里|大甲|東勢|新社|石岡|外埔|大安|和平|中|東|西|南|北)區/);
     if(district)$('posting-address').value=`臺中市${district[0]}`;

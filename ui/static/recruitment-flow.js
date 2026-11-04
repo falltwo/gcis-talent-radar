@@ -56,20 +56,81 @@
     countForOrigin(origin){return this.records.filter(record=>record.origin===origin).length;}
     get(id){return this.records.find(record=>record.id===id)||null;}
   }
+  const salaryDigits={零:0,〇:0,一:1,二:2,兩:2,三:3,四:4,五:5,六:6,七:7,八:8,九:9};
+  const salaryUnits={十:10,百:100,千:1000,萬:10000,万:10000};
+  const salaryAmount=String.raw`(?:\d+(?:,\d{3})*(?:\.\d+)?|[零〇一二兩三四五六七八九十百千萬万]+)(?:[萬万千百十](?:\d+(?:\.\d+)?|[零〇一二兩三四五六七八九十百千萬万]+)?)*`;
+  const salaryExpression=new RegExp(String.raw`^(?:月薪|薪資)\s*(?:為|是|[:：])?\s*(?:NT\$|TWD|新台幣)?\s*(${salaryAmount})\s*元?(?:\s*(?:至|到|[-~～–])\s*(${salaryAmount})\s*元?)?`,'i');
+  function salaryNumber(text){
+    for(const part of text.match(/\d[\d,]*/g)||[])if(part.includes(',')&&!/^\d{1,3}(?:,\d{3})+$/.test(part))throw Error('薪資千分位格式不正確，請重新確認。');
+    const raw=text.replace(/,/g,'');
+    if(/^\d+(?:\.\d+)?$/.test(raw))return Number(raw);
+    if(/^[零〇一二兩三四五六七八九]+$/.test(raw))return Number([...raw].map(c=>salaryDigits[c]).join(''));
+    const tokens=raw.match(/\d+(?:\.\d+)?|[零〇一二兩三四五六七八九十百千萬万]/g)||[];
+    if(tokens.join('')!==raw)throw Error('無法辨識薪資金額，請重新確認。');
+    let total=0,section=0,pending=null,lastUnit=10000,wan=false;
+    for(const token of tokens){
+      const unit=salaryUnits[token];
+      if(!unit){
+        if(pending!==null&&pending!==0)throw Error('薪資數字格式不明確，請重新確認。');
+        pending=token in salaryDigits?salaryDigits[token]:Number(token);
+      }else if(unit===10000){
+        if(wan)throw Error('薪資萬位格式不明確，請重新確認。');
+        total+=(section+(pending??0)||1)*unit;section=0;pending=null;lastUnit=10000;wan=true;
+      }else{
+        if(unit>=lastUnit)throw Error('薪資單位順序不正確，請重新確認。');
+        section+=(pending??1)*unit;pending=null;lastUnit=unit;
+      }
+    }
+    return total+section+(pending??0);
+  }
+  function assignSalaries(clean,spans){
+    for(const mention of clean.matchAll(/月薪|薪資|年薪|時薪|薪水|待遇/g)){
+      const match=clean.slice(mention.index).match(salaryExpression);
+      if(!match)throw Error('請明確指定月薪，例如「工程師月薪4萬到6萬」；無法辨識的薪資不會自動帶入。');
+      const tail=clean.slice(mention.index+match[0].length).trimStart();
+      // A partial numeric match must never turn an unsupported amount into a valid salary.
+      if(/^[\d零〇一二兩三四五六七八九十百千萬万.至到~～–-]|^(?:以上|以下|起|左右|美金|美元|USD|[a-z])/i.test(tail)||(/^,\s*\d/.test(tail)&&!/^,\s*\d[\d,]*\s*[位名個人]/.test(tail)))throw Error('薪資範圍或單位無法完整辨識，請重新確認。');
+      const prefix=clean.slice(0,mention.index).trimEnd();
+      const named=spans.filter(s=>{
+        const escaped=s.job.role.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+        return new RegExp(escaped+String.raw`\s*(?:的\s*)?(?:[:：]\s*)?$`).test(prefix);
+      }).sort((a,b)=>b.job.role.length-a.job.role.length);
+      let owner;
+      if(named.length){
+        const longest=named[0].job.role;
+        if(named.filter(s=>s.job.role===longest).length>1)throw Error('同名職缺的薪資歸屬不明確，請使用不同職稱。');
+        owner=named[0];
+      }else{
+        // Bare salary clauses attach to the immediately preceding count/title only.
+        // Any other named/prose prefix must be clarified rather than assigned to that job.
+        const clause=prefix.split(/[、，,；;。\n]/).at(-1).trim();
+        if(clause)throw Error('薪資無法對應職缺，請使用「職稱月薪金額」明確指定。');
+        owner=spans.filter(s=>s.start<mention.index).at(-1);
+      }
+      if(!owner)throw Error('請先提供職稱與人數，再指定該職缺月薪。');
+      let low=salaryNumber(match[1]),high=salaryNumber(match[2]||match[1]);
+      if(match[2]){
+        if(!/[十百千萬万]/.test(match[1])&&/[萬万]$/.test(match[2])&&low<10000)low*=10000;
+      }
+      if(!Number.isSafeInteger(low)||!Number.isSafeInteger(high)||low<=0||high<low)throw Error('請確認月薪上下限為正整數，且上限不低於下限。');
+      const job=owner.job;
+      if(job.salaryMin!==undefined&&(job.salaryMin!==low||job.salaryMax!==high))throw Error(`${job.role}有不同的薪資指定，請先釐清後再建立草稿。`);
+      job.salaryMin=low;job.salaryMax=high;
+    }
+  }
   function parseBrief(text){
-    const clean=String(text||'').normalize('NFKC'),jobs=[];
+    const clean=String(text||'').normalize('NFKC'),jobs=[],spans=[];
     // Locate each count/title independently; a later count always starts another job.
-    const starts=[...clean.matchAll(/(\d[\d,]*)\s*[位名個人]\s*/g)];
+    const starts=[...clean.matchAll(/(\d+(?:,\d{3})*)\s*[位名個人]\s*/g)];
     for(let i=0;i<starts.length;i++){
       const m=starts[i],count=Number(m[1].replace(/,/g,''));
       if(!Number.isInteger(count)||count<1||count>100000)continue;
       const segment=clean.slice(m.index+m[0].length,starts[i+1]?.index??clean.length);
       const role=segment.split(/[、，,；;。\n]|月薪|薪資|待遇|在|於|需要|希望/)[0].replace(/[及與和\s]+$/,'').trim();
       if(!role||role.length>80)continue;
-      const job={role,hires:count},salary=segment.match(/(?:月薪|薪資)\s*(?:NT\$|新台幣)?\s*(\d[\d,]*)(?:\s*(?:至|到|[-~～–])\s*(\d[\d,]*))?/i);
-      if(salary){job.salaryMin=Number(salary[1].replace(/,/g,''));job.salaryMax=Number((salary[2]||salary[1]).replace(/,/g,''));}
-      jobs.push(job);
+      const job={role,hires:count};jobs.push(job);spans.push({start:m.index,job});
     }
+    if(jobs.length)assignSalaries(clean,spans);
     return jobs;
   }
   class PostingBatch{
