@@ -121,8 +121,8 @@
 @media(prefers-reduced-motion:reduce){.campus-popup-head,.campus-popup-head::before{transition:none}.campus-popup-head:hover::after{animation:none}}
 /* Add-to-candidates sits beside the school name so it is visible without scrolling; wraps under long names. */
 .campus-title-row{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:6px 10px;margin:12px 0 3px}
-.campus-title-row h2{margin:0!important;flex:1 1 140px}
-.campus-school-popup .campus-add{flex:none;width:auto;min-height:34px;margin:0;padding:5px 12px;border-radius:999px;font-size:13px;font-weight:650;white-space:nowrap}
+.campus-title-row h2{margin:0!important;flex:1 1 140px;line-height:1.3}
+.campus-school-popup .campus-add{flex:none;width:auto;min-height:42px;margin:0;padding:6px 15px;border-radius:999px;font-size:16px;font-weight:650;white-space:nowrap}
 .campus-school-popup .campus-add.is-added{background:#e7f6ee;color:#17693f;border:1px solid #9fd5b6}
 .campus-school-popup .campus-add.is-added:hover{animation:none;box-shadow:0 0 0 2px #9fd5b6}
 @keyframes campus-add-breathe{0%,100%{box-shadow:0 0 0 1px #2f8bff99,0 0 4px #2f8bff55}50%{box-shadow:0 0 0 3px #1e88ff,0 0 8px 2px #2f8bffb0}}
