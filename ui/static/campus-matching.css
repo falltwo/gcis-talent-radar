@@ -126,3 +126,8 @@
 .campus-school-popup .campus-add.is-added{background:#e7f6ee;color:#17693f;border:1px solid #9fd5b6}
 .campus-school-popup .campus-add.is-added:hover{animation:none;box-shadow:0 0 0 2px #9fd5b6}
 @keyframes campus-add-breathe{0%,100%{box-shadow:0 0 0 1px #2f8bff99,0 0 4px #2f8bff55}50%{box-shadow:0 0 0 3px #1e88ff,0 0 8px 2px #2f8bffb0}}
+/* Icon + label centred as one flex group; 2.4:1 width-to-height keeps the pill from looking stubby. */
+.campus-school-popup .campus-add{display:inline-flex;align-items:center;justify-content:center;gap:6px;line-height:1;padding:0 18px}
+.campus-add svg{flex:none;width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+/* Button stays on the name's row; long names wrap inside their own column instead. */
+.campus-title-row{flex-wrap:nowrap}.campus-title-row h2{flex:1 1 0;min-width:0}

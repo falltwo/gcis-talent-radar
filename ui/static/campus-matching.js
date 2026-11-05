@@ -157,7 +157,9 @@
   function updateAddButton(){
     const button=popupBox?.querySelector('.campus-add');if(!button)return;
     const added=basket.has(selectedId),name=popupBox.querySelector('h2').textContent;
-    button.textContent=added?'✓ 已加入':'＋ 候選';button.classList.toggle('is-added',added);
+    // ponytail: SVG icon instead of the full-width ＋/✓ glyphs, whose side bearings made the gap uneven.
+    const icon=added?'<path d="M3 8.5l3.2 3L13 4.5"/>':'<path d="M8 3v10M3 8h10"/>';
+    button.innerHTML=`<svg viewBox="0 0 16 16" aria-hidden="true">${icon}</svg>`;button.append(added?'已加入':'加入候選');button.classList.toggle('is-added',added);
     button.setAttribute('aria-pressed',String(added));button.setAttribute('aria-label',added?`${name}已加入合作候選，點擊移除`:`將${name}加入合作候選`);
   }
   function openSchool(item){
