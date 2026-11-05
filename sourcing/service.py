@@ -139,6 +139,16 @@ def stream(prep: Prepared, *, browser_factory: Optional[Callable[[], SourcingBro
         return {"type": "decision", "site": site.id, "what": what, "detail": detail,
                 "by": "gpt-6-luna" if source == "llm" else "rules"}
 
+    nearby: list[Candidate] = []
+
+    def fill_nearby() -> Iterator[dict]:
+        """指定城市的來源都找完還有名額：才補同國家其他城市的人（已標為部分符合）。"""
+        for cand in nearby:
+            if len(candidates) >= prep.max_candidates or stopped():
+                return
+            candidates.append(cand)
+            yield {"type": "candidate", "candidate": cand.as_dict()}
+
     # 只走官方 API 的網站（OpenAlex、ORCID、Stack Overflow）先跑，不需要開瀏覽器
     api_sites = [s for s in prep.sites if s.search_url is None]
     browser_sites = [s for s in prep.sites if s.search_url is not None]
@@ -170,10 +180,14 @@ def stream(prep: Prepared, *, browser_factory: Optional[Callable[[], SourcingBro
             if cand.fit == "不符合":
                 yield {"type": "candidate_skipped", "site": site.id, "name": cand.name, "reason": cand.fit_reason}
                 continue
+            if cand.nearby:
+                nearby.append(cand)  # 同國家其他城市：等指定城市的來源都找完，還有名額才補
+                continue
             candidates.append(cand)
             taken += 1
             yield {"type": "candidate", "candidate": cand.as_dict()}
     if not browser_sites or len(candidates) >= prep.max_candidates or stopped():
+        yield from fill_nearby()
         yield {"type": "done", "count": len(candidates), "plan": plan.as_dict(), "message": DONE_MESSAGE,
                "usage": prep.usage.as_dict(), "cancelled": stopped()}
         return
@@ -223,7 +237,7 @@ def stream(prep: Prepared, *, browser_factory: Optional[Callable[[], SourcingBro
         taken = 0
         page = 1
         while True:
-            fresh = [c for c in cards if c.url not in seen]
+            fresh = [c for c in cards if c.url not in seen][:MAX_CARDS]
             if not fresh:
                 # 這一頁看完了還不夠：換下一頁或往下捲，最多 MAX_PAGES 頁
                 if taken >= quota or page >= MAX_PAGES or stopped():
@@ -236,7 +250,8 @@ def stream(prep: Prepared, *, browser_factory: Optional[Callable[[], SourcingBro
                     browser.scroll_more()
                     yield step(site, "next_page", "往下捲動，載入更多搜尋結果", browser)
                 results_url = browser.url()
-                cards = result_cards(site, browser.result_cards(), limit=MAX_CARDS)
+                # 往下捲動的網站會保留舊卡片：先多讀看過的張數，排除看過的之後才取 MAX_CARDS 張
+                cards = result_cards(site, browser.result_cards(), limit=len(seen) + MAX_CARDS)
                 if not [c for c in cards if c.url not in seen]:
                     return  # 沒有更多結果了
                 continue
@@ -322,9 +337,11 @@ def stream(prep: Prepared, *, browser_factory: Optional[Callable[[], SourcingBro
                         yield {"type": "error", "reason": "瀏覽器已無法使用，停止其餘網站"}
                         break
     except BrowserUnavailable as exc:
+        yield from fill_nearby()
         yield {"type": "error", "reason": str(exc)}
         return
 
+    yield from fill_nearby()
     yield {"type": "done", "count": len(candidates), "plan": plan.as_dict(), "message": DONE_MESSAGE,
                "usage": prep.usage.as_dict(), "cancelled": stopped()}
 

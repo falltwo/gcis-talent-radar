@@ -529,7 +529,8 @@ def test_decider_validates_model_output(monkeypatch):
     monkeypatch.setattr(llm, "chat_json", lambda *a, **k: {"language": "Python", "keyword": "backend"})
     assert decider.search_text(SITES["github"], plan)[:2] == ("type:user language:python backend location:Taichung", "llm")
     monkeypatch.setattr(llm, "chat_json", lambda *a, **k: {"language": "cobol", "keyword": "male"})
-    assert decider.search_text(SITES["github"], plan)[0] == "type:user location:Taichung"
+    # 兩個都不合格（清單外的語言、個人特徵）：不採用模型，沿用規則判斷的 Python
+    assert decider.search_text(SITES["github"], plan)[:2] == ("type:user language:python location:Taichung", "rules")
     monkeypatch.setattr(llm, "chat_json", lambda *a, **k: {"query": "python django flask machine learning Taichung"})
     assert decider.search_text(SITES["kaggle"], plan)[1] == "rules"
     cards = [decider.Card(f"https://github.com/u{i}", f"u{i}") for i in range(5)]
@@ -963,3 +964,55 @@ def test_sites_without_location_only_fill_the_gap_and_are_flagged():
     notices = [e["message"] for e in events if e["type"] == "notice" and "補足" in e["message"]]
     assert len(notices) == 1 and "Hugging Face、Kaggle" in notices[0]
     assert {s["id"]: s["location_filter"] for s in catalog()}["github"] is True
+
+
+def test_infinite_scroll_skips_seen_cards_before_the_card_limit(monkeypatch):
+    """往下捲動的網站保留舊卡片：第一批滿 40 張都不符合，捲動後追加的人仍要看得到。"""
+    first = [(f"https://www.kaggle.com/old{i}", f"old{i}") for i in range(service.MAX_CARDS)]
+    added = [("https://www.kaggle.com/new1", "new1"), ("https://www.kaggle.com/new2", "new2")]
+
+    class ScrollBrowser(HostBrowser):
+        scrolls = 0
+
+        def scroll_more(self):
+            self.scrolls += 1
+            self.people = first + added
+
+    browser = ScrollBrowser(first + added)
+    browser.people = list(first)
+    monkeypatch.setattr(service, "summarize", lambda site, url, *a, **k: Candidate(
+        site.id, url, url.rsplit("/", 1)[-1], fit="不符合" if "/old" in url else "符合"))
+    prep = service.prepare("找機器學習工程師", max_candidates=1, site_ids=["kaggle"])
+    events = list(service.stream(prep, browser_factory=lambda: browser))
+    assert browser.scrolls == 1
+    assert [e["candidate"]["name"] for e in events if e["type"] == "candidate"] == ["new1"]
+
+
+def test_other_city_api_candidates_wait_for_city_sources(monkeypatch):
+    """Stack Overflow 同國家其他城市的人不能先占名額：GitHub 找到台中的人優先。"""
+    monkeypatch.setattr(apis, "stackoverflow_top_answerers", lambda tag: [("3", "TP Dev")])
+    monkeypatch.setattr(apis, "stackoverflow_users", lambda ids: {"3": {
+        "display_name": "TP Dev", "reputation": 100, "location": "Taipei, Taiwan",
+        "link": "https://stackoverflow.com/users/3/tp", "website_url": ""}})
+    monkeypatch.setattr(apis, "stackoverflow_top_tags", lambda uid: ["python"])
+    browser = HostBrowser([("https://github.com/tcdev", "tcdev")])
+    prep = service.prepare("找台中 Python 工程師", max_candidates=1, site_ids=["github", "stackoverflow"])
+    events = list(service.stream(prep, browser_factory=lambda: browser))
+    assert [e["candidate"]["name"] for e in events if e["type"] == "candidate"] == ["tcdev"]
+    assert events[-1]["type"] == "done" and events[-1]["count"] == 1
+
+    browser = HostBrowser([])  # GitHub 沒找到人：才補其他城市的人，並標為部分符合
+    events = list(service.stream(service.prepare("找台中 Python 工程師", max_candidates=1,
+                                                 site_ids=["github", "stackoverflow"]),
+                                 browser_factory=lambda: browser))
+    cands = [e["candidate"] for e in events if e["type"] == "candidate"]
+    assert [c["name"] for c in cands] == ["TP Dev"] and cands[0]["fit"] == "部分符合" and "nearby" not in cands[0]
+
+
+def test_github_search_keeps_rule_terms_when_model_gives_nothing(monkeypatch):
+    monkeypatch.setenv("OPENROUTER_API_KEY", "test")
+    monkeypatch.setattr(llm, "chat_json", lambda *a, **k: {"language": None, "keyword": None})
+    text, source, _ = decider.search_text(SITES["github"], planner.rule_plan("找Python工程師"))
+    assert text == "type:user language:python" and source == "rules"
+    empty = planner.Plan("找人", ["software"], SearchTerms((), None), True, "rules", [])
+    assert decider.search_text(SITES["github"], empty)[0] == "type:user developer"

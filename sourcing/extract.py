@@ -43,9 +43,11 @@ class Candidate:
     fit_reason: str = ""
     location: str = ""  # 候選人自己公開填的地點（Stack Overflow 等）
     location_note: str = ""  # 來源網站無法依地點篩選時的提醒，例如「此網站無法依地點篩選，不一定在台中」
+    nearby: bool = False  # 不在指定城市、但在同一個國家（只給流程排順序用，不輸出）
 
     def as_dict(self) -> dict:
         data = asdict(self)
+        data.pop("nearby")
         # 連結一律只放 http(s)：網站上的自填網址可能是 javascript: 之類，前端直接放進 href 會被利用
         data["evidence"] = [e for e in data["evidence"] if safe_url(e.get("url"))]
         data["personal_site"] = safe_url(data["personal_site"])
@@ -362,6 +364,7 @@ def from_stackoverflow(site: Site, plan: Plan, *, limit: int) -> Optional[list[C
         if cand is None:
             continue
         if wanted and not same_city:
+            cand.nearby = True
             cand.fit = "部分符合" if cand.fit in ("符合", "未判斷") else cand.fit
             cand.fit_reason = f"在{COUNTRY_LABEL.get(country, country)}其他城市（{cand.location}）。" + cand.fit_reason
         out.append(cand)

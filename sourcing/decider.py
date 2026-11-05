@@ -54,10 +54,13 @@ def _github_search(plan: Plan, need: int) -> tuple[str, str, str]:
                 "required": ["language", "keyword"], "additionalProperties": False}, max_tokens=80)
         if out:
             lang = str(out.get("language") or "").lower() or None
-            language = lang if lang in GITHUB_LANGUAGES else None
-            keyword = _clean_keyword(out.get("keyword"))
-            source = "llm"
+            lang = lang if lang in GITHUB_LANGUAGES else None
+            kw = _clean_keyword(out.get("keyword"))
+            if lang or kw:  # 模型兩個都沒給（或都不合格）：沿用規則判斷的語言與關鍵字
+                language, keyword, source = lang, kw, "llm"
     ladder = github_ladder(plan.terms.location, language, keyword)
+    if not ladder:  # 沒有地點、也沒有語言或關鍵字
+        return plan.terms.text(with_location=False) or "developer", source, ""
     tried: list[str] = []
     for query in ladder:
         count = apis.github_user_count(query)
