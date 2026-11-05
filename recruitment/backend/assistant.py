@@ -32,6 +32,9 @@ def plan_request(ai, messages):
         '使用者明確要建立企業職缺表且已提供職稱和招募人數才 action=draft；否則 action=clarify，reply 只追問缺的條件。'
         'request_indexes 選出本次建表必要的 user_requests 索引，必須包括最新一則，排除過去資訊查詢。'
         '可依 assistant_context 理解「那就幫我建表」等追問，但不能將助理提議或搜尋薪資當作HR核定條件。'
+        '使用者已明確提供的薪資、地點、工作內容及任職條件必須保留；範本只補缺漏。'
+        '例如「後端工程師月薪4萬，網路管理師月薪5萬」已分別指定薪資，不能追問歸屬或改為兩者5萬。'
+        '選取需求索引時須包含本次招募各職位的既有條件，不得只保留最後一句建表指令或丟掉先前具名的薪資。'
         'draft 時不要產生工作條件或薪資；只選使用者原文。搜尋 query 不含私人資料、公司內部薪資或帳戶資訊。',
         {'user_requests':users,'assistant_context':[m['content'][:2000] for m in messages if m['role']=='assistant'][-4:]})
     indexes=result.request_indexes

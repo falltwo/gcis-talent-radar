@@ -145,6 +145,19 @@ def test_memory_keeps_verified_fields_separate_from_attempts_and_bounds_history(
     assert memory.differences=={}
     assert 'current_url' in memory.context('http://127.0.0.1:8088/mock104')
 
+
+def test_website_defaults_cannot_replace_prepared_employer_conditions():
+    from recruitment.computer_use import required_field_differences
+    from tests.test_mock104 import job
+    approved=job(salary_min=40000,salary_max=40000,headcount=10,description='使用者指定的工作內容。')
+    submitted={**approved,'salary_min':35000,'salary_max':45000,'description':'網站範本內容'}
+    differences=required_field_differences(submitted,approved)
+    assert set(differences)=={'salary_min','salary_max','description'}
+    assert differences['salary_min']['required']==40000
+    assert required_field_differences(approved,approved)=={}
+    negotiable={**approved,'salary_mode':'NEGOTIABLE','salary_min':None,'salary_max':None}
+    assert set(required_field_differences(approved,negotiable))=={'salary_mode','salary_min','salary_max'}
+
 def test_first_saved_mismatch_hands_to_human_without_another_model_call(client,monkeypatch):
     import json
     import api.mock104 as portal

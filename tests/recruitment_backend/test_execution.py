@@ -40,3 +40,18 @@ def test_taiwan_salary_reference_never_overwrites_employer_salary(monkeypatch):
 def test_old_invalid_instruction_batch_is_blocked_before_execution():
     with pytest.raises(ValueError,match='填表指令'):
         prepare_execution(SimpleNamespace(enabled=False),{'original_text':'原需求','items':[{'title':'填寫履歷範本','quantity':5}]},'公司','臺中市')
+
+
+def test_named_employer_salaries_and_content_take_priority_over_templates():
+    from recruitment.backend.salary import verified_salary
+    text='後端工程師月薪4萬，網路管理師月薪5萬'
+    titles=['後端工程師','網路管理師']
+    salaries=verified_salary(text,titles)
+    items=[{'title':title,'quantity':count,**salaries[title]} for title,count in zip(titles,[10,2])]
+    items[0].update(description='負責公司訂單 API 與資料庫維護。',requirements='Python、PostgreSQL',location='臺中市西屯區')
+    jobs=[p['job'] for p in prepare_execution(SimpleNamespace(enabled=False),{'original_text':text,'items':items},'指定企業','大雅區')]
+    assert [(j['salary_min'],j['salary_max']) for j in jobs]==[(40000,40000),(50000,50000)]
+    assert jobs[0]['description']==items[0]['description']
+    assert jobs[0]['required_skills']==['python','postgresql']
+    assert jobs[0]['district']=='臺中市西屯區'
+    assert [j['headcount'] for j in jobs]==[10,2]

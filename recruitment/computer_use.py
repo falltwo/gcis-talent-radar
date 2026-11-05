@@ -3,6 +3,7 @@ import base64
 import json
 import logging
 import os
+import re
 import threading
 import time
 from urllib.parse import urlsplit
@@ -68,6 +69,13 @@ def allowed_text(text, job):
     return text == "" or text.casefold() in [value.casefold() for value in values] or text in {"月薪面議","薪資面議","固定薪資範圍"}
 
 
+def required_field_differences(submitted, approved):
+    """Never save website defaults over prepared scalar field values."""
+    fields=[key for key,value in approved.items() if not isinstance(value,list)]
+    return {key: {'submitted': submitted.get(key), 'required': approved[key]}
+            for key in fields if key in approved and submitted.get(key) != approved[key]}
+
+
 def execute_actions(page, actions, job, should_stop=lambda:False,on_action=None):
     if not isinstance(actions,list) or len(actions)>16: raise ValueError("每次最多16個滑鼠鍵盤動作。")
     for action in actions:
@@ -120,6 +128,10 @@ def decide(screenshot, job, goal, previous_error):
         "If you see the browser start page, type the approved target_url into 招募網站網址 and click 開啟招募網站 first. This is a real navigation field. "
         "You can fill consecutive fields with Tab but must confirm the next screenshot. Scroll to find lower fields. "
         "For salary_mode NEGOTIABLE choose 月薪面議 and leave numeric salary empty. "
+        "Approved data takes priority over every website default, template, search result and AI suggestion. "
+        "For RANGE select 固定薪資範圍 and replace BOTH salary inputs with the exact approved salary_min and salary_max, "
+        "even when the website already shows 35000 and 45000. Never leave defaults because the fields are nonempty. "
+        "Check title, headcount, location, salary and all supplied content BEFORE saving; distinct jobs can have distinct salaries. "
         "Skills are multiline textareas, one complete skill per line. Click 必要技能 then use fill_skills required_skills; "
         "click 可培訓技能 then use fill_skills trainable_skills, including when empty to clear defaults. "
         "Never manually join, abbreviate or reword skills. fill_skills replaces the focused field with the exact approved list. "
@@ -216,6 +228,19 @@ def operate(registry, cookie, origin, run_id):
                     request_route.abort();return
                 if not same or not permitted or parsed.path.startswith('/api/mock104/agent/'):
                     request_route.abort();return
+                job_write=request.method in {'POST','PUT'} and re.fullmatch(r'/api/mock104/jobs(?:/[^/]+)?',parsed.path)
+                if job_write:
+                    try:
+                        submitted=json.loads(request.post_data or '{}')
+                        if not isinstance(submitted,dict):raise ValueError()
+                    except (TypeError,ValueError):
+                        request_route.abort();return
+                    differences=required_field_differences(submitted,state['job'])
+                    if differences:
+                        message='尚未依使用者需求填妥，請在目前表格修正後再儲存：'+json.dumps(differences,ensure_ascii=False)
+                        update(message=message)
+                        request_route.fulfill(status=409,content_type='application/json',body=json.dumps({'detail':message},ensure_ascii=False))
+                        return
                 if final_write and state['phase']=='COMPUTER_RUNNING':
                     request_route.abort();return
                 if final_write and state.get('job_id'):
