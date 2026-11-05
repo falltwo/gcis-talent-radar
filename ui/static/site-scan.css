@@ -1,0 +1,45 @@
+/* Step 3 site scan: glass panels slide in from both sides over the city overview. */
+.scan-side{--text:#1e293b;--muted:#5b6b80;--line:rgba(15,23,42,.08);--blue:#2563eb;--orange:#ea580c;position:absolute;top:12px;bottom:12px;z-index:6;display:flex;flex-direction:column;gap:10px;visibility:hidden;opacity:0;transition:transform .35s ease-in,opacity .25s,visibility 0s .35s}
+.scan-left{left:12px;width:300px;transform:translateX(-110%)}
+.scan-right{right:12px;width:420px;transform:translateX(110%)}
+.scan-active .scan-side{visibility:visible;opacity:1;transform:none;transition:transform .55s cubic-bezier(.16,1,.3,1),opacity .35s ease-out,visibility 0s}
+.scan-active .scan-right{transition-delay:.12s}
+.scan-active .city-topbar,.scan-active .map-toolbar,.scan-active .city-bottom,.scan-active .district-toggle,.scan-active .district-panel,.scan-active .map-hud-coords,.scan-active .maplibregl-ctrl-top-right,.scan-active .sidebar-toggle,.scan-active .map-status-bar{visibility:hidden}
+.scan-pane{display:flex;flex-direction:column;min-height:0;border:1px solid var(--line);border-radius:12px;background:rgba(255,255,255,.8);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);box-shadow:0 10px 30px rgba(15,23,42,.1);color:var(--text)}
+.scan-right .scan-pane{flex:1}
+.scan-pane h3{display:flex;align-items:baseline;gap:8px;margin:0;padding:10px 14px;border-bottom:1px solid var(--line);font-size:13px;font-weight:600;color:#334155}
+.scan-pane h3 span{font-size:11px;font-weight:400;color:var(--muted)}
+.scan-body{padding:12px 14px;overflow:auto;min-height:0}
+.scan-tags{display:flex;flex-wrap:wrap;gap:6px}
+.scan-tag{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border:1px solid #bfd3f2;border-radius:999px;background:#eef4fd;font-size:12px;color:#1d4ed8}
+.scan-tag small{font-size:10px;color:#64748b}
+.scan-tag b{font-weight:600}
+.scan-note{margin:10px 0 0;font-size:11px;line-height:1.6;color:var(--muted)}
+.scan-note:empty{display:none}
+#scan-gap{color:#b45309}
+.scan-criterion{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:10px;padding:8px 2px;border-bottom:1px solid var(--line);cursor:pointer}
+.scan-criterion:last-child{border-bottom:0}
+.scan-criterion input{width:18px;height:18px;margin:0;accent-color:var(--blue)}
+.scan-criterion b{display:block;font-size:13px;font-weight:600}
+.scan-criterion small{display:block;font-size:11px;color:var(--muted);margin-top:2px}
+.scan-criterion em{font-style:normal;font-size:11px;color:var(--orange);font-weight:600;white-space:nowrap}
+.scan-close{flex:none;min-height:40px;border:1px solid var(--line);border-radius:10px;background:rgba(255,255,255,.85);color:#334155;font-size:13px;cursor:pointer}
+.scan-close:hover{background:#fff}
+.scan-grid{display:grid;grid-template-columns:repeat(3,1fr);grid-auto-rows:1fr;gap:8px;margin:0;padding:0;list-style:none}
+.scan-card{opacity:0;transform:translateY(18px)}
+.cards-in .scan-card{animation:scan-card-in .45s cubic-bezier(.16,1,.3,1) var(--delay) both}
+@keyframes scan-card-in{from{opacity:0;transform:translateY(18px) scale(.96)}to{opacity:1;transform:none}}
+.scan-card button{display:grid;grid-template-columns:auto 1fr;grid-template-areas:"rank score" "name name" "why why";align-items:baseline;gap:2px 6px;width:100%;height:100%;min-height:84px;padding:9px 10px;border:1px solid var(--line);border-radius:10px;background:rgba(255,255,255,.9);color:var(--text);text-align:left;cursor:pointer;transition:border-color .2s,box-shadow .2s}
+.scan-card button:hover{border-color:#93b8ef;box-shadow:0 4px 14px rgba(37,99,235,.12)}
+.scan-card button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+.scan-rank{grid-area:rank;font-size:11px;color:var(--muted)}
+.scan-score{grid-area:score;justify-self:end;font-size:18px;font-weight:700;color:var(--blue);font-variant-numeric:tabular-nums}
+.scan-card strong{grid-area:name;font-size:15px;font-weight:700}
+.scan-card small{grid-area:why;font-size:10.5px;line-height:1.4;color:var(--muted)}
+.scan-card.is-top button{border-color:#fdba74;background:#fff7ed}
+.scan-card.is-top .scan-score{color:var(--orange)}
+.scan-status{position:absolute;left:50%;bottom:20px;z-index:6;transform:translateX(-50%);margin:0;padding:6px 14px;border-radius:999px;background:rgba(15,23,42,.72);color:#fff;font-size:12px;pointer-events:none;opacity:0;transition:opacity .3s}
+.scan-active .scan-status:not(:empty){opacity:1}
+@media(max-width:1100px){.scan-right{width:360px}.scan-left{width:260px}}
+@media(max-width:960px){.scan-left{top:12px;bottom:auto;left:12px;right:12px;width:auto;max-height:38%}.scan-left .scan-pane:nth-child(2){display:none}.scan-right{top:auto;bottom:12px;left:12px;right:12px;width:auto;height:44%}.scan-grid{grid-template-columns:repeat(2,1fr)}.scan-status{bottom:auto;top:42%}}
+@media(prefers-reduced-motion:reduce){.scan-side,.scan-active .scan-side{transition:none}.cards-in .scan-card{animation:none;opacity:1;transform:none}}

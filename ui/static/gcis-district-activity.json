@@ -1,0 +1,139 @@
+{
+ "window": [
+  "2025-09",
+  "2026-08"
+ ],
+ "missing_months": [
+  "2025-09"
+ ],
+ "source": "經濟部商工行政資料開放平台：公司設立登記、解散登記清冊（臺中市）",
+ "source_url": "https://data.gcis.nat.gov.tw/",
+ "coverage": {
+  "setup": {
+   "rows": 5996,
+   "unparsed": 0
+  },
+  "dissolved": {
+   "rows": 3434,
+   "unparsed": 0
+  }
+ },
+ "districts": {
+  "中區": {
+   "setup": 81,
+   "dissolved": 45
+  },
+  "北區": {
+   "setup": 540,
+   "dissolved": 301
+  },
+  "北屯區": {
+   "setup": 675,
+   "dissolved": 364
+  },
+  "南區": {
+   "setup": 318,
+   "dissolved": 154
+  },
+  "南屯區": {
+   "setup": 568,
+   "dissolved": 323
+  },
+  "后里區": {
+   "setup": 54,
+   "dissolved": 27
+  },
+  "和平區": {
+   "setup": 1,
+   "dissolved": 2
+  },
+  "外埔區": {
+   "setup": 33,
+   "dissolved": 17
+  },
+  "大安區": {
+   "setup": 3,
+   "dissolved": 10
+  },
+  "大甲區": {
+   "setup": 56,
+   "dissolved": 44
+  },
+  "大肚區": {
+   "setup": 62,
+   "dissolved": 31
+  },
+  "大里區": {
+   "setup": 243,
+   "dissolved": 187
+  },
+  "大雅區": {
+   "setup": 134,
+   "dissolved": 87
+  },
+  "太平區": {
+   "setup": 220,
+   "dissolved": 163
+  },
+  "新社區": {
+   "setup": 8,
+   "dissolved": 7
+  },
+  "東勢區": {
+   "setup": 31,
+   "dissolved": 14
+  },
+  "東區": {
+   "setup": 149,
+   "dissolved": 103
+  },
+  "梧棲區": {
+   "setup": 99,
+   "dissolved": 43
+  },
+  "沙鹿區": {
+   "setup": 120,
+   "dissolved": 65
+  },
+  "清水區": {
+   "setup": 83,
+   "dissolved": 52
+  },
+  "潭子區": {
+   "setup": 105,
+   "dissolved": 89
+  },
+  "烏日區": {
+   "setup": 132,
+   "dissolved": 78
+  },
+  "石岡區": {
+   "setup": 15,
+   "dissolved": 5
+  },
+  "神岡區": {
+   "setup": 77,
+   "dissolved": 76
+  },
+  "西區": {
+   "setup": 707,
+   "dissolved": 350
+  },
+  "西屯區": {
+   "setup": 1149,
+   "dissolved": 555
+  },
+  "豐原區": {
+   "setup": 186,
+   "dissolved": 153
+  },
+  "霧峰區": {
+   "setup": 67,
+   "dissolved": 42
+  },
+  "龍井區": {
+   "setup": 80,
+   "dissolved": 47
+  }
+ }
+}
