@@ -6,7 +6,7 @@
 
 ## 同頁實況及人工修改
 
-Computer Use在背景Chrome用截圖與滑鼠鍵盤操作，畫面與實際點擊位置回傳右側工作台，不彈出其他Chrome視窗。這是受控瀏覽器實況，不是整個Windows桌面的串流。
+Computer Use在背景Chrome操作，畫面與實際點擊位置回傳右側工作台，不彈出其他Chrome視窗。Jev依可見控制項選擇操作意圖，由執行器送出真正滑鼠鍵盤事件；唯讀觀察不修改表格值，不讀隱藏欄位或密碼。這是受控瀏覽器實況，不是整個Windows桌面的串流。
 
 第一次在求才網站儲存後，停止AI填寫。完全一致回報FILLED，有差異回報REVIEW_REQUIRED並提供mismatches、actual_job及job_id；兩者都交給人工檢查，不交回AI修正。多職位依序填寫後，在同一工作台逐筆檢查。
 
@@ -49,3 +49,12 @@ Computer Use在背景Chrome用截圖與滑鼠鍵盤操作，畫面與實際點�
 記憶包含目前職位條件與最近10則訊息，不會只依賴最近聊天而遺失仍有效的招募條件。單一職位可直接補充「月薪200000」「改成5位」「工作地點：臺中市西屯區」等；多職位薪資歸屬不明時先追問，回覆「都通用」才共同套用。具名欄位更新只作用於該職位，明確說「全部」才共同更改。輸入「清除記憶」或「重新開始」清空本對話上下文。
 
 回應的 `context` 提供 `expires_in`（秒）及 `remembered_roles`。既有 `/batches` 直接建立接口維持原行為，不會讀取其他對話的短期記憶。
+
+## Luna／Jev 分工
+
+- 需求理解、對話意圖與條件擷取、工作內容建議：`RECRUITMENT_THINKING_MODEL`，預設沿用 `OPENROUTER_MODEL`，未設定時使用 `openai/gpt-6-luna`。
+- 瀏覽器操作意圖：`RECRUITMENT_JEV_MODEL`，預設沿用 `SOURCING_JEV_MODEL` 或 `typesafe/jev-1.13`，使用 TypeSafe SDK 的封閉選項分類。
+- Jev只選填寫、選項、捲動、下一步等目前可執行操作，不生成自由文字、金額、網址或座標。欄位內容始終來自 Luna 準備且經驗證的職缺資料；最多一次填4個可見文字欄位，已符合的欄位不重填。
+- 低信心、無效選擇或模型連線失敗會停止，不偷偷退回 Luna 操作。每個滑鼠鍵盤動作後仍更新實際截圖，儲存前核對與人工送審規則不變。
+
+安裝 `requirements-recruitment-browser.txt` 取得 Playwright 與 TypeSafe SDK。舊 `RECRUITMENT_COMPUTER_MODEL` 已不控制操作模型；`agent/approve` 與 `agent/run` 的 `model_roles` 顯示實際設定的思考／操作模型。

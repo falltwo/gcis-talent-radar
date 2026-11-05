@@ -132,6 +132,7 @@ def prepare(body: AgentPrepare, request: Request, response: Response):
 
 @router.post("/approve")
 def approve(body: ApprovedHandoff, request: Request, response: Response):
+    from recruitment.action_router import model_name
     portal.protect(request, response)
     if len(body.job.description.strip()) < 10 or not body.job.work_hours.strip():
         raise HTTPException(422, "請確認工作內容及上班起迄時間後再交給 Agent。")
@@ -140,6 +141,8 @@ def approve(body: ApprovedHandoff, request: Request, response: Response):
         if previous and previous["phase"] in {"RUNNING", "COMPUTER_RUNNING", "COMPUTER_PUBLISHING", "AWAITING_CONFIRMATION", "READY_TO_PUBLISH", "SUBMITTED"}:
             raise HTTPException(409, "已有待完成的填表流程，請先完成或停止該流程。")
         run = {"run_id": uid(), "job": body.job.model_dump(), "phase": "READY", "job_id": None,
+               "model_roles":{"thinking":os.getenv('RECRUITMENT_THINKING_MODEL',os.getenv('OPENROUTER_MODEL','openai/gpt-6-luna')),
+                              "operation":model_name()},
                "confirm_before_publish": body.confirm_before_publish, "fill_only":body.fill_only,"auto_fill":body.auto_fill,"conditions_confirmed":body.hr_confirmed, "scenario": body.scenario,
                "typing_speed": body.typing_speed,
                "mode": "SIMULATION", "sent_to_platform": False,"driver":"COMPUTER_USE","steps":[],"screenshot":None}

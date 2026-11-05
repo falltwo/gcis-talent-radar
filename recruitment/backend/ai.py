@@ -38,7 +38,7 @@ class RecruitmentAI:
         self.mode = os.getenv('LLM_MODE', 'auto').strip().lower()
         if self.mode not in {'auto', 'rules', 'openrouter'}: raise ValueError('LLM_MODE 必須是 auto、rules 或 openrouter')
         self.key = os.getenv('OPENROUTER_API_KEY', '').strip()
-        self.model = os.getenv('OPENROUTER_MODEL', 'openai/gpt-4.1-mini').strip()
+        self.model = os.getenv('RECRUITMENT_THINKING_MODEL',os.getenv('OPENROUTER_MODEL','openai/gpt-6-luna')).strip()
         self.timeout = float(os.getenv('OPENROUTER_TIMEOUT_SECONDS', '20'))
         if not 0 < self.timeout <= 120: raise ValueError('OpenRouter timeout 必須為 0–120 秒')
         if self.mode == 'openrouter' and not self.key: raise ValueError('openrouter 模式需要 OPENROUTER_API_KEY')
