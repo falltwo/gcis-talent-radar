@@ -70,6 +70,35 @@ class EducationDirectoryTests(unittest.TestCase):
     def run_import(self):
         return loader.import_bundle(self.folder, self.db_path)
 
+    def test_fcu_overseas_dual_degrees_are_excluded_from_import(self):
+        self.contents['schools'] = self.contents['schools'].replace(b'0001', b'1007')
+        self.contents['departments'] = self.contents['departments'].replace(b'0001', b'1007')
+        self.contents['students'] = self.contents['students'].replace(b',1,', b',1007,')
+        foreign = '澳洲昆士蘭大學電機工程雙學士學位學程'
+        self.contents['departments'] += ('1007,07141044,'+foreign+',工學院,https://example.edu\r\n').encode()
+        self.contents['students'] += ('114,1007,7141044,'+foreign+',D 日,B 學士,19 臺中市,20\r\n').encode()
+        self.write_manifest()
+        result = self.run_import()
+        rows = search_education_departments(institution_id='1007', db_path=self.db_path)
+        self.assertEqual([d['name'] for d in rows['items']], ['機械工程學系'])
+        self.assertEqual(result['excluded_programs'], 1)
+
+    def test_scope_cleanup_publishes_new_snapshot_and_preserves_original(self):
+        original = self.run_import()['release_id']
+        with closing(sqlite3.connect(self.db_path)) as conn, conn:
+            conn.execute("INSERT INTO education_institutions SELECT release_id,'1007','逢甲大學',school_type,ownership,headquarters_address,website,profile_url,in_taichung_scope FROM education_institutions WHERE institution_id='0001'")
+            conn.execute("INSERT INTO education_departments VALUES (?,?,?,?,?,?,?,?,?)",
+                         (original,'foreign-degree','1007','test','澳洲昆士蘭大學電機工程雙學士學位學程','工學院','','departments',1))
+        from etl.apply_education_program_scope import apply_scope
+        result = apply_scope(self.db_path)
+        self.assertEqual(result['removed_count'], 1)
+        self.assertNotEqual(result['release_id'], original)
+        self.assertEqual(search_education_departments(q='昆士蘭',db_path=self.db_path)['total'],0)
+        with closing(sqlite3.connect(self.db_path)) as conn:
+            self.assertEqual(conn.execute("SELECT count(*) FROM education_departments WHERE release_id=? AND department_id='foreign-degree'",(original,)).fetchone()[0],1)
+            self.assertEqual(conn.execute('PRAGMA foreign_key_check').fetchall(),[])
+        self.assertEqual(apply_scope(self.db_path)['removed_count'],0)
+
     def test_full_roster_scope_leading_zeroes_without_student_counts(self):
         result = self.run_import()
         # National scan includes a Taichung branch of a Taipei school.

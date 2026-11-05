@@ -17,7 +17,8 @@ from typing import Any, Iterator, Optional
 from sourcing import service
 from sourcing.browser import SourcingBrowser
 
-FINAL_STATUS = {"done": "done", "error": "error", "rejected": "rejected", "no_public_work": "no_public_work"}
+FINAL_STATUS = {"done": "done", "error": "error", "rejected": "rejected", "no_public_work": "no_public_work",
+                "out_of_area": "out_of_area"}
 
 
 class RunnerBusy(RuntimeError):
@@ -29,7 +30,7 @@ class Run:
     id: str
     prep: service.Prepared
     created_at: float = field(default_factory=time.time)
-    status: str = "running"  # running | done | error | cancelled | rejected | no_public_work
+    status: str = "running"  # running | done | error | cancelled | rejected | no_public_work | out_of_area
     finished_at: Optional[float] = None
     events: list[dict] = field(default_factory=list)
     stop: threading.Event = field(default_factory=threading.Event)
@@ -59,7 +60,7 @@ class Run:
         with self.cond:
             events = list(self.events)
             status, finished_at = self.status, self.finished_at
-        plan = next((e["plan"] for e in events if e["type"] in ("plan", "done", "no_public_work") and e.get("plan")), None)
+        plan = next((e["plan"] for e in events if e["type"] in ("plan", "done", "no_public_work", "out_of_area") and e.get("plan")), None)
         final = next((e for e in reversed(events) if e["type"] in FINAL_STATUS), None)
         return {
             "run_id": self.id,

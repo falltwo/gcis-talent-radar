@@ -6,7 +6,7 @@ from threading import Lock
 from typing import Literal
 
 from fastapi import APIRouter, HTTPException, Query, Request, Response
-from pydantic import Field
+from pydantic import Field, model_validator
 
 import api.mock104 as portal
 from api.mock104 import JobForm
@@ -41,10 +41,18 @@ class JobExtraction(ExtractedRequirement):
 
 class ApprovedHandoff(StrictModel):
     job: JobForm
-    hr_confirmed: Literal[True]
+    hr_confirmed: bool
+    auto_fill: bool = False
     confirm_before_publish: bool = True
+    fill_only: bool = False
     scenario: Literal["SUCCESS", "FAILURE"] = "SUCCESS"
     typing_speed: Literal["NORMAL", "FAST"] = "NORMAL"
+
+    @model_validator(mode='after')
+    def proposal_cannot_publish(self):
+        if not self.hr_confirmed and not (self.auto_fill and self.fill_only and self.confirm_before_publish):
+            raise ValueError('未確認的建議只允許填表，必須保留填完後的人工確認。')
+        return self
 
 
 class RunId(StrictModel):
@@ -132,7 +140,7 @@ def approve(body: ApprovedHandoff, request: Request, response: Response):
         if previous and previous["phase"] in {"RUNNING", "COMPUTER_RUNNING", "COMPUTER_PUBLISHING", "AWAITING_CONFIRMATION", "READY_TO_PUBLISH", "SUBMITTED"}:
             raise HTTPException(409, "已有待完成的填表流程，請先完成或停止該流程。")
         run = {"run_id": uid(), "job": body.job.model_dump(), "phase": "READY", "job_id": None,
-               "confirm_before_publish": body.confirm_before_publish, "scenario": body.scenario,
+               "confirm_before_publish": body.confirm_before_publish, "fill_only":body.fill_only,"auto_fill":body.auto_fill,"conditions_confirmed":body.hr_confirmed, "scenario": body.scenario,
                "typing_speed": body.typing_speed,
                "mode": "SIMULATION", "sent_to_platform": False,"driver":"COMPUTER_USE","steps":[],"screenshot":None}
         session["agent_run"] = run
@@ -145,7 +153,9 @@ def current_run(request: Request, response: Response):
     with portal.get_session(request) as session:
         if not session.get("agent_run"):
             raise HTTPException(404, "尚無已核准的 Agent 填表工作。")
-        return session["agent_run"]
+        from recruitment.computer_use import active,active_lock
+        with active_lock:browser_active=request.cookies.get(portal.COOKIE) in active
+        return {**session["agent_run"],"browser_active":browser_active}
 
 
 @router.post("/claim")
@@ -196,7 +206,7 @@ def start_browser(body: RunId, request: Request, response: Response):
         run=run_for(session,body.run_id)
         if run['phase']!='READY': raise HTTPException(409,'工作已開始或已結束。')
         launch(portal.sessions,request.cookies.get(portal.COOKIE),origin,run['run_id'])
-        return {'started':True,'driver':'COMPUTER_USE','notice':'會另開獨立Chrome，以截圖及滑鼠鍵盤操作一般網頁。'}
+        return {'started':True,'driver':'COMPUTER_USE','notice':'同頁顯示Chrome實際截圖與滑鼠鍵盤操作，不另開視窗。'}
 
 
 @router.post('/browser/resume')

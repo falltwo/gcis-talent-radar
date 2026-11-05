@@ -97,3 +97,16 @@ def test_cross_origin_writes_rejected(client, path):
 @pytest.mark.parametrize("changes", [{"salary_max": 1}, {"headcount": 0}, {"mode": "LIVE"}, {"tenant_id": "company-a"}])
 def test_invalid_and_live_fields_rejected(client, changes):
     assert client.post("/api/mock104/jobs", json=job(**changes)).status_code == 422
+
+def test_manual_edit_then_submit_requires_current_reviewed_revision(client):
+    identifier=create(client)
+    changed=client.put('/api/mock104/jobs/'+identifier,json=job(title='人工調整的職缺',headcount=4)).json()
+    row=next(r for r in changed['jobs'] if r['id']==identifier)
+    stale=client.post('/api/mock104/jobs/'+identifier+'/submit',json={'expected_revision':row['revision']-1})
+    assert stale.status_code==409
+    assert client.get('/api/mock104/state').json()['jobs'][0]['status']=='DRAFT'
+    submitted=client.post('/api/mock104/jobs/'+identifier+'/submit',json={'expected_revision':row['revision']})
+    assert submitted.status_code==200,submitted.text
+    result=submitted.json()['jobs'][0]
+    assert result['status']=='PENDING_APPROVAL'
+    assert result['data']['title']=='人工調整的職缺' and result['data']['headcount']==4

@@ -108,7 +108,7 @@ function environment(scripts = ['campus-camera.js','campus-insights.js','campus-
     remove() {this.removed = true; this.onClose?.();}
   }
   class LngLatBounds {extend() {return this;}}
-  const window = {streetMap: {getMap: () => map, getLocation: () => location, closeCompany() {}, popupAnchor: () => 'bottom'}, radarFeatures: {select() {}}};
+  const window = {streetMap: {getMap: () => map, getLocation: () => location, closeCompany() {}, popupAnchor: () => 'bottom', popupAnchorAt: () => 'bottom'}, radarFeatures: {select() {}}};
   const fetch = (url, options = {}) => new Promise((resolve, reject) => {requests.push({url: String(url), options, resolve, reject});options.signal?.addEventListener('abort',()=>reject(Object.assign(Error('Aborted'),{name:'AbortError'})),{once:true});});
   const context = {document, window, maplibregl: {Marker, Popup, LngLatBounds}, fetch, console, URL, URLSearchParams, Intl, AbortController,
     matchMedia: () => ({matches: true}), performance: {now: () => 10000}, requestAnimationFrame: () => 1, cancelAnimationFrame() {}, setTimeout, clearTimeout,
@@ -242,6 +242,12 @@ const cases = {
     const links = popup.querySelectorAll('a'); assert.ok(links.length > 0);
     assert.ok(links.every(link => !link.href.startsWith('javascript:')), 'Source text cannot become a script link');
     await popup.querySelector('.campus-add').click(); assert.match(e.ids.get('campus-basket-summary').textContent, /1/);
+    assert.match(e.ids.get('campus-basket-list').textContent, /契約測試大學/);
+    assert.match(e.ids.get('campus-basket-list').textContent, /資訊工程學系/);
+    assert.equal(e.ids.get('campus-basket-list').querySelector('strong').textContent,'契約測試大學');
+    assert.match(e.ids.get('campus-basket-list').textContent,/科系：資訊工程學系/);
+    assert.equal(e.ids.get('campus-panel').querySelector('.campus-basket').open,true);
+    assert.match(e.ids.get('campus-basket-list').textContent, /教學校區待核驗/);
     await popup.querySelector('.campus-add').click(); assert.match(e.ids.get('campus-basket-summary').textContent, /0/);
     await popup.querySelector('.campus-add').click();
     await e.event('streetmap:location-changing'); assert.match(e.ids.get('campus-basket-summary').textContent, /0/);

@@ -1,0 +1,995 @@
+{
+  "note": "Synthetic in-process examples, not external platform calls. No browser worker was launched. The manual portal examples do not update the separate agent run phase.",
+  "examples": {
+    "no_session": {
+      "request": {
+        "method": "GET",
+        "path": "/api/mock104/state"
+      },
+      "status": 204,
+      "response": null
+    },
+    "start": {
+      "request": {
+        "method": "POST",
+        "path": "/api/mock104/start",
+        "body": {}
+      },
+      "status": 200,
+      "response": {
+        "jobs": [],
+        "mode": "SIMULATION",
+        "sent_to_platform": false,
+        "notice": "獨立模擬求才平台，非104官方網站，不會刊登至104。"
+      }
+    },
+    "strategy": {
+      "request": {
+        "method": "GET",
+        "path": "/api/mock104/agent/strategy?role=測試員"
+      },
+      "status": 200,
+      "response": {
+        "source": "OCCUPATIONAL_TEMPLATE",
+        "template_name": "測試員",
+        "max_wait_seconds": 15
+      }
+    },
+    "prepare": {
+      "request": {
+        "method": "POST",
+        "path": "/api/mock104/agent/prepare",
+        "body": {
+          "mode": "AUTO",
+          "role": "測試員",
+          "district": "大里區",
+          "needs": "招募三人 月薪面議"
+        }
+      },
+      "status": 200,
+      "response": {
+        "job": {
+          "title": "測試員",
+          "company_name": "示範企業（待HR確認）",
+          "company_intro": "",
+          "district": "大里區",
+          "headcount": 3,
+          "salary_mode": "NEGOTIABLE",
+          "salary_min": null,
+          "salary_max": null,
+          "employment_type": "全職",
+          "shift": "日班",
+          "schedule_system": "固定班制",
+          "work_hours": "09:00–18:00",
+          "min_experience_months": 0,
+          "description": "1. 依核准的測試計畫與操作程序執行測試。\n2. 記錄條件、結果及異常，整理可供複查的測試資料。\n3. 協助問題回報、複測及測試文件維護。\n\n以上為職業範本建議，實際分工由HR確認。\n\nHR指定需求（原文）：招募三人 月薪面議",
+          "required_skills": [
+            "測試流程理解",
+            "結果紀錄",
+            "問題回報"
+          ],
+          "trainable_skills": [
+            "公司測試工具",
+            "產品與測試規範"
+          ]
+        },
+        "source": "OCCUPATIONAL_TEMPLATE",
+        "template_name": "測試員",
+        "sources": [
+          {
+            "title": "O*NET：Inspectors and Testers（一般測試流程參考）",
+            "url": "https://www.onetonline.org/link/summary/51-9061.00",
+            "retrieved_at": null,
+            "status": "CURATED_REFERENCE"
+          }
+        ],
+        "field_provenance": {
+          "title": "HR_INPUT",
+          "company_name": "SUGGESTED",
+          "company_intro": "HR_INPUT",
+          "district": "HR_INPUT",
+          "headcount": "HR_INPUT",
+          "salary_mode": "HR_INPUT",
+          "salary_min": "HR_INPUT",
+          "salary_max": "HR_INPUT",
+          "employment_type": "SUGGESTED",
+          "shift": "SUGGESTED",
+          "schedule_system": "SUGGESTED",
+          "work_hours": "SUGGESTED",
+          "min_experience_months": "SUGGESTED",
+          "description": "SUGGESTED",
+          "required_skills": "SUGGESTED",
+          "trainable_skills": "SUGGESTED"
+        },
+        "review_notes": [
+          "非HR指定的班制、時間、工作內容及技能均為建議，請確認後再刊登。",
+          "測試員可能指軟體、電子、產品或產線測試；請HR確認領域、設備與判定標準，不預設需程式設計或專業量測資格。"
+        ],
+        "requires_hr_review": true,
+        "missing_fields": [],
+        "notice": "保留HR已提供條件；範本或網路補全內容均屬待確認建議。"
+      }
+    },
+    "approve": {
+      "request": {
+        "method": "POST",
+        "path": "/api/mock104/agent/approve",
+        "body": {
+          "job": {
+            "title": "測試員",
+            "company_name": "示範企業（待HR確認）",
+            "company_intro": "",
+            "district": "大里區",
+            "headcount": 3,
+            "salary_mode": "NEGOTIABLE",
+            "salary_min": null,
+            "salary_max": null,
+            "employment_type": "全職",
+            "shift": "日班",
+            "schedule_system": "固定班制",
+            "work_hours": "09:00–18:00",
+            "min_experience_months": 0,
+            "description": "1. 依核准的測試計畫與操作程序執行測試。\n2. 記錄條件、結果及異常，整理可供複查的測試資料。\n3. 協助問題回報、複測及測試文件維護。\n\n以上為職業範本建議，實際分工由HR確認。\n\nHR指定需求（原文）：招募三人 月薪面議",
+            "required_skills": [
+              "測試流程理解",
+              "結果紀錄",
+              "問題回報"
+            ],
+            "trainable_skills": [
+              "公司測試工具",
+              "產品與測試規範"
+            ]
+          },
+          "hr_confirmed": true,
+          "confirm_before_publish": true,
+          "scenario": "SUCCESS"
+        }
+      },
+      "status": 200,
+      "response": {
+        "run_id": "a3f6fa7d-0e54-4343-8f71-6adfb54ee3b9",
+        "job": {
+          "title": "測試員",
+          "district": "大里區",
+          "shift": "日班",
+          "headcount": 3,
+          "required_skills": [
+            "測試流程理解",
+            "結果紀錄",
+            "問題回報"
+          ],
+          "trainable_skills": [
+            "公司測試工具",
+            "產品與測試規範"
+          ],
+          "min_experience_months": 0,
+          "salary_mode": "NEGOTIABLE",
+          "salary_min": null,
+          "salary_max": null,
+          "company_name": "示範企業（待HR確認）",
+          "description": "1. 依核准的測試計畫與操作程序執行測試。\n2. 記錄條件、結果及異常，整理可供複查的測試資料。\n3. 協助問題回報、複測及測試文件維護。\n\n以上為職業範本建議，實際分工由HR確認。\n\nHR指定需求（原文）：招募三人 月薪面議",
+          "employment_type": "全職",
+          "work_hours": "09:00–18:00",
+          "schedule_system": "固定班制",
+          "company_intro": ""
+        },
+        "phase": "READY",
+        "job_id": null,
+        "confirm_before_publish": true,
+        "scenario": "SUCCESS",
+        "typing_speed": "NORMAL",
+        "mode": "SIMULATION",
+        "sent_to_platform": false,
+        "driver": "COMPUTER_USE",
+        "steps": [],
+        "screenshot": null
+      }
+    },
+    "run_ready": {
+      "request": {
+        "method": "GET",
+        "path": "/api/mock104/agent/run"
+      },
+      "status": 200,
+      "response": {
+        "run_id": "a3f6fa7d-0e54-4343-8f71-6adfb54ee3b9",
+        "job": {
+          "title": "測試員",
+          "district": "大里區",
+          "shift": "日班",
+          "headcount": 3,
+          "required_skills": [
+            "測試流程理解",
+            "結果紀錄",
+            "問題回報"
+          ],
+          "trainable_skills": [
+            "公司測試工具",
+            "產品與測試規範"
+          ],
+          "min_experience_months": 0,
+          "salary_mode": "NEGOTIABLE",
+          "salary_min": null,
+          "salary_max": null,
+          "company_name": "示範企業（待HR確認）",
+          "description": "1. 依核准的測試計畫與操作程序執行測試。\n2. 記錄條件、結果及異常，整理可供複查的測試資料。\n3. 協助問題回報、複測及測試文件維護。\n\n以上為職業範本建議，實際分工由HR確認。\n\nHR指定需求（原文）：招募三人 月薪面議",
+          "employment_type": "全職",
+          "work_hours": "09:00–18:00",
+          "schedule_system": "固定班制",
+          "company_intro": ""
+        },
+        "phase": "READY",
+        "job_id": null,
+        "confirm_before_publish": true,
+        "scenario": "SUCCESS",
+        "typing_speed": "NORMAL",
+        "mode": "SIMULATION",
+        "sent_to_platform": false,
+        "driver": "COMPUTER_USE",
+        "steps": [],
+        "screenshot": null
+      }
+    },
+    "resume_wrong_phase": {
+      "request": {
+        "method": "POST",
+        "path": "/api/mock104/agent/browser/resume",
+        "body": {
+          "run_id": "a3f6fa7d-0e54-4343-8f71-6adfb54ee3b9"
+        }
+      },
+      "status": 409,
+      "response": {
+        "detail": "目前沒有等待HR確認的瀏覽器工作。"
+      }
+    },
+    "cancel": {
+      "request": {
+        "method": "POST",
+        "path": "/api/mock104/agent/cancel",
+        "body": {
+          "run_id": "a3f6fa7d-0e54-4343-8f71-6adfb54ee3b9"
+        }
+      },
+      "status": 200,
+      "response": {
+        "run_id": "a3f6fa7d-0e54-4343-8f71-6adfb54ee3b9",
+        "job": {
+          "title": "測試員",
+          "district": "大里區",
+          "shift": "日班",
+          "headcount": 3,
+          "required_skills": [
+            "測試流程理解",
+            "結果紀錄",
+            "問題回報"
+          ],
+          "trainable_skills": [
+            "公司測試工具",
+            "產品與測試規範"
+          ],
+          "min_experience_months": 0,
+          "salary_mode": "NEGOTIABLE",
+          "salary_min": null,
+          "salary_max": null,
+          "company_name": "示範企業（待HR確認）",
+          "description": "1. 依核准的測試計畫與操作程序執行測試。\n2. 記錄條件、結果及異常，整理可供複查的測試資料。\n3. 協助問題回報、複測及測試文件維護。\n\n以上為職業範本建議，實際分工由HR確認。\n\nHR指定需求（原文）：招募三人 月薪面議",
+          "employment_type": "全職",
+          "work_hours": "09:00–18:00",
+          "schedule_system": "固定班制",
+          "company_intro": ""
+        },
+        "phase": "CANCELLED",
+        "job_id": null,
+        "confirm_before_publish": true,
+        "scenario": "SUCCESS",
+        "typing_speed": "NORMAL",
+        "mode": "SIMULATION",
+        "sent_to_platform": false,
+        "driver": "COMPUTER_USE",
+        "steps": [],
+        "screenshot": null
+      }
+    },
+    "manual_create": {
+      "request": {
+        "method": "POST",
+        "path": "/api/mock104/jobs",
+        "body": {
+          "title": "測試員",
+          "district": "大里區",
+          "shift": "日班",
+          "headcount": 3,
+          "required_skills": [
+            "測試流程理解",
+            "結果紀錄",
+            "問題回報"
+          ],
+          "trainable_skills": [
+            "公司測試工具",
+            "產品與測試規範"
+          ],
+          "min_experience_months": 0,
+          "salary_mode": "NEGOTIABLE",
+          "salary_min": null,
+          "salary_max": null,
+          "company_name": "示範企業（待HR確認）",
+          "description": "1. 依核准的測試計畫與操作程序執行測試。\n2. 記錄條件、結果及異常，整理可供複查的測試資料。\n3. 協助問題回報、複測及測試文件維護。\n\n以上為職業範本建議，實際分工由HR確認。\n\nHR指定需求（原文）：招募三人 月薪面議",
+          "employment_type": "全職",
+          "work_hours": "09:00–18:00",
+          "schedule_system": "固定班制",
+          "company_intro": ""
+        }
+      },
+      "status": 201,
+      "response": {
+        "jobs": [
+          {
+            "id": "e374055c-066d-4bb7-a854-a37dd76e6e51",
+            "revision": 1,
+            "status": "DRAFT",
+            "created_at": "2026-11-03T14:02:02.315925+00:00",
+            "updated_at": "2026-11-03T14:02:02.315925+00:00",
+            "data": {
+              "title": "測試員",
+              "district": "大里區",
+              "shift": "日班",
+              "headcount": 3,
+              "required_skills": [
+                "測試流程理解",
+                "結果紀錄",
+                "問題回報"
+              ],
+              "trainable_skills": [
+                "公司測試工具",
+                "產品與測試規範"
+              ],
+              "min_experience_months": 0,
+              "salary_mode": "NEGOTIABLE",
+              "salary_min": null,
+              "salary_max": null,
+              "company_name": "示範企業（待HR確認）",
+              "description": "1. 依核准的測試計畫與操作程序執行測試。\n2. 記錄條件、結果及異常，整理可供複查的測試資料。\n3. 協助問題回報、複測及測試文件維護。\n\n以上為職業範本建議，實際分工由HR確認。\n\nHR指定需求（原文）：招募三人 月薪面議",
+              "employment_type": "全職",
+              "work_hours": "09:00–18:00",
+              "schedule_system": "固定班制",
+              "company_intro": ""
+            },
+            "publication": null
+          }
+        ],
+        "mode": "SIMULATION",
+        "sent_to_platform": false,
+        "notice": "獨立模擬求才平台，非104官方網站，不會刊登至104。",
+        "selected_id": "e374055c-066d-4bb7-a854-a37dd76e6e51"
+      }
+    },
+    "manual_submit": {
+      "request": {
+        "method": "POST",
+        "path": "/api/mock104/jobs/e374055c-066d-4bb7-a854-a37dd76e6e51/submit",
+        "body": {
+          "scenario": "FAILURE"
+        }
+      },
+      "status": 200,
+      "response": {
+        "jobs": [
+          {
+            "id": "e374055c-066d-4bb7-a854-a37dd76e6e51",
+            "revision": 1,
+            "status": "PENDING_APPROVAL",
+            "created_at": "2026-11-03T14:02:02.315925+00:00",
+            "updated_at": "2026-11-03T14:02:02.334882+00:00",
+            "data": {
+              "title": "測試員",
+              "district": "大里區",
+              "shift": "日班",
+              "headcount": 3,
+              "required_skills": [
+                "測試流程理解",
+                "結果紀錄",
+                "問題回報"
+              ],
+              "trainable_skills": [
+                "公司測試工具",
+                "產品與測試規範"
+              ],
+              "min_experience_months": 0,
+              "salary_mode": "NEGOTIABLE",
+              "salary_min": null,
+              "salary_max": null,
+              "company_name": "示範企業（待HR確認）",
+              "description": "1. 依核准的測試計畫與操作程序執行測試。\n2. 記錄條件、結果及異常，整理可供複查的測試資料。\n3. 協助問題回報、複測及測試文件維護。\n\n以上為職業範本建議，實際分工由HR確認。\n\nHR指定需求（原文）：招募三人 月薪面議",
+              "employment_type": "全職",
+              "work_hours": "09:00–18:00",
+              "schedule_system": "固定班制",
+              "company_intro": ""
+            },
+            "publication": {
+              "id": "0053ad46-1024-45ff-a752-42a27a644db7",
+              "tenant_id": "synthetic-demo",
+              "request_id": "e374055c-066d-4bb7-a854-a37dd76e6e51",
+              "request_revision": 1,
+              "snapshot": {
+                "title": "測試員",
+                "district": "大里區",
+                "shift": "日班",
+                "headcount": 3,
+                "required_skills": [
+                  "測試流程理解",
+                  "結果紀錄",
+                  "問題回報"
+                ],
+                "trainable_skills": [
+                  "公司測試工具",
+                  "產品與測試規範"
+                ],
+                "min_experience_months": 0,
+                "salary_mode": "NEGOTIABLE",
+                "salary_min": null,
+                "salary_max": null
+              },
+              "idempotency_key": "mock-portal-submit",
+              "initial_scenario": "FAILURE",
+              "scenario": "FAILURE",
+              "status": "PENDING_APPROVAL",
+              "approved_by": null,
+              "attempts": 0,
+              "simulated_job_id": null,
+              "error_code": null,
+              "created_at": "2026-11-03T14:02:02.339997+00:00",
+              "updated_at": "2026-11-03T14:02:02.339997+00:00",
+              "platform": "104",
+              "mode": "SIMULATION",
+              "is_simulated": true,
+              "status_label": "模擬刊登：待核准",
+              "sent_to_platform": false,
+              "notice": "僅為104刊登流程模擬，未送至104，未建立真實職缺。"
+            }
+          }
+        ],
+        "mode": "SIMULATION",
+        "sent_to_platform": false,
+        "notice": "獨立模擬求才平台，非104官方網站，不會刊登至104。",
+        "selected_id": "e374055c-066d-4bb7-a854-a37dd76e6e51"
+      }
+    },
+    "manual_approve": {
+      "request": {
+        "method": "POST",
+        "path": "/api/mock104/jobs/e374055c-066d-4bb7-a854-a37dd76e6e51/approve",
+        "body": {}
+      },
+      "status": 200,
+      "response": {
+        "jobs": [
+          {
+            "id": "e374055c-066d-4bb7-a854-a37dd76e6e51",
+            "revision": 1,
+            "status": "PROCESSING",
+            "created_at": "2026-11-03T14:02:02.315925+00:00",
+            "updated_at": "2026-11-03T14:02:02.334882+00:00",
+            "data": {
+              "title": "測試員",
+              "district": "大里區",
+              "shift": "日班",
+              "headcount": 3,
+              "required_skills": [
+                "測試流程理解",
+                "結果紀錄",
+                "問題回報"
+              ],
+              "trainable_skills": [
+                "公司測試工具",
+                "產品與測試規範"
+              ],
+              "min_experience_months": 0,
+              "salary_mode": "NEGOTIABLE",
+              "salary_min": null,
+              "salary_max": null,
+              "company_name": "示範企業（待HR確認）",
+              "description": "1. 依核准的測試計畫與操作程序執行測試。\n2. 記錄條件、結果及異常，整理可供複查的測試資料。\n3. 協助問題回報、複測及測試文件維護。\n\n以上為職業範本建議，實際分工由HR確認。\n\nHR指定需求（原文）：招募三人 月薪面議",
+              "employment_type": "全職",
+              "work_hours": "09:00–18:00",
+              "schedule_system": "固定班制",
+              "company_intro": ""
+            },
+            "publication": {
+              "id": "0053ad46-1024-45ff-a752-42a27a644db7",
+              "tenant_id": "synthetic-demo",
+              "request_id": "e374055c-066d-4bb7-a854-a37dd76e6e51",
+              "request_revision": 1,
+              "snapshot": {
+                "title": "測試員",
+                "district": "大里區",
+                "shift": "日班",
+                "headcount": 3,
+                "required_skills": [
+                  "測試流程理解",
+                  "結果紀錄",
+                  "問題回報"
+                ],
+                "trainable_skills": [
+                  "公司測試工具",
+                  "產品與測試規範"
+                ],
+                "min_experience_months": 0,
+                "salary_mode": "NEGOTIABLE",
+                "salary_min": null,
+                "salary_max": null
+              },
+              "idempotency_key": "mock-portal-submit",
+              "initial_scenario": "FAILURE",
+              "scenario": "FAILURE",
+              "status": "PROCESSING",
+              "approved_by": "示範HR",
+              "attempts": 1,
+              "simulated_job_id": null,
+              "error_code": null,
+              "created_at": "2026-11-03T14:02:02.339997+00:00",
+              "updated_at": "2026-11-03T14:02:02.352412+00:00",
+              "platform": "104",
+              "mode": "SIMULATION",
+              "is_simulated": true,
+              "status_label": "模擬刊登：處理中",
+              "sent_to_platform": false,
+              "notice": "僅為104刊登流程模擬，未送至104，未建立真實職缺。"
+            }
+          }
+        ],
+        "mode": "SIMULATION",
+        "sent_to_platform": false,
+        "notice": "獨立模擬求才平台，非104官方網站，不會刊登至104。",
+        "selected_id": "e374055c-066d-4bb7-a854-a37dd76e6e51"
+      }
+    },
+    "manual_failure": {
+      "request": {
+        "method": "POST",
+        "path": "/api/mock104/jobs/e374055c-066d-4bb7-a854-a37dd76e6e51/complete",
+        "body": {}
+      },
+      "status": 200,
+      "response": {
+        "jobs": [
+          {
+            "id": "e374055c-066d-4bb7-a854-a37dd76e6e51",
+            "revision": 1,
+            "status": "FAILED",
+            "created_at": "2026-11-03T14:02:02.315925+00:00",
+            "updated_at": "2026-11-03T14:02:02.334882+00:00",
+            "data": {
+              "title": "測試員",
+              "district": "大里區",
+              "shift": "日班",
+              "headcount": 3,
+              "required_skills": [
+                "測試流程理解",
+                "結果紀錄",
+                "問題回報"
+              ],
+              "trainable_skills": [
+                "公司測試工具",
+                "產品與測試規範"
+              ],
+              "min_experience_months": 0,
+              "salary_mode": "NEGOTIABLE",
+              "salary_min": null,
+              "salary_max": null,
+              "company_name": "示範企業（待HR確認）",
+              "description": "1. 依核准的測試計畫與操作程序執行測試。\n2. 記錄條件、結果及異常，整理可供複查的測試資料。\n3. 協助問題回報、複測及測試文件維護。\n\n以上為職業範本建議，實際分工由HR確認。\n\nHR指定需求（原文）：招募三人 月薪面議",
+              "employment_type": "全職",
+              "work_hours": "09:00–18:00",
+              "schedule_system": "固定班制",
+              "company_intro": ""
+            },
+            "publication": {
+              "id": "0053ad46-1024-45ff-a752-42a27a644db7",
+              "tenant_id": "synthetic-demo",
+              "request_id": "e374055c-066d-4bb7-a854-a37dd76e6e51",
+              "request_revision": 1,
+              "snapshot": {
+                "title": "測試員",
+                "district": "大里區",
+                "shift": "日班",
+                "headcount": 3,
+                "required_skills": [
+                  "測試流程理解",
+                  "結果紀錄",
+                  "問題回報"
+                ],
+                "trainable_skills": [
+                  "公司測試工具",
+                  "產品與測試規範"
+                ],
+                "min_experience_months": 0,
+                "salary_mode": "NEGOTIABLE",
+                "salary_min": null,
+                "salary_max": null
+              },
+              "idempotency_key": "mock-portal-submit",
+              "initial_scenario": "FAILURE",
+              "scenario": "FAILURE",
+              "status": "FAILED",
+              "approved_by": "示範HR",
+              "attempts": 1,
+              "simulated_job_id": null,
+              "error_code": "SIMULATED_PLATFORM_FAILURE",
+              "created_at": "2026-11-03T14:02:02.339997+00:00",
+              "updated_at": "2026-11-03T14:02:02.365252+00:00",
+              "platform": "104",
+              "mode": "SIMULATION",
+              "is_simulated": true,
+              "status_label": "模擬刊登：失敗",
+              "sent_to_platform": false,
+              "notice": "僅為104刊登流程模擬，未送至104，未建立真實職缺。"
+            }
+          }
+        ],
+        "mode": "SIMULATION",
+        "sent_to_platform": false,
+        "notice": "獨立模擬求才平台，非104官方網站，不會刊登至104。",
+        "selected_id": "e374055c-066d-4bb7-a854-a37dd76e6e51"
+      }
+    },
+    "manual_retry": {
+      "request": {
+        "method": "POST",
+        "path": "/api/mock104/jobs/e374055c-066d-4bb7-a854-a37dd76e6e51/retry",
+        "body": {
+          "scenario": "SUCCESS"
+        }
+      },
+      "status": 200,
+      "response": {
+        "jobs": [
+          {
+            "id": "e374055c-066d-4bb7-a854-a37dd76e6e51",
+            "revision": 1,
+            "status": "PENDING_APPROVAL",
+            "created_at": "2026-11-03T14:02:02.315925+00:00",
+            "updated_at": "2026-11-03T14:02:02.334882+00:00",
+            "data": {
+              "title": "測試員",
+              "district": "大里區",
+              "shift": "日班",
+              "headcount": 3,
+              "required_skills": [
+                "測試流程理解",
+                "結果紀錄",
+                "問題回報"
+              ],
+              "trainable_skills": [
+                "公司測試工具",
+                "產品與測試規範"
+              ],
+              "min_experience_months": 0,
+              "salary_mode": "NEGOTIABLE",
+              "salary_min": null,
+              "salary_max": null,
+              "company_name": "示範企業（待HR確認）",
+              "description": "1. 依核准的測試計畫與操作程序執行測試。\n2. 記錄條件、結果及異常，整理可供複查的測試資料。\n3. 協助問題回報、複測及測試文件維護。\n\n以上為職業範本建議，實際分工由HR確認。\n\nHR指定需求（原文）：招募三人 月薪面議",
+              "employment_type": "全職",
+              "work_hours": "09:00–18:00",
+              "schedule_system": "固定班制",
+              "company_intro": ""
+            },
+            "publication": {
+              "id": "0053ad46-1024-45ff-a752-42a27a644db7",
+              "tenant_id": "synthetic-demo",
+              "request_id": "e374055c-066d-4bb7-a854-a37dd76e6e51",
+              "request_revision": 1,
+              "snapshot": {
+                "title": "測試員",
+                "district": "大里區",
+                "shift": "日班",
+                "headcount": 3,
+                "required_skills": [
+                  "測試流程理解",
+                  "結果紀錄",
+                  "問題回報"
+                ],
+                "trainable_skills": [
+                  "公司測試工具",
+                  "產品與測試規範"
+                ],
+                "min_experience_months": 0,
+                "salary_mode": "NEGOTIABLE",
+                "salary_min": null,
+                "salary_max": null
+              },
+              "idempotency_key": "mock-portal-submit",
+              "initial_scenario": "FAILURE",
+              "scenario": "SUCCESS",
+              "status": "PENDING_APPROVAL",
+              "approved_by": null,
+              "attempts": 1,
+              "simulated_job_id": null,
+              "error_code": null,
+              "created_at": "2026-11-03T14:02:02.339997+00:00",
+              "updated_at": "2026-11-03T14:02:02.375885+00:00",
+              "platform": "104",
+              "mode": "SIMULATION",
+              "is_simulated": true,
+              "status_label": "模擬刊登：待核准",
+              "sent_to_platform": false,
+              "notice": "僅為104刊登流程模擬，未送至104，未建立真實職缺。"
+            }
+          }
+        ],
+        "mode": "SIMULATION",
+        "sent_to_platform": false,
+        "notice": "獨立模擬求才平台，非104官方網站，不會刊登至104。",
+        "selected_id": "e374055c-066d-4bb7-a854-a37dd76e6e51"
+      }
+    },
+    "manual_reapprove": {
+      "request": {
+        "method": "POST",
+        "path": "/api/mock104/jobs/e374055c-066d-4bb7-a854-a37dd76e6e51/approve",
+        "body": {}
+      },
+      "status": 200,
+      "response": {
+        "jobs": [
+          {
+            "id": "e374055c-066d-4bb7-a854-a37dd76e6e51",
+            "revision": 1,
+            "status": "PROCESSING",
+            "created_at": "2026-11-03T14:02:02.315925+00:00",
+            "updated_at": "2026-11-03T14:02:02.334882+00:00",
+            "data": {
+              "title": "測試員",
+              "district": "大里區",
+              "shift": "日班",
+              "headcount": 3,
+              "required_skills": [
+                "測試流程理解",
+                "結果紀錄",
+                "問題回報"
+              ],
+              "trainable_skills": [
+                "公司測試工具",
+                "產品與測試規範"
+              ],
+              "min_experience_months": 0,
+              "salary_mode": "NEGOTIABLE",
+              "salary_min": null,
+              "salary_max": null,
+              "company_name": "示範企業（待HR確認）",
+              "description": "1. 依核准的測試計畫與操作程序執行測試。\n2. 記錄條件、結果及異常，整理可供複查的測試資料。\n3. 協助問題回報、複測及測試文件維護。\n\n以上為職業範本建議，實際分工由HR確認。\n\nHR指定需求（原文）：招募三人 月薪面議",
+              "employment_type": "全職",
+              "work_hours": "09:00–18:00",
+              "schedule_system": "固定班制",
+              "company_intro": ""
+            },
+            "publication": {
+              "id": "0053ad46-1024-45ff-a752-42a27a644db7",
+              "tenant_id": "synthetic-demo",
+              "request_id": "e374055c-066d-4bb7-a854-a37dd76e6e51",
+              "request_revision": 1,
+              "snapshot": {
+                "title": "測試員",
+                "district": "大里區",
+                "shift": "日班",
+                "headcount": 3,
+                "required_skills": [
+                  "測試流程理解",
+                  "結果紀錄",
+                  "問題回報"
+                ],
+                "trainable_skills": [
+                  "公司測試工具",
+                  "產品與測試規範"
+                ],
+                "min_experience_months": 0,
+                "salary_mode": "NEGOTIABLE",
+                "salary_min": null,
+                "salary_max": null
+              },
+              "idempotency_key": "mock-portal-submit",
+              "initial_scenario": "FAILURE",
+              "scenario": "SUCCESS",
+              "status": "PROCESSING",
+              "approved_by": "示範HR",
+              "attempts": 2,
+              "simulated_job_id": null,
+              "error_code": null,
+              "created_at": "2026-11-03T14:02:02.339997+00:00",
+              "updated_at": "2026-11-03T14:02:02.387525+00:00",
+              "platform": "104",
+              "mode": "SIMULATION",
+              "is_simulated": true,
+              "status_label": "模擬刊登：處理中",
+              "sent_to_platform": false,
+              "notice": "僅為104刊登流程模擬，未送至104，未建立真實職缺。"
+            }
+          }
+        ],
+        "mode": "SIMULATION",
+        "sent_to_platform": false,
+        "notice": "獨立模擬求才平台，非104官方網站，不會刊登至104。",
+        "selected_id": "e374055c-066d-4bb7-a854-a37dd76e6e51"
+      }
+    },
+    "manual_success": {
+      "request": {
+        "method": "POST",
+        "path": "/api/mock104/jobs/e374055c-066d-4bb7-a854-a37dd76e6e51/complete",
+        "body": {}
+      },
+      "status": 200,
+      "response": {
+        "jobs": [
+          {
+            "id": "e374055c-066d-4bb7-a854-a37dd76e6e51",
+            "revision": 1,
+            "status": "SUCCEEDED",
+            "created_at": "2026-11-03T14:02:02.315925+00:00",
+            "updated_at": "2026-11-03T14:02:02.334882+00:00",
+            "data": {
+              "title": "測試員",
+              "district": "大里區",
+              "shift": "日班",
+              "headcount": 3,
+              "required_skills": [
+                "測試流程理解",
+                "結果紀錄",
+                "問題回報"
+              ],
+              "trainable_skills": [
+                "公司測試工具",
+                "產品與測試規範"
+              ],
+              "min_experience_months": 0,
+              "salary_mode": "NEGOTIABLE",
+              "salary_min": null,
+              "salary_max": null,
+              "company_name": "示範企業（待HR確認）",
+              "description": "1. 依核准的測試計畫與操作程序執行測試。\n2. 記錄條件、結果及異常，整理可供複查的測試資料。\n3. 協助問題回報、複測及測試文件維護。\n\n以上為職業範本建議，實際分工由HR確認。\n\nHR指定需求（原文）：招募三人 月薪面議",
+              "employment_type": "全職",
+              "work_hours": "09:00–18:00",
+              "schedule_system": "固定班制",
+              "company_intro": ""
+            },
+            "publication": {
+              "id": "0053ad46-1024-45ff-a752-42a27a644db7",
+              "tenant_id": "synthetic-demo",
+              "request_id": "e374055c-066d-4bb7-a854-a37dd76e6e51",
+              "request_revision": 1,
+              "snapshot": {
+                "title": "測試員",
+                "district": "大里區",
+                "shift": "日班",
+                "headcount": 3,
+                "required_skills": [
+                  "測試流程理解",
+                  "結果紀錄",
+                  "問題回報"
+                ],
+                "trainable_skills": [
+                  "公司測試工具",
+                  "產品與測試規範"
+                ],
+                "min_experience_months": 0,
+                "salary_mode": "NEGOTIABLE",
+                "salary_min": null,
+                "salary_max": null
+              },
+              "idempotency_key": "mock-portal-submit",
+              "initial_scenario": "FAILURE",
+              "scenario": "SUCCESS",
+              "status": "SUCCEEDED",
+              "approved_by": "示範HR",
+              "attempts": 2,
+              "simulated_job_id": "sim104-0053ad46-1024-45ff-a752-42a27a644db7",
+              "error_code": null,
+              "created_at": "2026-11-03T14:02:02.339997+00:00",
+              "updated_at": "2026-11-03T14:02:02.398427+00:00",
+              "platform": "104",
+              "mode": "SIMULATION",
+              "is_simulated": true,
+              "status_label": "模擬刊登：成功",
+              "sent_to_platform": false,
+              "notice": "僅為104刊登流程模擬，未送至104，未建立真實職缺。"
+            }
+          }
+        ],
+        "mode": "SIMULATION",
+        "sent_to_platform": false,
+        "notice": "獨立模擬求才平台，非104官方網站，不會刊登至104。",
+        "selected_id": "e374055c-066d-4bb7-a854-a37dd76e6e51"
+      }
+    },
+    "manual_close": {
+      "request": {
+        "method": "POST",
+        "path": "/api/mock104/jobs/e374055c-066d-4bb7-a854-a37dd76e6e51/close",
+        "body": {}
+      },
+      "status": 200,
+      "response": {
+        "jobs": [
+          {
+            "id": "e374055c-066d-4bb7-a854-a37dd76e6e51",
+            "revision": 1,
+            "status": "CLOSED",
+            "created_at": "2026-11-03T14:02:02.315925+00:00",
+            "updated_at": "2026-11-03T14:02:02.408320+00:00",
+            "data": {
+              "title": "測試員",
+              "district": "大里區",
+              "shift": "日班",
+              "headcount": 3,
+              "required_skills": [
+                "測試流程理解",
+                "結果紀錄",
+                "問題回報"
+              ],
+              "trainable_skills": [
+                "公司測試工具",
+                "產品與測試規範"
+              ],
+              "min_experience_months": 0,
+              "salary_mode": "NEGOTIABLE",
+              "salary_min": null,
+              "salary_max": null,
+              "company_name": "示範企業（待HR確認）",
+              "description": "1. 依核准的測試計畫與操作程序執行測試。\n2. 記錄條件、結果及異常，整理可供複查的測試資料。\n3. 協助問題回報、複測及測試文件維護。\n\n以上為職業範本建議，實際分工由HR確認。\n\nHR指定需求（原文）：招募三人 月薪面議",
+              "employment_type": "全職",
+              "work_hours": "09:00–18:00",
+              "schedule_system": "固定班制",
+              "company_intro": ""
+            },
+            "publication": {
+              "id": "0053ad46-1024-45ff-a752-42a27a644db7",
+              "tenant_id": "synthetic-demo",
+              "request_id": "e374055c-066d-4bb7-a854-a37dd76e6e51",
+              "request_revision": 1,
+              "snapshot": {
+                "title": "測試員",
+                "district": "大里區",
+                "shift": "日班",
+                "headcount": 3,
+                "required_skills": [
+                  "測試流程理解",
+                  "結果紀錄",
+                  "問題回報"
+                ],
+                "trainable_skills": [
+                  "公司測試工具",
+                  "產品與測試規範"
+                ],
+                "min_experience_months": 0,
+                "salary_mode": "NEGOTIABLE",
+                "salary_min": null,
+                "salary_max": null
+              },
+              "idempotency_key": "mock-portal-submit",
+              "initial_scenario": "FAILURE",
+              "scenario": "SUCCESS",
+              "status": "SUCCEEDED",
+              "approved_by": "示範HR",
+              "attempts": 2,
+              "simulated_job_id": "sim104-0053ad46-1024-45ff-a752-42a27a644db7",
+              "error_code": null,
+              "created_at": "2026-11-03T14:02:02.339997+00:00",
+              "updated_at": "2026-11-03T14:02:02.398427+00:00",
+              "platform": "104",
+              "mode": "SIMULATION",
+              "is_simulated": true,
+              "status_label": "模擬刊登：成功",
+              "sent_to_platform": false,
+              "notice": "僅為104刊登流程模擬，未送至104，未建立真實職缺。"
+            }
+          }
+        ],
+        "mode": "SIMULATION",
+        "sent_to_platform": false,
+        "notice": "獨立模擬求才平台，非104官方網站，不會刊登至104。",
+        "selected_id": "e374055c-066d-4bb7-a854-a37dd76e6e51"
+      }
+    }
+  }
+}

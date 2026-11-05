@@ -26,7 +26,7 @@ TEMPLATES = {
         "training": ["公司會計系統", "內部結帳流程"],
     },
     "CNC操作員": {
-        "aliases": ["CNC操作員", "CNC 操作員", "cnc operator"],
+        "aliases": ["CNC操作員", "CNC 操作員", "cnc operator", "cnc", "CNC 技術員"],
         "source": {"title": "O*NET：Computer Numerically Controlled Tool Operators", "url": "https://www.onetonline.org/link/summary/51-9161.00"},
         "description": "1. 依核准作業程序操作CNC設備。\n2. 核對工件尺寸與加工品質。\n3. 記錄生產狀況並協助日常設備保養。\n\n以上為職業範本建議，設備類型及工作範圍由HR確認。",
         "skills": ["CNC設備操作", "尺寸量測"], "training": ["公司設備操作流程"],

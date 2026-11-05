@@ -1,79 +1,104 @@
 const {test}=require('node:test');
 const assert=require('node:assert/strict');
-const fs=require('node:fs');
-const vm=require('node:vm');
-const path=require('node:path');
-const RecruitmentFlow=require('../../ui/static/recruitment-flow.js');
-const source=fs.readFileSync(path.join(__dirname,'../../ui/static/recruitment.js'),'utf8');
-const base=role=>({company:'測試企業',role,address:'台中',hires:3,salaryMin:40000,salaryMax:50000,skills:'原工作內容'});
-function dom(){
- const nodes=new Map(),listeners=new Map();
- const $=id=>{if(!nodes.has(id))nodes.set(id,{hidden:false,textContent:'',value:'',open:false,addEventListener:(event,fn)=>listeners.set(id,fn),reportValidity:()=>true,querySelector:()=>({textContent:''}),focus(){},requestSubmit(){this.submitted=true;}});return nodes.get(id);};
- return {$,listeners};
-}
-test('all approved snapshots survive map dismissal or exit before animation finishes',()=>{
- const handler=source.slice(source.indexOf("  $('posting-publish').addEventListener"),source.indexOf('  function renderMapResult'));
- for(const action of ['map dismiss','exit']){
-  const batch=new RecruitmentFlow.PostingBatch(['會計','工程師','品管'].map(base));batch.flows.forEach(f=>f.complete());
-  const {$,listeners}=dom();
-  const c={RecruitmentFlow,DEMO_URL:'http://localhost/demo',batch,batchEdits:[],batchIndex:0,flow:batch.flows[0],panel:{dataset:{act:'review'}},$,active:true,epoch:0,archive:new RecruitmentFlow.PostingArchive(),taskOrigin:'test',reduced:false,mapEffects:{finish(){}},reviewView:'all',saveBatchEdit(){},updateReviewFocus(){},readyReview(){},renderArchive(){},renderMapResult(){},renderBatchNav(){},log(){},setTimeout(fn){c.pending=fn;return 1;},stop(){c.epoch++;c.pending=null;},act(a){c.panel.dataset.act=a;}};
-  vm.createContext(c);vm.runInContext(handler,c);listeners.get('posting-publish')();
-  assert.equal(c.archive.all().length,3,action+' must not defer saving behind presentation timers');
-  assert.equal(typeof c.pending,'function');
-  // Both real reset paths first stop timers and cancel the flows.
-  c.stop();batch.flows.forEach(f=>f.cancel());c.batch=null;
-  assert.deepEqual(c.archive.all().map(r=>r.draft.role).sort(),['品管','工程師','會計'].sort());
-  assert.equal(c.archive.countForOrigin('test'),3);
- }
+const Live=require('../../ui/static/recruitment-live.js');
+const base=role=>({company:'測試企業',role,address:'大雅區',hires:3,salaryMin:40000,salaryMax:50000,skills:'負責職務相關作業與品質確認。',requirements:'相關技能',employmentType:'全職',scheduleSystem:'固定班制',shift:'日班',workHours:'08:00–17:00',experienceYears:0});
+
+test('all roles must have complete conditions before browser launch',()=>{
+ const jobs=[base('前端工程師'),{...base('全端工程師'),workHours:''}];
+ assert.throws(()=>Live.prepare(jobs),error=>error.jobIndex===1&&/上班時間/.test(error.message));
+ jobs[1].workHours='09:00–18:00';
+ assert.deepEqual(Live.prepare(jobs).map(j=>[j.title,j.headcount,j.salary_min]),[['前端工程師',3,40000],['全端工程師',3,40000]]);
 });
-function returnedFixture(roles,index=0){
- const batch=new RecruitmentFlow.PostingBatch(roles.map(base));batch.flows.forEach(f=>f.complete());
- const {$,listeners}=dom();
- const inputs=Object.fromEntries(Object.entries({...base('資深工程師'),hires:'5',salaryMin:'51000',salaryMax:'62000',skills:'人工修改技能'}).map(([k,value])=>[k,{value:String(value)}]));
- const c={RecruitmentFlow,$,batch,batchIndex:index,batchEdits:[],flow:batch.flows[index],inputs,pendingJobs:[],returnedDrafts:null,briefText:roles.map(r=>'3位'+r).join('、'),chatMessage(){},saveBatchEdit(){c.batchEdits[index]=Object.fromEntries(Object.entries(inputs).map(([k,v])=>[k,v.value]));},reset(){c.batch.flows.forEach(f=>f.cancel());c.batch=null;c.pendingJobs=[];c.batchEdits=[];c.returnedDrafts=null;},reviewCarry:null};
- $('posting-brief').value=c.briefText;
- const helperStart=source.indexOf('  function returnedJobs(');
- const parseStart=helperStart<0?source.indexOf("  $('posting-parse').addEventListener"):helperStart;
- const parse=source.slice(parseStart,source.indexOf("  panel.querySelectorAll('[data-chat-action]')"));
- const back=source.slice(source.indexOf('  function back(){'),source.indexOf("  $('posting-edit').addEventListener"));
- vm.createContext(c);vm.runInContext(parse+back,c);vm.runInContext('back()',c);
- return {c,$,send:()=>listeners.get('posting-parse')()};
-}
-test('resending unchanged chat after return retains edited title/count instead of reparsing old message',()=>{
- const {c,$,send}=returnedFixture(['工程師']);send();
- assert.equal($('posting-form').submitted,true);
- assert.equal(c.pendingJobs[0].role,'資深工程師');assert.equal(Number(c.pendingJobs[0].hires),5);
- assert.equal(Number(c.pendingJobs[0].salaryMin),51000);assert.equal(c.pendingJobs[0].skills,'人工修改技能');
+
+test('partial numeric salary and fractional headcount fail before browser launch',()=>{
+ for(const patch of [{salaryMin:'4k'},{salaryMax:30000},{hires:2.5},{salaryMin:''},{experienceYears:.01}])assert.throws(()=>Live.prepare([{...base('工程師'),...patch}]));
 });
-test('returning one selected job preserves other jobs and permits further edits in details',()=>{
- const {c,$,send}=returnedFixture(['會計','工程師'],1);
- $('posting-role').value='主任工程師';$('posting-hires').value='7';send();
- assert.equal(c.pendingJobs.length,2);assert.equal(c.pendingJobs[0].role,'會計');
- assert.equal(Number(c.pendingJobs[0].salaryMin),40000);assert.equal(c.pendingJobs[0].skills,'原工作內容');
- assert.equal(c.pendingJobs[1].role,'主任工程師');assert.equal(Number(c.pendingJobs[1].hires),7);
- assert.equal(Number(c.pendingJobs[1].salaryMin),51000);
+
+test('each real frame is forwarded and two jobs run sequentially without navigation',async()=>{
+ const events=[],calls=[];let count=0,polls=0,cancelled=false;
+ const request=async(path,body)=>{
+  calls.push([path,body]);
+  if(path==='agent/approve'){count++;polls=0;cancelled=false;assert.equal(body.fill_only,true);assert.equal(body.confirm_before_publish,true);return {run_id:'run-'+count};}
+  if(path==='agent/cancel'){cancelled=true;return {};}
+  if(path==='agent/run'){
+   if(cancelled)return {browser_active:false};
+   polls++;return {run_id:'run-'+count,phase:polls===1?'COMPUTER_RUNNING':'FILLED',driver:'COMPUTER_USE',job_id:'job-'+count,screenshot:'frame-'+count+'-'+polls};
+  }
+  return {};
+ };
+ const live=new Live(request,e=>events.push(e),async()=>{});
+ const results=await live.start(Live.prepare([base('前端工程師'),base('全端工程師')]));
+ assert.equal(results.length,2);
+ assert.deepEqual(events.filter(e=>e.run).map(e=>e.run.screenshot),['frame-1-1','frame-1-2','frame-2-1','frame-2-2']);
+ assert.equal(events.at(-1).phase,'COMPLETE');
+ const cancelIndex=calls.findIndex(c=>c[0]==='agent/cancel');
+ const secondApprove=calls.findIndex((c,i)=>i>cancelIndex&&c[0]==='agent/approve');
+ assert.ok(cancelIndex>0&&secondApprove>cancelIndex);
+ assert.ok(!calls.some(([p])=>/submit|publish|resume|batches/.test(p)));
 });
-test('an explicitly changed chat message starts a new batch rather than reusing returned drafts',()=>{
- const {c,$,send}=returnedFixture(['工程師']);$('posting-brief').value='2位會計';send();
- assert.equal(c.pendingJobs.length,1);assert.equal(c.pendingJobs[0].role,'會計');assert.equal(c.pendingJobs[0].hires,2);
- assert.equal(c.returnedDrafts,null);
+
+test('a failed browser cannot become a completed publication candidate',async()=>{
+ const events=[];const live=new Live(async(path)=>path==='agent/approve'?{run_id:'one'}:path==='agent/run'?{run_id:'one',phase:'FAILED',message:'模型失敗'}:{},e=>events.push(e),async()=>{});
+ await assert.rejects(live.start([{}]),/模型失敗/);
+ assert.equal(events.at(-1).phase,'FAILED');assert.equal(live.results.length,0);
 });
-test('retrying returned details after failed browser validation uses the latest corrections',()=>{
- const {c,$,send}=returnedFixture(['工程師']);
- $('posting-company').value='';send();
- // requestSubmit() cannot dispatch submit while the required company is empty.
- assert.equal(c.pendingJobs[0].company,'');
- $('posting-company').value='已修正企業';
- let submit;
- $('posting-form').addEventListener=(event,fn)=>{submit=fn;};
- c.FormData=class{constructor(){return new Map(['company','role','address','hires'].map(key=>[key,$('posting-'+key).value]).concat([['skills',$('posting-known').value]]));}};
- // Exercise the actual submit listener's construction/validation before animations start.
- const start=source.indexOf("  $('posting-form').addEventListener('submit'");
- const animation=source.indexOf("    stop();act('working')",start);
- vm.runInContext(source.slice(start,animation)+'  });',c);
- submit({preventDefault(){},currentTarget:$('posting-form')});
- assert.equal($('posting-error').textContent,'');
- assert.equal(c.batch.flows[0].draft.company,'已修正企業');
- assert.equal(c.batch.flows[0].draft.role,'資深工程師');
- assert.equal(c.returnedDrafts,null);
+
+test('missing screenshot or verifier job id cannot be reported as filled',async()=>{
+ const live=new Live(async(path)=>path==='agent/approve'?{run_id:'one'}:path==='agent/run'?{run_id:'one',phase:'FILLED',driver:'COMPUTER_USE'}:{},()=>{},async()=>{});
+ await assert.rejects(live.start([{}]),/完成證據/);
+});
+
+test('second job failure keeps only the first completed form',async()=>{
+ let count=0;const live=new Live(async path=>{
+  if(path==='agent/approve')return {run_id:'run-'+(++count)};
+  if(path==='agent/run')return count===1?{run_id:'run-1',phase:'FILLED',driver:'COMPUTER_USE',job_id:'frontend-only',screenshot:'frame'}:{run_id:'run-2',phase:'FAILED',message:'已達操作上限',browser_active:false};
+  return {};
+ },()=>{},async()=>{});
+ await assert.rejects(live.start([{},{}]),/操作上限/);
+ assert.equal(live.results.length,1);assert.equal(live.results[0].job_id,'frontend-only');
+});
+
+test('two jobs cannot share the same review form id',async()=>{
+ let count=0;const live=new Live(async path=>{
+  if(path==='agent/approve')return {run_id:'run-'+(++count)};
+  if(path==='agent/run')return {run_id:'run-'+count,phase:'FILLED',driver:'COMPUTER_USE',job_id:'same-form',screenshot:'frame',browser_active:false};
+  return {};
+ },()=>{},async()=>{});
+ await assert.rejects(live.start([{},{}]),/同一份表格/);
+ assert.equal(live.results.length,1);
+});
+
+test('stopping during a run cancels that run without starting the next job',async()=>{
+ let approved=0;const live=new Live(async(path)=>{
+  if(path==='agent/approve'){approved++;return {run_id:'one'};}
+  if(path==='agent/run')return {run_id:'one',phase:'COMPUTER_RUNNING',browser_active:false};
+  return {};
+ },()=>{},async()=>{await live.stop();});
+ await live.start([{},{}]);assert.equal(approved,1);assert.equal(live.results.length,0);
+});
+
+test('HR confirmation publishes the real filled PR22 form and retries skip completed items',async()=>{
+ const calls=[],job={title:'會計',headcount:2};let status='DRAFT';
+ const request=async(path)=>{calls.push(path);if(path.endsWith('/submit'))status='PENDING_APPROVAL';if(path.endsWith('/approve'))status='PROCESSING';if(path.endsWith('/complete'))status='SUCCEEDED';return {jobs:[{id:'real-job',data:job,status}]};};
+ const results=[{phase:'FILLED',driver:'COMPUTER_USE',job_id:'real-job',screenshot:'real-frame',job}];
+ await Live.publishFilled(results,request);await Live.publishFilled(results,request);
+ assert.deepEqual(calls,['state','jobs/real-job/submit','jobs/real-job/approve','jobs/real-job/complete','state']);
+ await assert.rejects(Live.publishFilled([{...results[0],job:{title:'不同職缺'}}],request),/內容不同/);
+ await assert.rejects(Live.publishFilled([],request),/完成實際填表/);
+});
+
+test('manual review submits the edited revision without AI or automatic approval',async()=>{
+ const job={title:'人工調整職稱',headcount:4};let status='DRAFT';const calls=[];
+ const request=async(path,body)=>{calls.push([path,body]);if(path.endsWith('/submit')){assert.equal(body.expected_revision,2);status='PENDING_APPROVAL';}return {jobs:[{id:'manual-job',revision:2,data:job,status}]};};
+ const result={phase:'REVIEW_REQUIRED',driver:'COMPUTER_USE',job_id:'manual-job',screenshot:'real-frame',job,human_reviewed:true,reviewed_revision:2};
+ await Live.submitReviewed([result],request);await Live.submitReviewed([result],request);
+ assert.equal(status,'PENDING_APPROVAL');assert.equal(calls.filter(([p])=>p.endsWith('/submit')).length,1);
+ assert.ok(!calls.some(([p])=>/agent|approve|complete/.test(p)));
+ await assert.rejects(Live.submitReviewed([{...result,human_reviewed:false}],request),/逐筆檢查/);
+ await assert.rejects(Live.submitReviewed([{...result,reviewed_revision:1}],request),/已變更/);
+});
+
+test('first saved mismatched job completes into human review instead of restarting AI',async()=>{
+ const live=new Live(async path=>path==='agent/approve'?{run_id:'one'}:path==='agent/run'?{run_id:'one',phase:'REVIEW_REQUIRED',driver:'COMPUTER_USE',job_id:'saved',screenshot:'actual',mismatches:{title:{}}}:{},()=>{},async()=>{});
+ const results=await live.start([{}]);assert.equal(results[0].phase,'REVIEW_REQUIRED');assert.equal(results.length,1);
 });

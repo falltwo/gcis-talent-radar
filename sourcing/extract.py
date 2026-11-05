@@ -10,7 +10,7 @@ from typing import Iterable, Optional
 from urllib.parse import urlsplit
 
 from sourcing import apis, llm
-from sourcing.planner import LOCATIONS, PERSONAL_TRAIT, Plan
+from sourcing.planner import LOCATIONS, OUTSIDE_TAIWAN, PERSONAL_TRAIT, TAIWAN, Plan, place_label
 from sourcing.sites import Site, blocked_reason, site_for_url
 
 EMAIL = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}")
@@ -42,12 +42,13 @@ class Candidate:
     fit: str = "未判斷"  # 符合 | 部分符合 | 不符合 | 未判斷（gpt-6-luna 判斷）
     fit_reason: str = ""
     location: str = ""  # 候選人自己公開填的地點（Stack Overflow 等）
-    location_note: str = ""  # 來源網站無法依地點篩選時的提醒，例如「此網站無法依地點篩選，不一定在台中」
-    nearby: bool = False  # 不在指定城市、但在同一個國家（只給流程排順序用，不輸出）
+    # 找人範圍只限台灣：primary 在指定地區（預設台中）、taiwan 在台灣其他地區、unknown 頁面沒寫所在地（排最後）
+    area: str = ""
+    area_label: str = ""  # 給 HR 看的地區，例如「台中」「台灣其他地區」「無法確認是否在台灣」
+    location_note: str = ""  # 地區的補充說明，例如「在台灣其他地區（Taipei, Taiwan）」
 
     def as_dict(self) -> dict:
         data = asdict(self)
-        data.pop("nearby")
         # 連結一律只放 http(s)：網站上的自填網址可能是 javascript: 之類，前端直接放進 href 會被利用
         data["evidence"] = [e for e in data["evidence"] if safe_url(e.get("url"))]
         data["personal_site"] = safe_url(data["personal_site"])
@@ -64,6 +65,37 @@ def safe_url(url: Optional[str]) -> Optional[str]:
 _CITY_NAMES: dict[str, set[str]] = {}
 for _zh, _en in LOCATIONS.items():
     _CITY_NAMES.setdefault(_en, {_en.lower()}).add(_zh)
+_CITY_NAMES[TAIWAN] = set().union(*_CITY_NAMES.values())  # 只寫「Taipei」的人也算在台灣
+
+AREA_LABEL = {"taiwan": "台灣其他地區", "unknown": "無法確認是否在台灣"}
+
+
+def classify_area(primary: str, location: str, in_taiwan: str = "unknown") -> str:
+    """所在地 → primary（指定地區）| taiwan（台灣其他地區）| outside（台灣以外）| unknown（看不出來）。"""
+    if location and location_matches(primary, location):
+        return "primary"
+    if (location and location_matches(TAIWAN, location)) or in_taiwan == "yes":
+        return "taiwan" if primary != TAIWAN else "primary"
+    if in_taiwan == "no" or (location and OUTSIDE_TAIWAN.search(location)):
+        return "outside"
+    return "unknown"
+
+
+def set_area(cand: "Candidate", area: str, primary: str) -> None:
+    """標上地區與給 HR 看的說明。"""
+    cand.area = area
+    cand.area_label = place_label(primary) if area == "primary" else AREA_LABEL.get(area, "")
+    if area == "taiwan":
+        cand.location_note = f"在台灣其他地區（{cand.location}）" if cand.location else "在台灣其他地區"
+    elif area == "unknown":
+        cand.location_note = "頁面沒有寫所在地，無法確認是否在台灣"
+    else:
+        cand.location_note = ""
+
+
+def _rule_location(text: list[str]) -> str:
+    """規則版：個人頁上像「Taichung, Taiwan」「Berlin, Germany」的短行（認得台灣與常見的國外地名）。"""
+    return next((t for t in text if len(t) <= 40 and (location_matches(TAIWAN, t) or OUTSIDE_TAIWAN.search(t))), "")
 
 
 def location_matches(wanted: Optional[str], text: str) -> bool:
@@ -175,22 +207,30 @@ _SUMMARY_SCHEMA = {
         "summary": {"type": "string"},
         "fit": {"type": "string", "enum": ["符合", "部分符合", "不符合"]},
         "fit_reason": {"type": "string"},
+        "based_in": {"type": ["string", "null"]},
+        "in_taiwan": {"type": "string", "enum": ["yes", "no", "unknown"]},
     },
-    "required": ["name", "headline", "skills", "summary", "fit", "fit_reason"],
+    "required": ["name", "headline", "skills", "summary", "fit", "fit_reason", "based_in", "in_taiwan"],
     "additionalProperties": False,
 }
 _SUMMARY_SYSTEM = (
     "你根據一位候選人的公開個人頁文字，整理給 HR 看的專長摘要。只能用頁面上出現的資訊，不可推測。"
     "name 用頁面上的顯示名稱或帳號；headline 是一句話的自我介紹；skills 最多 6 個專業技能；"
     "summary 用繁體中文 60 字內說明他的專長和代表作品。fit 判斷他的專業是否符合職缺需求，fit_reason 用 30 字內說明根據；"
-    "只能依專業技能與作品判斷。不要提及或推測年齡、性別、國籍、婚育、宗教、外貌、聯絡方式。只回 JSON。"
+    "只能依專業技能與作品判斷。不要提及或推測年齡、性別、國籍、婚育、宗教、外貌、聯絡方式。"
+    "based_in 是頁面上這個人自己寫的所在地（照原文，例如 Taichung, Taiwan），沒寫就給 null；"
+    "in_taiwan 依 based_in 判斷是否在台灣：yes、no，沒寫或看不出來給 unknown，不可從名字或語言推測。只回 JSON。"
 )
 
 
 def summarize(site: Site, profile_url: str, title: str, text: list[str], links: list[Link], plan: Plan,
-              *, fallback_name: str = "") -> Candidate:
+              *, fallback_name: str = "", primary: Optional[str] = None) -> Candidate:
+    """讀個人頁整理摘要，並依頁面上的所在地分地區（`primary` 是指定地區，預設用需求的地點）。"""
     text = [clean_text(t) for t in text if t and t.strip()]
     cand = _rule_summary(site, profile_url, title, text, plan, fallback_name)
+    primary = primary or plan.terms.location or TAIWAN
+    cand.location = _rule_location(text)[:80]
+    in_taiwan = "unknown"
     if llm.has_key() and text:
         user = (f"職缺需求：{plan.query}\n需要的技能：{', '.join(plan.terms.skills)}\n網站：{site.name}\n頁面標題：{clean_text(title)}\n"
                 "頁面文字：\n" + "\n".join(text)[:6000])
@@ -209,6 +249,9 @@ def summarize(site: Site, profile_url: str, title: str, text: list[str], links: 
                 cand.fit = out["fit"]
                 reason = clean_text(str(out.get("fit_reason", "")))[:80]
                 cand.fit_reason = "" if PERSONAL_TRAIT.search(reason) else reason
+            cand.location = clean_text(str(out.get("based_in") or ""))[:80]  # 有模型就以模型讀到的為準
+            in_taiwan = out.get("in_taiwan") if out.get("in_taiwan") in ("yes", "no") else "unknown"
+    set_area(cand, classify_area(primary, cand.location, in_taiwan), primary)
     if site.id == "github":  # 用搜尋結果上的名字，步驟和卡片才一致
         cand.name = display_name(site, profile_url, fallback_name or cand.name)[:80]
     cand.evidence = [{"label": "個人頁", "url": profile_url}] + [
@@ -363,10 +406,8 @@ def from_stackoverflow(site: Site, plan: Plan, *, limit: int) -> Optional[list[C
                                       fallback_name=name, info=info)
         if cand is None:
             continue
-        if wanted and not same_city:
-            cand.nearby = True
-            cand.fit = "部分符合" if cand.fit in ("符合", "未判斷") else cand.fit
-            cand.fit_reason = f"在{COUNTRY_LABEL.get(country, country)}其他城市（{cand.location}）。" + cand.fit_reason
+        if wanted:
+            set_area(cand, "primary" if same_city else "taiwan", wanted)
         out.append(cand)
         if len(out) >= limit:
             break

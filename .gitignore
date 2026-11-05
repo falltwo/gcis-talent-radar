@@ -88,3 +88,10 @@ database/recruitment.sqlite3*
 
 # Local education database backups created by the ETL.
 /data/backups/education/
+
+# Durable local 404 portal records and session metadata
+/data/mock104/
+# 每日更新經濟部商工資料的執行紀錄與鎖檔（etl/daily_refresh.py）
+/data/logs/
+/data/processed/.daily_refresh.lock
+/data/processed/_daily_refresh.json

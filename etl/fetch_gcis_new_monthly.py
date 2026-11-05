@@ -62,11 +62,11 @@ def read_csv_bytes(b):
     raise ValueError("無法解碼 CSV")
 
 
-def main():
+def main(argv=None):
     ap = argparse.ArgumentParser()
     ap.add_argument("--county", default="臺中市")
     ap.add_argument("--out", default="data/raw/gcis_new_by_industry_county")
-    args = ap.parse_args()
+    args = ap.parse_args(argv)
 
     out = Path(args.out)
     (out / "monthly").mkdir(parents=True, exist_ok=True)
