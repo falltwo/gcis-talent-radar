@@ -14,6 +14,9 @@ ROOT = Path(__file__).resolve().parents[1]
 LISTS = ROOT / "data/raw/gcis_lists"
 OUT = ROOT / "ui/static/gcis-district-activity.json"
 DISTRICT = re.compile(r"^臺中市([^市縣鄉鎮區]{1,4}區)")
+# Same road rule as scripts/frontend/build_road_index.py, so the picked road is always in the sidebar menu.
+ROAD = re.compile(r"([一-鿿0-9]{1,16}?(?:大道|路|街)(?:[一二三四五六七八九十0-9]+段)?)")
+VILLAGE = re.compile(r"^[一-鿿]{1,4}[里村]")
 
 
 def months(end: str, count: int) -> list[str]:
@@ -25,7 +28,7 @@ def months(end: str, count: int) -> list[str]:
     return out[::-1]
 
 
-def count(kind: str, window: list[str]) -> tuple[Counter, int, int]:
+def count(kind: str, window: list[str], roads: dict | None = None) -> tuple[Counter, int, int]:
     found, total, unparsed = Counter(), 0, 0
     for month in window:
         if not (LISTS / kind / f"{month}.csv").exists():
@@ -36,6 +39,11 @@ def count(kind: str, window: list[str]) -> tuple[Counter, int, int]:
                 match = DISTRICT.match((row.get("公司所在地") or "").replace("台中市", "臺中市").strip())
                 if match:
                     found[match.group(1)] += 1
+                    if roads is not None:
+                        rest = VILLAGE.sub("", (row.get("公司所在地") or "").replace("台中市", "臺中市").strip()[match.end():])
+                        road = ROAD.match(rest)
+                        if road:
+                            roads.setdefault(match.group(1), Counter())[road.group(1)] += 1
                 else:
                     unparsed += 1
     return found, total, unparsed
@@ -44,7 +52,8 @@ def count(kind: str, window: list[str]) -> tuple[Counter, int, int]:
 def build() -> dict:
     latest = sorted(path.stem for path in (LISTS / "setup").glob("*.csv"))[-1]
     window = months(latest, 12)
-    setup, setup_total, setup_unparsed = count("setup", window)
+    roads: dict = {}
+    setup, setup_total, setup_unparsed = count("setup", window, roads)
     dissolved, dissolved_total, dissolved_unparsed = count("dissolved", window)
     names = sorted(set(setup) | set(dissolved))
     return {
@@ -56,7 +65,9 @@ def build() -> dict:
             "setup": {"rows": setup_total, "unparsed": setup_unparsed},
             "dissolved": {"rows": dissolved_total, "unparsed": dissolved_unparsed},
         },
-        "districts": {name: {"setup": setup[name], "dissolved": dissolved[name]} for name in names},
+        # The road with the most new registrations stands in for "where business happens" in a district.
+        "districts": {name: {"setup": setup[name], "dissolved": dissolved[name],
+                             "top_road": roads[name].most_common(1)[0][0] if roads.get(name) else None} for name in names},
     }
 
 

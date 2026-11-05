@@ -44,6 +44,13 @@
   const status = document.createElement('p');
   status.className = 'scan-status';status.id = 'scan-status';status.setAttribute('role','status');status.setAttribute('aria-live','polite');
   stage.append(status);
+  const plan = document.createElement('section');
+  plan.className = 'hire-plan';plan.id = 'hire-plan';plan.hidden = true;plan.setAttribute('aria-labelledby', 'hire-plan-title');
+  plan.innerHTML = `<header><div><small>已選定設廠地點</small><h3 id="hire-plan-title"></h3><p id="hire-plan-place"></p></div><button type="button" id="hire-plan-close" aria-label="關閉招人管道">×</button></header>
+    <p class="hire-plan-lead">依三區戰報的數字分配招人管道，點下去會用這個地點開啟功能。</p><ol id="hire-plan-list"></ol>
+    <p class="scan-note" id="hire-plan-note"></p>`;
+  stage.append(plan);
+  $('hire-plan-close').addEventListener('click', () => {plan.hidden = true;});
 
   function parseIntent(raw) {
     const text = raw?.text || '', preference = raw?.preference || '';
@@ -275,7 +282,11 @@
       const tag = document.createElement('span');tag.className = 'report-level' + (row === order[0] ? ' is-easy' : '');tag.textContent = level(row);head.append(tag);
       const ratio = document.createElement('p');ratio.className = 'report-ratio';
       ratio.textContent = row.ratio === null ? `區內和離區界 ${talent.radius_km} 公里內都沒有大專相關科系` : `每位畢業生對應 ${row.ratio.toFixed(2)} 個職缺需求・區內學校 ${row.graduates_in_district.toLocaleString()} 人`;
-      box.append(bar('相關科系畢業生（加權）', row.graduates_nearby, maxGrad, '人', 'is-supply'), bar('製造類職缺需求', row.openings, maxOpen, '人', 'is-demand'), ratio);
+      const pick = document.createElement('button');pick.type = 'button';pick.className = 'report-pick';
+      pick.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M1 12h4M19 12h4"/></svg><span></span>';
+      pick.lastChild.textContent = `選定${row.name}設廠並招人`;
+      pick.addEventListener('click', () => choose(row.name));
+      box.append(bar('相關科系畢業生（加權）', row.graduates_nearby, maxGrad, '人', 'is-supply'), bar('製造類職缺需求', row.openings, maxOpen, '人', 'is-demand'), ratio, pick);
       return box;
     }));
     $('report-supply-note').textContent = `畢業生：大專校院機械、電機等相關科系 ${talent.academic_year} 學年畢業生，不含高職。區內的學校全數計入；區外的學校依離區界的距離打折，${talent.radius_km / 2} 公里算一半，${talent.radius_km} 公里以外不算。職缺：就業通 ${talent.jobs_snapshot} 快照的技術、製造、工程類需求人數。沒有各區求職者人數的資料，所以這不是求職求才比。`;
@@ -381,16 +392,54 @@
     map.fitBounds(bounds(), {padding:padding(), pitch:0, bearing:0, duration:reduced ? 0 : 1000});
     status.textContent = '';
   }
+  // Picking a district moves the street map there; the three hiring features read that location on their own.
+  const FEATURES = {campus:'校園人才媒合', posting:'刊登召募', hunter:'獵頭Agent'};
+  function channels(name) {
+    const row = talent.districts[name], ratio = row.graduates_nearby ? row.openings / row.graduates_nearby : null;
+    const schools = row.schools.filter(s => s.weight >= .5).sort((a, b) => b.graduates * b.weight - a.graduates * a.weight).slice(0, 2).map(s => short(s.name));
+    const list = [
+      {key:'campus', who:'新鮮人', why: row.graduates_nearby ? `附近相關科系畢業生約 ${row.graduates_nearby.toLocaleString()} 人${schools.length ? `（${schools.join('、')}）` : ''}` : '附近沒有大專相關科系，新鮮人要從外區找', rank: ratio === null ? 2 : ratio < .3 ? 0 : 1},
+      {key:'posting', who:'一般求職者', why:`當地製造類職缺需求 ${row.openings.toLocaleString()} 人${row.salary_floor_median ? `、起薪中位數 ${row.salary_floor_median.toLocaleString()} 元，開薪可以參考` : ''}`, rank: ratio === null || ratio >= .3 ? 0 : 1},
+      {key:'hunter', who:'關鍵人才', why:'工程師、主管等難找的職位，主動接觸；這一項跟地點無關', rank:2},
+    ];
+    return list.sort((a, b) => a.rank - b.rank);
+  }
+  function choose(name) {
+    const road = activity.districts[name]?.top_road;
+    const district = $('city-district');
+    district.value = name;district.dispatchEvent(new Event('change'));
+    if (road && [...$('city-road').options].some(option => option.value === road)) $('city-road').value = road;
+    stop({home:false});
+    $('sidebar-location').requestSubmit();
+    $('hire-plan-title').textContent = name;
+    $('hire-plan-place').textContent = `${$('city-road').value}・近一年公司設立登記最多的道路，可在左側改選`;
+    $('hire-plan-list').replaceChildren(...channels(name).map((item, index) => {
+      const li = document.createElement('li');
+      li.innerHTML = '<div><b></b><span></span><small></small></div><button type="button"></button>';
+      li.querySelector('b').textContent = item.who;
+      li.querySelector('span').textContent = index === 0 ? '建議優先' : '';
+      li.querySelector('small').textContent = item.why;
+      li.querySelector('button').textContent = `開啟${FEATURES[item.key]}`;
+      li.querySelector('button').addEventListener('click', () => {
+        plan.hidden = true;
+        document.querySelector(`.primary-feature-button[data-feature="${FEATURES[item.key]}"]`)?.click();
+      });
+      return li;
+    }));
+    $('hire-plan-note').textContent = '管道順序依「每位畢業生對應的職缺需求」排：0.3 以下先找學校，以上或附近沒有學校就先刊登。這是展示用的規則，不是預測招募成效。';
+    plan.hidden = false;
+    plan.querySelector('button:not(#hire-plan-close)')?.focus({preventScroll:true});
+  }
   $('scan-compare').addEventListener('click', openReport);
   $('report-back').addEventListener('click', closeReport);
 
   async function start() {
     if (started) return;
-    started = true;
+    started = true;plan.hidden = true;
     map = window.streetMap.getMap();
     if (!map) {started = false;return;}
     try {
-      if (!geo) [geo, activity, stats] = await Promise.all(['/static/taichung-districts.geojson','/static/gcis-district-activity.json','/static/district-stats.json'].map(async url => {
+      if (!geo) [geo, activity, stats] = await Promise.all(['/static/taichung-districts.geojson','/static/gcis-district-activity.json?v=20261105-road1','/static/district-stats.json'].map(async url => {
         const response = await fetch(url);
         if (!response.ok) throw Error(url);
         return response.json();
@@ -409,15 +458,15 @@
     map.fitBounds(bounds(), {padding:padding(), pitch:0, bearing:0, duration:reduced ? 0 : 1600});
     setTimeout(() => {paintScores(false);renderCards();right.classList.add('cards-in');}, reduced ? 0 : 900);
   }
-  function stop() {
+  function stop({home = true} = {}) {
     cancelAnimationFrame(frame);hideReportMap();
     const workspace = document.querySelector('.radar-workspace');
     workspace.classList.remove('scan-active', 'scan-report');right.classList.remove('cards-in');left.inert = true;right.inert = true;
     if (workspace.classList.contains('sidebar-collapsed')) $('sidebar-toggle').click();
     setVisible(false);started = false;revealed = located = false;status.textContent = '';
-    $('map-home').click();
+    if (home) $('map-home').click();
   }
-  $('scan-close').addEventListener('click', stop);
+  $('scan-close').addEventListener('click', () => stop());
   // The map flies to the street pin first; waiting for that flight keeps it from cutting the city overview short.
   const ready = () => {if (revealed && located) start();};
   document.addEventListener('radar:revealed', () => {revealed = true;started = false;ready();});

@@ -96,3 +96,30 @@
 @media(prefers-reduced-motion:reduce){.scan-swap .scan-left,.scan-swap .scan-right{transition:none}}
 /* The street pin marks the default location, not a scan result, so it waits until the user returns to the street map. */
 .scan-active .real-map-pin{visibility:hidden;pointer-events:none}
+/* Pick button: the one strong call to action in the report. */
+.report-pick{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;min-height:42px;margin-top:10px;border:0;border-radius:10px;background:#ea580c;color:#fff;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 0 0 0 rgba(234,88,12,.45);animation:pick-glow 2.4s ease-out infinite;transition:background .2s}
+.report-pick:hover{background:#c2410c}
+.report-pick:focus-visible{outline:2px solid #ea580c;outline-offset:3px}
+.report-pick svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2}
+@keyframes pick-glow{0%{box-shadow:0 0 0 0 rgba(234,88,12,.45)}70%,100%{box-shadow:0 0 0 10px rgba(234,88,12,0)}}
+/* Hiring plan card on the street map after a pick. */
+.hire-plan{position:absolute;top:96px;right:16px;z-index:7;width:340px;max-height:calc(100% - 140px);overflow:auto;padding:14px;border:1px solid rgba(15,23,42,.08);border-radius:14px;background:rgba(255,255,255,.92);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);box-shadow:0 12px 32px rgba(15,23,42,.14);color:#1e293b;animation:plan-in .45s cubic-bezier(.16,1,.3,1)}
+.hire-plan[hidden]{display:none}
+@keyframes plan-in{from{opacity:0;transform:translateX(24px)}to{opacity:1;transform:none}}
+.hire-plan header{display:flex;justify-content:space-between;gap:10px}
+.hire-plan small{font-size:11px;color:#64748b}
+.hire-plan h3{margin:2px 0;font-size:20px;font-weight:700;color:#c2410c}
+.hire-plan header p{margin:0;font-size:12px;color:#475569}
+#hire-plan-close{flex:none;width:36px;height:36px;min-height:36px;padding:0;border:0;border-radius:8px;background:transparent;color:#64748b;font-size:22px;cursor:pointer}
+#hire-plan-close:hover{background:rgba(15,23,42,.06)}
+.hire-plan-lead{margin:10px 0 8px;font-size:12px;color:#334155}
+.hire-plan ol{margin:0;padding:0;list-style:none}
+.hire-plan li{display:grid;grid-template-columns:1fr auto;align-items:center;gap:10px;padding:10px 0;border-top:1px solid rgba(15,23,42,.08)}
+.hire-plan li b{font-size:14px}
+.hire-plan li span{margin-left:6px;padding:1px 7px;border-radius:999px;background:#fff7ed;color:#c2410c;font-size:11px;font-weight:600}
+.hire-plan li span:empty{display:none}
+.hire-plan li small{display:block;margin-top:2px;line-height:1.5}
+.hire-plan li button{min-height:36px;padding:0 12px;border:1px solid #2563eb;border-radius:8px;background:#fff;color:#2563eb;font-size:12px;font-weight:600;white-space:nowrap;cursor:pointer}
+.hire-plan li:first-child button{background:#2563eb;color:#fff}
+@media(max-width:720px){.hire-plan{top:auto;bottom:16px;left:12px;right:12px;width:auto}}
+@media(prefers-reduced-motion:reduce){.report-pick,.hire-plan{animation:none}}

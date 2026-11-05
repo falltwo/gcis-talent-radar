@@ -21,119 +21,148 @@
  "districts": {
   "中區": {
    "setup": 81,
-   "dissolved": 45
+   "dissolved": 45,
+   "top_road": "民族路"
   },
   "北區": {
    "setup": 540,
-   "dissolved": 301
+   "dissolved": 301,
+   "top_road": "中清路一段"
   },
   "北屯區": {
    "setup": 675,
-   "dissolved": 364
+   "dissolved": 364,
+   "top_road": "文心路四段"
   },
   "南區": {
    "setup": 318,
-   "dissolved": 154
+   "dissolved": 154,
+   "top_road": "忠明南路"
   },
   "南屯區": {
    "setup": 568,
-   "dissolved": 323
+   "dissolved": 323,
+   "top_road": "文心路一段"
   },
   "后里區": {
    "setup": 54,
-   "dissolved": 27
+   "dissolved": 27,
+   "top_road": "甲后路一段"
   },
   "和平區": {
    "setup": 1,
-   "dissolved": 2
+   "dissolved": 2,
+   "top_road": "東關路三段"
   },
   "外埔區": {
    "setup": 33,
-   "dissolved": 17
+   "dissolved": 17,
+   "top_road": "大馬路"
   },
   "大安區": {
    "setup": 3,
-   "dissolved": 10
+   "dissolved": 10,
+   "top_road": "東西三路"
   },
   "大甲區": {
    "setup": 56,
-   "dissolved": 44
+   "dissolved": 44,
+   "top_road": "水源路"
   },
   "大肚區": {
    "setup": 62,
-   "dissolved": 31
+   "dissolved": 31,
+   "top_road": "沙田路一段"
   },
   "大里區": {
    "setup": 243,
-   "dissolved": 187
+   "dissolved": 187,
+   "top_road": "中興路二段"
   },
   "大雅區": {
    "setup": 134,
-   "dissolved": 87
+   "dissolved": 87,
+   "top_road": "民生路三段"
   },
   "太平區": {
    "setup": 220,
-   "dissolved": 163
+   "dissolved": 163,
+   "top_road": "光興路"
   },
   "新社區": {
    "setup": 8,
-   "dissolved": 7
+   "dissolved": 7,
+   "top_road": "東山街"
   },
   "東勢區": {
    "setup": 31,
-   "dissolved": 14
+   "dissolved": 14,
+   "top_road": "豐勢路"
   },
   "東區": {
    "setup": 149,
-   "dissolved": 103
+   "dissolved": 103,
+   "top_road": "公園東路"
   },
   "梧棲區": {
    "setup": 99,
-   "dissolved": 43
+   "dissolved": 43,
+   "top_road": "四維中路"
   },
   "沙鹿區": {
    "setup": 120,
-   "dissolved": 65
+   "dissolved": 65,
+   "top_road": "沙田路"
   },
   "清水區": {
    "setup": 83,
-   "dissolved": 52
+   "dissolved": 52,
+   "top_road": "忠孝二街"
   },
   "潭子區": {
    "setup": 105,
-   "dissolved": 89
+   "dissolved": 89,
+   "top_road": "圓通南路"
   },
   "烏日區": {
    "setup": 132,
-   "dissolved": 78
+   "dissolved": 78,
+   "top_road": "高鐵一路"
   },
   "石岡區": {
    "setup": 15,
-   "dissolved": 5
+   "dissolved": 5,
+   "top_road": "豐勢路"
   },
   "神岡區": {
    "setup": 77,
-   "dissolved": 76
+   "dissolved": 76,
+   "top_road": "中山路"
   },
   "西區": {
    "setup": 707,
-   "dissolved": 350
+   "dissolved": 350,
+   "top_road": "臺灣大道二段"
   },
   "西屯區": {
    "setup": 1149,
-   "dissolved": 555
+   "dissolved": 555,
+   "top_road": "市政北七路"
   },
   "豐原區": {
    "setup": 186,
-   "dissolved": 153
+   "dissolved": 153,
+   "top_road": "水源路"
   },
   "霧峰區": {
    "setup": 67,
-   "dissolved": 42
+   "dissolved": 42,
+   "top_road": "民生路"
   },
   "龍井區": {
    "setup": 80,
-   "dissolved": 47
+   "dissolved": 47,
+   "top_road": "沙田路五段"
   }
  }
 }
