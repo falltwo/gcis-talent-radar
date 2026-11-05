@@ -154,7 +154,12 @@
     if(!basket.size)box.append(node('p','尚未加入候選校區。'));
     basket.forEach(item=>{const row=node('div',null,'campus-basket-row');row.append(node('span',campusName(item)));const remove=node('button','移除');remove.type='button';remove.setAttribute('aria-label',`移除${campusName(item)}`);remove.addEventListener('click',()=>{basket.delete(item.id);updateBasket();updateAddButton();});row.append(remove);box.append(row);});
   }
-  function updateAddButton(){if(popupBox){const button=popupBox.querySelector('.campus-add');if(button)button.textContent=basket.has(selectedId)?'已加入候選・點擊移除':'＋ 加入合作候選';}}
+  function updateAddButton(){
+    const button=popupBox?.querySelector('.campus-add');if(!button)return;
+    const added=basket.has(selectedId),name=popupBox.querySelector('h2').textContent;
+    button.textContent=added?'✓ 已加入':'＋ 候選';button.classList.toggle('is-added',added);
+    button.setAttribute('aria-pressed',String(added));button.setAttribute('aria-label',added?`${name}已加入合作候選，點擊移除`:`將${name}加入合作候選`);
+  }
   function openSchool(item){
     const map=window.streetMap.getMap();if(!active||!map)return;
     closePopup({restore:false});window.streetMap.closeCompany(false);highlight(item.id);
@@ -167,7 +172,9 @@
     close.setAttribute('aria-label','關閉校區資訊並返回探索視角');
     close.addEventListener('click',()=>closePopup({focus:true}));head.append(close);
     popupBox=box;makeDraggable(box,head);
-    box.append(head,node('h2',item.institution_name),node('p',item.name));
+    const title=node('div',null,'campus-title-row');title.append(node('h2',item.institution_name));
+    const add=node('button',null,'campus-add');add.type='button';add.addEventListener('click',()=>{if(basket.has(item.id))basket.delete(item.id);else basket.set(item.id,item);updateBasket();updateAddButton();status(basket.has(item.id)?`${campusName(item)}已加入合作候選，尚未聯絡。`:`已移除${campusName(item)}。`);});
+    title.append(add);box.append(head,title,node('p',item.name));updateAddButton();
     const facts=node('dl');[['校區地址',item.address],['直線距離',item.distance_km.toFixed(1)+' 公里']].forEach(([title,value])=>facts.append(node('dt',title),node('dd',value)));box.append(facts);
     const phone=item.school_phone,phoneValue=node('dd',phone?.status==='AVAILABLE'&&phone.display?phone.display:'電話資料待補','campus-phone-number');
     facts.append(node('dt','學校總機'),phoneValue);
@@ -183,7 +190,6 @@
     insights.setAttribute('aria-label','學校科系資訊');
     window.renderCampusDepartments(insights,item);
     box.append(insights,sources,node('p','距離由所選道路位置計算，非通勤距離。','campus-popup-note'));
-    const add=node('button',basket.has(item.id)?'已加入候選・點擊移除':'＋ 加入合作候選','campus-add');add.type='button';add.addEventListener('click',()=>{if(basket.has(item.id))basket.delete(item.id);else basket.set(item.id,item);updateBasket();updateAddButton();status(basket.has(item.id)?`${campusName(item)}已加入合作候選，尚未聯絡。`:`已移除${campusName(item)}。`);});box.append(add);
     // Laid out off-screen first so the anchor is chosen from the card's real height.
     Object.assign(box.style,{position:'absolute',visibility:'hidden',width:'310px'});$('city-stage').append(box);
     // camera.focus centres the school (padding 90 top / 70 bottom), so pick the side from where it will land, not where it is now.
