@@ -161,7 +161,7 @@
     focusTrigger=document.activeElement;
     camera??=window.createCampusCamera(map,reduced);
     const box=node('section',null,'campus-school-popup');box.setAttribute('aria-label',campusName(item)+' 校區資訊');
-    const head=node('div',null,'campus-popup-head');
+    const head=node('div',null,'campus-popup-head');head.title='按住這裡拖曳卡片';
     head.append(node('span',`${academicYear} 學年度 · 官方名冊`,'campus-source-badge'));
     const close=node('button','×');close.type='button';close.className='campus-return';
     close.setAttribute('aria-label','關閉校區資訊並返回探索視角');
@@ -186,7 +186,8 @@
     const add=node('button',basket.has(item.id)?'已加入候選・點擊移除':'＋ 加入合作候選','campus-add');add.type='button';add.addEventListener('click',()=>{if(basket.has(item.id))basket.delete(item.id);else basket.set(item.id,item);updateBasket();updateAddButton();status(basket.has(item.id)?`${campusName(item)}已加入合作候選，尚未聯絡。`:`已移除${campusName(item)}。`);});box.append(add);
     // Laid out off-screen first so the anchor is chosen from the card's real height.
     Object.assign(box.style,{position:'absolute',visibility:'hidden',width:'310px'});$('city-stage').append(box);
-    const anchor=window.streetMap.popupAnchor(box,item.coordinates);
+    // camera.focus centres the school (padding 90 top / 70 bottom), so pick the side from where it will land, not where it is now.
+    const view=map.getContainer(),anchor=window.streetMap.popupAnchorAt(box,{x:view.clientWidth/2,y:view.clientHeight/2+10});
     Object.assign(box.style,{position:'',visibility:'',width:''});
     popup=new maplibregl.Popup({closeButton:false,closeOnClick:false,anchor,offset:23,maxWidth:'310px',focusAfterOpen:false}).setLngLat(item.coordinates).setDOMContent(box).addTo(map);
     $('city-stage').classList.add('campus-popup-open');popup.on('close',()=>{$('city-stage').classList.remove('campus-popup-open');highlight(null);});
