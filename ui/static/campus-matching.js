@@ -152,7 +152,20 @@
     shownCount=basket.size;
     const box=$('campus-basket-list');box.replaceChildren();
     if(!basket.size)box.append(node('p','尚未加入候選校區。'));
-    basket.forEach(item=>{const row=node('div',null,'campus-basket-row');row.append(node('span',campusName(item)));const remove=node('button','移除');remove.type='button';remove.setAttribute('aria-label',`移除${campusName(item)}`);remove.addEventListener('click',()=>{basket.delete(item.id);updateBasket();updateAddButton();});row.append(remove);box.append(row);});
+    basket.forEach(item=>{const row=node('div',null,'campus-basket-row');const info=node('div',null,'campus-basket-info');info.append(node('strong',item.institution_name));
+      const direct=[...(item.matched_departments||[]),...(item.unlocated_department_matches||[])];
+      const departments=direct.length?direct:(item.related_departments?.length?item.related_departments:item.departments);
+      const seen=new Set();
+      for(const dept of departments||[]){
+        const key=dept.department_id||dept.name;if(!dept.name||seen.has(key))continue;seen.add(key);
+        const unlocated=(item.unlocated_department_matches||[]).some(d=>(d.department_id||d.name)===key)||dept.location_status==='TEACHING_LOCATION_UNVERIFIED';
+        const label=unlocated?'教學校區待核驗':dept.relation_label;
+        info.append(node('span','科系：'+dept.name,'campus-basket-department'));
+        if(label)info.append(node('small',label,'campus-basket-location'));
+      }
+      if(!seen.size)info.append(node('span','科系：資料待補（尚未取得符合科系）','campus-basket-department'));
+      info.append(node('small','參考校區：'+item.name,'campus-basket-location'));
+      row.append(info);const remove=node('button','移除');remove.type='button';remove.setAttribute('aria-label',`移除${campusName(item)}`);remove.addEventListener('click',()=>{basket.delete(item.id);updateBasket();updateAddButton();});row.append(remove);box.append(row);});
   }
   function updateAddButton(){
     const button=popupBox?.querySelector('.campus-add');if(!button)return;
@@ -175,7 +188,7 @@
     close.addEventListener('click',()=>closePopup({focus:true}));head.append(close);
     popupBox=box;makeDraggable(box,head);
     const title=node('div',null,'campus-title-row');title.append(node('h2',item.institution_name));
-    const add=node('button',null,'campus-add');add.type='button';add.addEventListener('click',()=>{if(basket.has(item.id))basket.delete(item.id);else basket.set(item.id,item);updateBasket();updateAddButton();status(basket.has(item.id)?`${campusName(item)}已加入合作候選，尚未聯絡。`:`已移除${campusName(item)}。`);});
+    const add=node('button',null,'campus-add');add.type='button';add.addEventListener('click',()=>{if(basket.has(item.id))basket.delete(item.id);else basket.set(item.id,item);updateBasket();if(basket.has(item.id))panel.querySelector('.campus-basket').open=true;updateAddButton();status(basket.has(item.id)?`${campusName(item)}已加入合作候選，尚未聯絡。`:`已移除${campusName(item)}。`);});
     title.append(add);box.append(head,title,node('p',item.name));updateAddButton();
     const facts=node('dl');[['校區地址',item.address],['直線距離',item.distance_km.toFixed(1)+' 公里']].forEach(([title,value])=>facts.append(node('dt',title),node('dd',value)));box.append(facts);
     const phone=item.school_phone,phoneValue=node('dd',phone?.status==='AVAILABLE'&&phone.display?phone.display:'電話資料待補','campus-phone-number');
@@ -277,7 +290,7 @@
           : '範圍內找不到符合的校區。可擴大範圍，或改用常見職務名稱、學校或系所全名。'));
         fitAll();return;
       }
-      status(queryNote+`找到 ${results.length} 個校區，直接符合優先，同層依距離排序。校區與系所關聯仍有待核驗項目，詳見個別來源。`);drawMap(location);
+      status(queryNote+`找到 ${results.length} 個校區，指定學校優先，再依直接符合與距離排序。校區與系所關聯仍有待核驗項目，詳見個別來源。`);drawMap(location);
     }catch(error){
       if(!active||request!==generation)return;
       clearResults();status(timedOut?'校區查詢逾時，請重新查詢。':error.name==='AbortError'?'查詢已取消，可重新查詢。':error.message||'無法連線至校區服務，請重新查詢。');$('campus-retry').hidden=false;

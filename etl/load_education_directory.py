@@ -26,10 +26,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from bs4 import BeautifulSoup
 from config import BASE_DIR, TAICHUNG_DISTRICTS
 from engine.education_directory import education_db_path
+from engine.campus_search import excluded_program
 DB_PATH = education_db_path()
 from etl.load_official_labor_market import government_session
 
-VERSION = 'education-directory/2.0'
+VERSION = 'education-directory/2.1'
 TZ = timezone(timedelta(hours=8))
 UDB = 'https://udb.moe.edu.tw'
 DOWNLOAD = UDB + '/ulist/Resource/download/'
@@ -268,6 +269,8 @@ def build_records(manifest, contents, academic_year=None):
             dept_by_id[dep_id] = {'department_id': dep_id, 'institution_id': code,
                 'department_code': dep_code, 'name': row['科系名稱'], 'college': '',
                 'website': '', 'source_key': 'students', 'registry_listed': 0}
+    excluded_count = sum(excluded_program(d['institution_id'], d['name']) for d in dept_by_id.values())
+    dept_by_id = {key: d for key, d in dept_by_id.items() if not excluded_program(d['institution_id'], d['name'])}
     if not dept_by_id or not scope:
         raise ValueError('Empty Taichung education data')
     relations, tasks = [], []
@@ -298,7 +301,7 @@ def build_records(manifest, contents, academic_year=None):
                'national_profiles_checked': len(profiles), 'national_campuses': len(campuses),
                'taichung_institutions': len(scope), 'taichung_headquartered_institutions': len(headquarters_scope),
                'taichung_campuses': sum(c['city'] == '臺中市' for c in campuses),
-               'departments': len(dept_by_id), 'registry_departments': sum(d['registry_listed'] for d in dept_by_id.values()),
+               'excluded_programs': excluded_count, 'departments': len(dept_by_id), 'registry_departments': sum(d['registry_listed'] for d in dept_by_id.values()),
                'supplementary_departments': sum(not d['registry_listed'] for d in dept_by_id.values()),
                'single_campus_relations': len(relations),
                'verified_teaching_relations': 0, 'pending_department_campus': sum(t['task_type'] == 'DEPARTMENT_CAMPUS' for t in tasks),

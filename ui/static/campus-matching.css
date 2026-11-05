@@ -102,6 +102,9 @@
 .campus-department-list .campus-relation-note{display:block;color:#5d708b;font-size:12px;margin-top:4px}
 .campus-school-popup .campus-phone-number{font-size:16px;font-variant-numeric:tabular-nums}
 
+.campus-basket-info{display:grid;gap:6px;min-width:0}.campus-basket-department{font-size:12px;line-height:1.6;color:#5d708b}
+
+.campus-basket-location{font-size:11px;line-height:1.5;color:#718096}.campus-basket-department{font-weight:600;color:#304b70}
 /* Fixed card size: every school opens at the same width and height and scrolls inside.
    popupAnchor's inline max-height can still lower it on short screens. */
 .campus-school-popup{width:310px;height:min(520px,calc(100svh - 210px))}

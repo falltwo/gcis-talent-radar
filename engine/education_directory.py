@@ -4,7 +4,7 @@ import math
 import os
 import sqlite3
 import unicodedata
-from engine.campus_search import expand, suggestions
+from engine.campus_search import expand, suggestions, institution_aliases
 from engine.campus_careers import search_careers
 from engine.education_contacts import read_institution_contacts, missing_phone
 from contextlib import contextmanager
@@ -248,8 +248,34 @@ def search_education_campuses(latitude, longitude, radius_km=15, q='', db_path=N
             JOIN education_sources s ON s.release_id=c.release_id AND s.source_key=c.source_key
             WHERE c.release_id=? AND c.city='臺中市' AND i.in_taichung_scope=1
             ORDER BY i.institution_id,c.campus_id''', (rid,)).fetchall()
+        # Split a known institution name from the department query. Prefer the
+        # longest directory-derived name so e.g. a full university name is not
+        # mistaken for another school's shorter name.
+        school_hits = []
+        for row in campuses:
+            name = _search_text(row['institution_name'])
+            short = name
+            for prefix in ('國立', '私立', '市立'):
+                if short.startswith(prefix):
+                    short = short[len(prefix):]
+            aliases = {name, short} | institution_aliases(row['institution_name'])
+            for suffix in ('科技大學', '技術學院', '大學', '學院'):
+                if short.endswith(suffix):
+                    aliases.add(short[:-len(suffix)])
+                    break
+            for alias in aliases:
+                if len(alias) >= 2 and alias in keyword:
+                    school_hits.append((alias, row['institution_id']))
+        longest = max((len(alias) for alias, _ in school_hits), default=0)
+        school_ids = {iid for alias, iid in school_hits if len(alias) == longest}
+        department_query = keyword
+        if longest:
+            school_term = next(alias for alias, _ in school_hits if len(alias) == longest)
+            department_query = keyword.replace(school_term, '', 1).strip('、,，:：/與和的')
+            expansion = expand(department_query)
+            department_terms = expansion['direct']
         career_query, career_matches = {}, {}
-        if keyword and not (
+        if keyword and not school_ids and not (
             any(keyword in _search_text(row[field]) for row in campuses for field in ('institution_name', 'name'))
             or any(term in _search_text(dept['name']) for dept in departments for term in department_terms)
         ):
@@ -300,7 +326,7 @@ def search_education_campuses(latitude, longitude, radius_km=15, q='', db_path=N
             tier = 'DIRECT'
             if not keyword:
                 match_scope = 'ALL'
-            elif not career_query and keyword in _search_text(campus['institution_name']):
+            elif not career_query and (campus['institution_id'] in school_ids or keyword in _search_text(campus['institution_name'])):
                 match_scope = 'INSTITUTION_NAME'
             elif not career_query and keyword in _search_text(campus['name']):
                 match_scope = 'CAMPUS_NAME'
@@ -329,7 +355,7 @@ def search_education_campuses(latitude, longitude, radius_km=15, q='', db_path=N
                           'unlocated_department_matches': unlocated_matches, 'match_scope': match_scope,
                           'match_tier': tier, 'related_departments': related_matches,
                           'match_reason': reason})
-        items.sort(key=lambda item: (item['match_tier'] != 'DIRECT', item['distance_km'], item['institution_name'], item['campus_id']))
+        items.sort(key=lambda item: (bool(school_ids) and item['institution_id'] not in school_ids, item['match_tier'] != 'DIRECT', item['distance_km'], item['institution_name'], item['campus_id']))
         limitations = list(summary.get('limitations', []))
         for note in [
             '距離為選點至校園範圍內代表點的球面直線距離，不是校門距離或通勤距離。',
