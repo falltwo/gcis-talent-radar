@@ -59,6 +59,8 @@
 .hunter-fill{height:100%;width:0;background:linear-gradient(90deg,rgba(255,255,255,.4) 1px,transparent 1px) 0 0/10px 100%,linear-gradient(rgba(255,255,255,.28) 1px,transparent 1px) 0 0/100% 4px,linear-gradient(90deg,#0052CC,var(--blue));animation:hunter-grid .8s linear infinite;transition:width .4s ease-out}
 @keyframes hunter-grid{to{background-position:10px 0,0 4px,0 0}}
 .hunter-state{margin:7px 0 8px;font-size:12.5px}
+.hunter-scope{margin:0 0 8px;padding:6px 8px;border:1px solid rgba(180,83,9,.25);border-radius:8px;background:rgba(180,83,9,.06);color:var(--warn);font-size:12px;line-height:1.55}
+.hunter-scope strong{font-weight:650}
 .hunter-start{width:100%;min-height:36px;border:0;border-radius:8px;background:var(--blue);color:#fff;font-weight:650;cursor:pointer}
 .hunter-start:hover{background:#0060D6}.hunter-start:disabled{opacity:.55;cursor:wait}
 
