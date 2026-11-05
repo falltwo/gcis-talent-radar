@@ -105,3 +105,56 @@ def test_calls_are_capped_per_client(monkeypatch):
     codes = [api.post("/api/site-advice", json=REQUEST).status_code for _ in range(3)]
     model_budget.reset()
     assert codes == [200, 200, 429]
+
+
+REQUIRED = {**REQUEST, "facts": [{**FACTS[0]}, {**FACTS[1], "required": True}, {**FACTS[2], "required": True}]}
+
+
+def test_every_required_fact_must_be_mentioned(monkeypatch):
+    monkeypatch.setenv("OPENROUTER_API_KEY", "test")
+    site_advice.clear_cache()
+    monkeypatch.setattr(llm, "chat_json", lambda *a, **k: {"sentences": ["太平區每位畢業生對應 {f2} 個職缺需求。"]})
+    assert site_advice.advise(REQUIRED)["reason"] == "missing_required"
+    monkeypatch.setattr(llm, "chat_json", lambda *a, **k: {"sentences": [
+        "太平區每位畢業生對應 {f2} 個職缺需求。", "南區職缺只有 {f3}，看不出招募壓力。"]})
+    assert site_advice.advise(REQUIRED)["source"] == "llm"
+
+
+def test_required_ids_are_named_in_the_prompt(monkeypatch):
+    monkeypatch.setenv("OPENROUTER_API_KEY", "test")
+    site_advice.clear_cache()
+    seen = {}
+    monkeypatch.setattr(llm, "chat_json", lambda system, user, *a, **k: seen.update(user=user))
+    site_advice.advise(REQUIRED)
+    assert '"必須提到": ["f2", "f3"]' in seen["user"]
+
+
+def test_same_request_is_served_from_cache_and_failures_are_not_cached(monkeypatch):
+    monkeypatch.setenv("OPENROUTER_API_KEY", "test")
+    site_advice.clear_cache()
+    calls = []
+    monkeypatch.setattr(llm, "chat_json", lambda *a, **k: calls.append(1))
+    assert site_advice.lookup(REQUEST) is None
+    site_advice.advise(REQUEST)
+    assert site_advice.lookup(REQUEST) is None  # a failed call is not stored
+    monkeypatch.setattr(llm, "chat_json", lambda *a, **k: calls.append(1) or {"sentences": ["太平區畢業生約 {f1}。"]})
+    first = site_advice.advise(REQUEST)
+    hit = site_advice.lookup(REQUEST)
+    assert hit["sentences"] == first["sentences"] and hit["cached"] is True and hit["usage"]["cost_usd"] == 0
+    changed = {**REQUEST, "role": "廠長"}
+    assert site_advice.lookup(changed) is None
+    assert len(calls) == 2
+
+
+def test_api_serves_cache_hits_without_spending_the_budget(monkeypatch):
+    from engine import model_budget
+    model_budget.reset()
+    site_advice.clear_cache()
+    monkeypatch.setenv("OPENROUTER_API_KEY", "test")
+    monkeypatch.setenv("SITE_MODEL_CALLS_PER_CLIENT_PER_MINUTE", "1")
+    monkeypatch.setattr(llm, "chat_json", lambda *a, **k: {"sentences": ["太平區畢業生約 {f1}。"]})
+    api = make_client()
+    codes = [api.post("/api/site-advice", json=REQUEST).status_code for _ in range(3)]
+    model_budget.reset()
+    site_advice.clear_cache()
+    assert codes == [200, 200, 200]

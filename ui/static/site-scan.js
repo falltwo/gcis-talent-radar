@@ -390,11 +390,13 @@
   }
   // The facts are the numbers already on screen; the model may only refer to them as {f1}, {f2}...
   function adviceFacts(rows, three) {
-    const facts = [], add = (label, value) => facts.push({id:`f${facts.length + 1}`, label:label.slice(0, 40), value:String(value).slice(0, 40)});
+    // `required` facts are the comparison the report is about; the advice is discarded if any is left out.
+    const facts = [], add = (label, value, required = false) => facts.push({id:`f${facts.length + 1}`, label:label.slice(0, 40), value:String(value).slice(0, 40), required});
     rows.forEach(row => {
       add(`${row.name}相關科系畢業生（加權）`, `${row.graduates_nearby.toLocaleString()} 人`);
-      add(`${row.name}製造類職缺需求`, `${row.openings.toLocaleString()} 人（${row.postings} 筆）`);
-      add(`${row.name}每位畢業生對應的職缺需求`, row.thin ? '職缺樣本太少，不計算' : row.ratio === null ? '附近沒有相關科系' : row.ratio.toFixed(2));
+      // A number is required where there is one; for a thin sample the head count itself is what must be said.
+      add(`${row.name}製造類職缺需求${row.thin ? '（樣本太少，不比較）' : ''}`, `${row.openings.toLocaleString()} 人（${row.postings} 筆）`, row.thin);
+      if (!row.thin) add(`${row.name}每位畢業生對應的職缺需求`, row.ratio === null ? '附近沒有相關科系' : row.ratio.toFixed(2), row.ratio !== null);
       const schools = row.schools.filter(x => x.weight >= .5).sort((a, b) => b.graduates * b.weight - a.graduates * a.weight).slice(0, 2).map(x => short(x.name));
       if (schools.length) add(`${row.name}附近主要學校`, schools.join('、'));
       if (row.salary_floor_median) add(`${row.name}起薪中位數`, `${row.salary_floor_median.toLocaleString()} 元`);

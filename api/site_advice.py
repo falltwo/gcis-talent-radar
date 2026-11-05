@@ -16,6 +16,7 @@ class Fact(BaseModel):
     id: str = Field(pattern=r"^f\d{1,3}$")
     label: str = Field(min_length=1, max_length=40)
     value: str = Field(min_length=1, max_length=40)
+    required: bool = False
 
 
 class SiteAdviceRequest(BaseModel):
@@ -27,6 +28,10 @@ class SiteAdviceRequest(BaseModel):
 
 @router.post("/api/site-advice")
 def site_advice_endpoint(body: SiteAdviceRequest, request: Request):
+    payload = body.model_dump()
+    # A cache hit costs nothing, so it does not use up the caller's budget.
+    if (hit := site_advice.lookup(payload)) is not None:
+        return hit
     if not model_budget.reserve(request.client.host if request.client else "unknown"):
         raise HTTPException(429, "AI 建議暫時太頻繁，畫面保留系統版建議。")
-    return site_advice.advise(body.model_dump())
+    return site_advice.advise(payload)
