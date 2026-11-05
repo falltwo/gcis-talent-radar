@@ -75,8 +75,9 @@ def test_api_validates_the_payload():
     api = make_client()
     bad_id = {**REQUEST, "facts": [{"id": "x; drop", "label": "a", "value": "b"}]}
     too_many = {**REQUEST, "districts": ["太平區", "大里區", "南區", "西屯區"]}
+    not_a_district = {**REQUEST, "districts": ["區" * 5000]}
     long_value = {**REQUEST, "facts": [{"id": "f1", "label": "a", "value": "字" * 41}]}
-    for body in (bad_id, too_many, long_value):
+    for body in (bad_id, too_many, long_value, not_a_district):
         assert api.post("/api/site-advice", json=body).status_code == 422
 
 
@@ -93,3 +94,14 @@ def test_citation_dumps_and_number_heavy_sentences_are_dropped(monkeypatch):
         "數字很多 {f1}、{f2}、{f3}、{f1}。",
         "太平區附近畢業生約 {f1}。"]})
     assert site_advice.advise(REQUEST)["sentences"] == ["太平區附近畢業生約 2,744 人。"]
+
+
+def test_calls_are_capped_per_client(monkeypatch):
+    from engine import model_budget
+    model_budget.reset()
+    monkeypatch.setenv("SITE_MODEL_CALLS_PER_CLIENT_PER_MINUTE", "2")
+    monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
+    api = make_client()
+    codes = [api.post("/api/site-advice", json=REQUEST).status_code for _ in range(3)]
+    model_budget.reset()
+    assert codes == [200, 200, 429]
