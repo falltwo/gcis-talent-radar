@@ -1,0 +1,1106 @@
+{
+ "academic_year": "113",
+ "radius_km": 10,
+ "jobs_snapshot": "2026-10-05",
+ "department_rule": "機械|機電|精密|自動化|模具|電機|工業工程|智慧製造|材料|車輛|動力|製造",
+ "job_families": [
+  "品管／製造／環衛",
+  "工程／研發／生技",
+  "技術／維修／操作"
+ ],
+ "sources": {
+  "graduates": "教育部大專校院各校科系別學生數（畢業生數）",
+  "campuses": "教育部校區名冊座標（本專案整理，只含大專校院）",
+  "jobs": "台灣就業通職缺清單 https://data.gov.tw/dataset/44062"
+ },
+ "districts": {
+  "龍井區": {
+   "graduates_nearby": 290,
+   "schools": [
+    {
+     "name": "東海大學",
+     "district": "西屯區",
+     "km": 8.5,
+     "graduates": 290,
+     "top_departments": [
+      "工業工程與經營資訊學系",
+      "電機工程學系",
+      "化學工程與材料工程學系"
+     ]
+    }
+   ],
+   "postings": 36,
+   "openings": 209,
+   "salary_floor_median": 31904,
+   "salary_samples": 36,
+   "salary_ceiling_median": 36540,
+   "salary_ceiling_samples": 25
+  },
+  "大雅區": {
+   "graduates_nearby": 1070,
+   "schools": [
+    {
+     "name": "僑光科技大學",
+     "district": "西屯區",
+     "km": 4.6,
+     "graduates": 17,
+     "top_departments": [
+      "電腦輔助工業設計系_精密機械生產製造與管理專班",
+      "智慧自動化工程系"
+     ]
+    },
+    {
+     "name": "逢甲大學",
+     "district": "西屯區",
+     "km": 5.6,
+     "graduates": 763,
+     "top_departments": [
+      "材料科學與工程學系",
+      "電機工程學系",
+      "工業工程與系統管理學系"
+     ]
+    },
+    {
+     "name": "東海大學",
+     "district": "西屯區",
+     "km": 6.7,
+     "graduates": 290,
+     "top_departments": [
+      "工業工程與經營資訊學系",
+      "電機工程學系",
+      "化學工程與材料工程學系"
+     ]
+    }
+   ],
+   "postings": 97,
+   "openings": 623,
+   "salary_floor_median": 33000,
+   "salary_samples": 86,
+   "salary_ceiling_median": 38441,
+   "salary_ceiling_samples": 59
+  },
+  "沙鹿區": {
+   "graduates_nearby": 1070,
+   "schools": [
+    {
+     "name": "東海大學",
+     "district": "西屯區",
+     "km": 5.9,
+     "graduates": 290,
+     "top_departments": [
+      "工業工程與經營資訊學系",
+      "電機工程學系",
+      "化學工程與材料工程學系"
+     ]
+    },
+    {
+     "name": "僑光科技大學",
+     "district": "西屯區",
+     "km": 7.2,
+     "graduates": 17,
+     "top_departments": [
+      "電腦輔助工業設計系_精密機械生產製造與管理專班",
+      "智慧自動化工程系"
+     ]
+    },
+    {
+     "name": "逢甲大學",
+     "district": "西屯區",
+     "km": 8.2,
+     "graduates": 763,
+     "top_departments": [
+      "材料科學與工程學系",
+      "電機工程學系",
+      "工業工程與系統管理學系"
+     ]
+    }
+   ],
+   "postings": 13,
+   "openings": 35,
+   "salary_floor_median": 33500,
+   "salary_samples": 12,
+   "salary_ceiling_median": 40000,
+   "salary_ceiling_samples": 7
+  },
+  "梧棲區": {
+   "graduates_nearby": 0,
+   "schools": [],
+   "postings": 68,
+   "openings": 365,
+   "salary_floor_median": 32394,
+   "salary_samples": 49,
+   "salary_ceiling_median": 37000,
+   "salary_ceiling_samples": 36
+  },
+  "豐原區": {
+   "graduates_nearby": 0,
+   "schools": [],
+   "postings": 33,
+   "openings": 132,
+   "salary_floor_median": 31500,
+   "salary_samples": 30,
+   "salary_ceiling_median": 38430,
+   "salary_ceiling_samples": 19
+  },
+  "東勢區": {
+   "graduates_nearby": 0,
+   "schools": [],
+   "postings": 0,
+   "openings": 0,
+   "salary_floor_median": null,
+   "salary_samples": 0,
+   "salary_ceiling_median": null,
+   "salary_ceiling_samples": 0
+  },
+  "后里區": {
+   "graduates_nearby": 0,
+   "schools": [],
+   "postings": 71,
+   "openings": 430,
+   "salary_floor_median": 33000,
+   "salary_samples": 58,
+   "salary_ceiling_median": 38000,
+   "salary_ceiling_samples": 27
+  },
+  "神岡區": {
+   "graduates_nearby": 780,
+   "schools": [
+    {
+     "name": "僑光科技大學",
+     "district": "西屯區",
+     "km": 8.8,
+     "graduates": 17,
+     "top_departments": [
+      "電腦輔助工業設計系_精密機械生產製造與管理專班",
+      "智慧自動化工程系"
+     ]
+    },
+    {
+     "name": "逢甲大學",
+     "district": "西屯區",
+     "km": 9.6,
+     "graduates": 763,
+     "top_departments": [
+      "材料科學與工程學系",
+      "電機工程學系",
+      "工業工程與系統管理學系"
+     ]
+    }
+   ],
+   "postings": 127,
+   "openings": 473,
+   "salary_floor_median": 31654,
+   "salary_samples": 116,
+   "salary_ceiling_median": 36500,
+   "salary_ceiling_samples": 60
+  },
+  "新社區": {
+   "graduates_nearby": 0,
+   "schools": [],
+   "postings": 4,
+   "openings": 6,
+   "salary_floor_median": 34750,
+   "salary_samples": 4,
+   "salary_ceiling_median": 42000,
+   "salary_ceiling_samples": 3
+  },
+  "石岡區": {
+   "graduates_nearby": 0,
+   "schools": [],
+   "postings": 9,
+   "openings": 30,
+   "salary_floor_median": 32000,
+   "salary_samples": 9,
+   "salary_ceiling_median": null,
+   "salary_ceiling_samples": 0
+  },
+  "外埔區": {
+   "graduates_nearby": 0,
+   "schools": [],
+   "postings": 27,
+   "openings": 116,
+   "salary_floor_median": 32500,
+   "salary_samples": 24,
+   "salary_ceiling_median": 38430,
+   "salary_ceiling_samples": 21
+  },
+  "大肚區": {
+   "graduates_nearby": 290,
+   "schools": [
+    {
+     "name": "東海大學",
+     "district": "西屯區",
+     "km": 6.8,
+     "graduates": 290,
+     "top_departments": [
+      "工業工程與經營資訊學系",
+      "電機工程學系",
+      "化學工程與材料工程學系"
+     ]
+    }
+   ],
+   "postings": 47,
+   "openings": 240,
+   "salary_floor_median": 33000,
+   "salary_samples": 45,
+   "salary_ceiling_median": 37500,
+   "salary_ceiling_samples": 40
+  },
+  "大甲區": {
+   "graduates_nearby": 0,
+   "schools": [],
+   "postings": 60,
+   "openings": 241,
+   "salary_floor_median": 31500,
+   "salary_samples": 56,
+   "salary_ceiling_median": 35000,
+   "salary_ceiling_samples": 50
+  },
+  "大安區": {
+   "graduates_nearby": 0,
+   "schools": [],
+   "postings": 5,
+   "openings": 30,
+   "salary_floor_median": 31500,
+   "salary_samples": 5,
+   "salary_ceiling_median": 34500,
+   "salary_ceiling_samples": 5
+  },
+  "清水區": {
+   "graduates_nearby": 0,
+   "schools": [],
+   "postings": 40,
+   "openings": 145,
+   "salary_floor_median": 31500,
+   "salary_samples": 38,
+   "salary_ceiling_median": 35000,
+   "salary_ceiling_samples": 32
+  },
+  "霧峰區": {
+   "graduates_nearby": 1339,
+   "schools": [
+    {
+     "name": "朝陽科技大學",
+     "district": "霧峰區",
+     "km": 2.8,
+     "graduates": 189,
+     "top_departments": [
+      "工業工程與管理系",
+      "航空機械系",
+      "工業工程與管理系_國際學生產學合作專班"
+     ]
+    },
+    {
+     "name": "修平學校財團法人修平科技大學",
+     "district": "大里區",
+     "km": 5.8,
+     "graduates": 428,
+     "top_departments": [
+      "機械工程系",
+      "電機工程系",
+      "工業工程與管理系"
+     ]
+    },
+    {
+     "name": "國立中興大學",
+     "district": "南區",
+     "km": 9.6,
+     "graduates": 722,
+     "top_departments": [
+      "電機工程學系",
+      "機械工程學系",
+      "材料科學與工程學系"
+     ]
+    }
+   ],
+   "postings": 50,
+   "openings": 173,
+   "salary_floor_median": 31500,
+   "salary_samples": 43,
+   "salary_ceiling_median": 35000,
+   "salary_ceiling_samples": 34
+  },
+  "大里區": {
+   "graduates_nearby": 2691,
+   "schools": [
+    {
+     "name": "修平學校財團法人修平科技大學",
+     "district": "大里區",
+     "km": 1.5,
+     "graduates": 428,
+     "top_departments": [
+      "機械工程系",
+      "電機工程系",
+      "工業工程與管理系"
+     ]
+    },
+    {
+     "name": "國立中興大學",
+     "district": "南區",
+     "km": 3.3,
+     "graduates": 722,
+     "top_departments": [
+      "電機工程學系",
+      "機械工程學系",
+      "材料科學與工程學系"
+     ]
+    },
+    {
+     "name": "朝陽科技大學",
+     "district": "霧峰區",
+     "km": 3.6,
+     "graduates": 189,
+     "top_departments": [
+      "工業工程與管理系",
+      "航空機械系",
+      "工業工程與管理系_國際學生產學合作專班"
+     ]
+    },
+    {
+     "name": "國立勤益科技大學",
+     "district": "太平區",
+     "km": 6.2,
+     "graduates": 1352,
+     "top_departments": [
+      "工業工程與管理系",
+      "機械工程系",
+      "電機工程系"
+     ]
+    }
+   ],
+   "postings": 93,
+   "openings": 459,
+   "salary_floor_median": 31500,
+   "salary_samples": 82,
+   "salary_ceiling_median": 34965,
+   "salary_ceiling_samples": 71
+  },
+  "南區": {
+   "graduates_nearby": 3761,
+   "schools": [
+    {
+     "name": "國立中興大學",
+     "district": "南區",
+     "km": 1.1,
+     "graduates": 722,
+     "top_departments": [
+      "電機工程學系",
+      "機械工程學系",
+      "材料科學與工程學系"
+     ]
+    },
+    {
+     "name": "修平學校財團法人修平科技大學",
+     "district": "大里區",
+     "km": 5.4,
+     "graduates": 428,
+     "top_departments": [
+      "機械工程系",
+      "電機工程系",
+      "工業工程與管理系"
+     ]
+    },
+    {
+     "name": "逢甲大學",
+     "district": "西屯區",
+     "km": 6.8,
+     "graduates": 763,
+     "top_departments": [
+      "材料科學與工程學系",
+      "電機工程學系",
+      "工業工程與系統管理學系"
+     ]
+    },
+    {
+     "name": "國立勤益科技大學",
+     "district": "太平區",
+     "km": 7.2,
+     "graduates": 1352,
+     "top_departments": [
+      "工業工程與管理系",
+      "機械工程系",
+      "電機工程系"
+     ]
+    },
+    {
+     "name": "朝陽科技大學",
+     "district": "霧峰區",
+     "km": 7.6,
+     "graduates": 189,
+     "top_departments": [
+      "工業工程與管理系",
+      "航空機械系",
+      "工業工程與管理系_國際學生產學合作專班"
+     ]
+    },
+    {
+     "name": "僑光科技大學",
+     "district": "西屯區",
+     "km": 7.9,
+     "graduates": 17,
+     "top_departments": [
+      "電腦輔助工業設計系_精密機械生產製造與管理專班",
+      "智慧自動化工程系"
+     ]
+    },
+    {
+     "name": "東海大學",
+     "district": "西屯區",
+     "km": 8.9,
+     "graduates": 290,
+     "top_departments": [
+      "工業工程與經營資訊學系",
+      "電機工程學系",
+      "化學工程與材料工程學系"
+     ]
+    }
+   ],
+   "postings": 8,
+   "openings": 31,
+   "salary_floor_median": 35000,
+   "salary_samples": 8,
+   "salary_ceiling_median": 40000,
+   "salary_ceiling_samples": 8
+  },
+  "烏日區": {
+   "graduates_nearby": 1339,
+   "schools": [
+    {
+     "name": "國立中興大學",
+     "district": "南區",
+     "km": 6.9,
+     "graduates": 722,
+     "top_departments": [
+      "電機工程學系",
+      "機械工程學系",
+      "材料科學與工程學系"
+     ]
+    },
+    {
+     "name": "修平學校財團法人修平科技大學",
+     "district": "大里區",
+     "km": 9.2,
+     "graduates": 428,
+     "top_departments": [
+      "機械工程系",
+      "電機工程系",
+      "工業工程與管理系"
+     ]
+    },
+    {
+     "name": "朝陽科技大學",
+     "district": "霧峰區",
+     "km": 9.5,
+     "graduates": 189,
+     "top_departments": [
+      "工業工程與管理系",
+      "航空機械系",
+      "工業工程與管理系_國際學生產學合作專班"
+     ]
+    }
+   ],
+   "postings": 47,
+   "openings": 187,
+   "salary_floor_median": 32000,
+   "salary_samples": 44,
+   "salary_ceiling_median": 36300,
+   "salary_ceiling_samples": 39
+  },
+  "中區": {
+   "graduates_nearby": 3761,
+   "schools": [
+    {
+     "name": "國立中興大學",
+     "district": "南區",
+     "km": 2.4,
+     "graduates": 722,
+     "top_departments": [
+      "電機工程學系",
+      "機械工程學系",
+      "材料科學與工程學系"
+     ]
+    },
+    {
+     "name": "國立勤益科技大學",
+     "district": "太平區",
+     "km": 5.1,
+     "graduates": 1352,
+     "top_departments": [
+      "工業工程與管理系",
+      "機械工程系",
+      "電機工程系"
+     ]
+    },
+    {
+     "name": "逢甲大學",
+     "district": "西屯區",
+     "km": 5.3,
+     "graduates": 763,
+     "top_departments": [
+      "材料科學與工程學系",
+      "電機工程學系",
+      "工業工程與系統管理學系"
+     ]
+    },
+    {
+     "name": "修平學校財團法人修平科技大學",
+     "district": "大里區",
+     "km": 5.9,
+     "graduates": 428,
+     "top_departments": [
+      "機械工程系",
+      "電機工程系",
+      "工業工程與管理系"
+     ]
+    },
+    {
+     "name": "僑光科技大學",
+     "district": "西屯區",
+     "km": 6.4,
+     "graduates": 17,
+     "top_departments": [
+      "電腦輔助工業設計系_精密機械生產製造與管理專班",
+      "智慧自動化工程系"
+     ]
+    },
+    {
+     "name": "東海大學",
+     "district": "西屯區",
+     "km": 8.7,
+     "graduates": 290,
+     "top_departments": [
+      "工業工程與經營資訊學系",
+      "電機工程學系",
+      "化學工程與材料工程學系"
+     ]
+    },
+    {
+     "name": "朝陽科技大學",
+     "district": "霧峰區",
+     "km": 8.8,
+     "graduates": 189,
+     "top_departments": [
+      "工業工程與管理系",
+      "航空機械系",
+      "工業工程與管理系_國際學生產學合作專班"
+     ]
+    }
+   ],
+   "postings": 3,
+   "openings": 30,
+   "salary_floor_median": 41000,
+   "salary_samples": 3,
+   "salary_ceiling_median": 40000,
+   "salary_ceiling_samples": 1
+  },
+  "西區": {
+   "graduates_nearby": 3761,
+   "schools": [
+    {
+     "name": "國立中興大學",
+     "district": "南區",
+     "km": 3.0,
+     "graduates": 722,
+     "top_departments": [
+      "電機工程學系",
+      "機械工程學系",
+      "材料科學與工程學系"
+     ]
+    },
+    {
+     "name": "逢甲大學",
+     "district": "西屯區",
+     "km": 4.1,
+     "graduates": 763,
+     "top_departments": [
+      "材料科學與工程學系",
+      "電機工程學系",
+      "工業工程與系統管理學系"
+     ]
+    },
+    {
+     "name": "僑光科技大學",
+     "district": "西屯區",
+     "km": 5.2,
+     "graduates": 17,
+     "top_departments": [
+      "電腦輔助工業設計系_精密機械生產製造與管理專班",
+      "智慧自動化工程系"
+     ]
+    },
+    {
+     "name": "國立勤益科技大學",
+     "district": "太平區",
+     "km": 6.5,
+     "graduates": 1352,
+     "top_departments": [
+      "工業工程與管理系",
+      "機械工程系",
+      "電機工程系"
+     ]
+    },
+    {
+     "name": "東海大學",
+     "district": "西屯區",
+     "km": 7.2,
+     "graduates": 290,
+     "top_departments": [
+      "工業工程與經營資訊學系",
+      "電機工程學系",
+      "化學工程與材料工程學系"
+     ]
+    },
+    {
+     "name": "修平學校財團法人修平科技大學",
+     "district": "大里區",
+     "km": 7.2,
+     "graduates": 428,
+     "top_departments": [
+      "機械工程系",
+      "電機工程系",
+      "工業工程與管理系"
+     ]
+    },
+    {
+     "name": "朝陽科技大學",
+     "district": "霧峰區",
+     "km": 9.9,
+     "graduates": 189,
+     "top_departments": [
+      "工業工程與管理系",
+      "航空機械系",
+      "工業工程與管理系_國際學生產學合作專班"
+     ]
+    }
+   ],
+   "postings": 3,
+   "openings": 3,
+   "salary_floor_median": 31000,
+   "salary_samples": 3,
+   "salary_ceiling_median": 34000,
+   "salary_ceiling_samples": 2
+  },
+  "南屯區": {
+   "graduates_nearby": 1792,
+   "schools": [
+    {
+     "name": "東海大學",
+     "district": "西屯區",
+     "km": 4.4,
+     "graduates": 290,
+     "top_departments": [
+      "工業工程與經營資訊學系",
+      "電機工程學系",
+      "化學工程與材料工程學系"
+     ]
+    },
+    {
+     "name": "逢甲大學",
+     "district": "西屯區",
+     "km": 5.6,
+     "graduates": 763,
+     "top_departments": [
+      "材料科學與工程學系",
+      "電機工程學系",
+      "工業工程與系統管理學系"
+     ]
+    },
+    {
+     "name": "僑光科技大學",
+     "district": "西屯區",
+     "km": 6.2,
+     "graduates": 17,
+     "top_departments": [
+      "電腦輔助工業設計系_精密機械生產製造與管理專班",
+      "智慧自動化工程系"
+     ]
+    },
+    {
+     "name": "國立中興大學",
+     "district": "南區",
+     "km": 6.6,
+     "graduates": 722,
+     "top_departments": [
+      "電機工程學系",
+      "機械工程學系",
+      "材料科學與工程學系"
+     ]
+    }
+   ],
+   "postings": 76,
+   "openings": 382,
+   "salary_floor_median": 35000,
+   "salary_samples": 63,
+   "salary_ceiling_median": 39060,
+   "salary_ceiling_samples": 39
+  },
+  "北區": {
+   "graduates_nearby": 3572,
+   "schools": [
+    {
+     "name": "國立中興大學",
+     "district": "南區",
+     "km": 4.2,
+     "graduates": 722,
+     "top_departments": [
+      "電機工程學系",
+      "機械工程學系",
+      "材料科學與工程學系"
+     ]
+    },
+    {
+     "name": "逢甲大學",
+     "district": "西屯區",
+     "km": 4.3,
+     "graduates": 763,
+     "top_departments": [
+      "材料科學與工程學系",
+      "電機工程學系",
+      "工業工程與系統管理學系"
+     ]
+    },
+    {
+     "name": "國立勤益科技大學",
+     "district": "太平區",
+     "km": 5.0,
+     "graduates": 1352,
+     "top_departments": [
+      "工業工程與管理系",
+      "機械工程系",
+      "電機工程系"
+     ]
+    },
+    {
+     "name": "僑光科技大學",
+     "district": "西屯區",
+     "km": 5.3,
+     "graduates": 17,
+     "top_departments": [
+      "電腦輔助工業設計系_精密機械生產製造與管理專班",
+      "智慧自動化工程系"
+     ]
+    },
+    {
+     "name": "修平學校財團法人修平科技大學",
+     "district": "大里區",
+     "km": 7.4,
+     "graduates": 428,
+     "top_departments": [
+      "機械工程系",
+      "電機工程系",
+      "工業工程與管理系"
+     ]
+    },
+    {
+     "name": "東海大學",
+     "district": "西屯區",
+     "km": 8.3,
+     "graduates": 290,
+     "top_departments": [
+      "工業工程與經營資訊學系",
+      "電機工程學系",
+      "化學工程與材料工程學系"
+     ]
+    }
+   ],
+   "postings": 3,
+   "openings": 4,
+   "salary_floor_median": 33000,
+   "salary_samples": 1,
+   "salary_ceiling_median": 38000,
+   "salary_ceiling_samples": 1
+  },
+  "西屯區": {
+   "graduates_nearby": 1792,
+   "schools": [
+    {
+     "name": "僑光科技大學",
+     "district": "西屯區",
+     "km": 1.8,
+     "graduates": 17,
+     "top_departments": [
+      "電腦輔助工業設計系_精密機械生產製造與管理專班",
+      "智慧自動化工程系"
+     ]
+    },
+    {
+     "name": "東海大學",
+     "district": "西屯區",
+     "km": 2.3,
+     "graduates": 290,
+     "top_departments": [
+      "工業工程與經營資訊學系",
+      "電機工程學系",
+      "化學工程與材料工程學系"
+     ]
+    },
+    {
+     "name": "逢甲大學",
+     "district": "西屯區",
+     "km": 2.3,
+     "graduates": 763,
+     "top_departments": [
+      "材料科學與工程學系",
+      "電機工程學系",
+      "工業工程與系統管理學系"
+     ]
+    },
+    {
+     "name": "國立中興大學",
+     "district": "南區",
+     "km": 8.7,
+     "graduates": 722,
+     "top_departments": [
+      "電機工程學系",
+      "機械工程學系",
+      "材料科學與工程學系"
+     ]
+    }
+   ],
+   "postings": 150,
+   "openings": 803,
+   "salary_floor_median": 34500,
+   "salary_samples": 113,
+   "salary_ceiling_median": 38441,
+   "salary_ceiling_samples": 71
+  },
+  "北屯區": {
+   "graduates_nearby": 2854,
+   "schools": [
+    {
+     "name": "國立勤益科技大學",
+     "district": "太平區",
+     "km": 4.8,
+     "graduates": 1352,
+     "top_departments": [
+      "工業工程與管理系",
+      "機械工程系",
+      "電機工程系"
+     ]
+    },
+    {
+     "name": "逢甲大學",
+     "district": "西屯區",
+     "km": 8.3,
+     "graduates": 763,
+     "top_departments": [
+      "材料科學與工程學系",
+      "電機工程學系",
+      "工業工程與系統管理學系"
+     ]
+    },
+    {
+     "name": "僑光科技大學",
+     "district": "西屯區",
+     "km": 8.8,
+     "graduates": 17,
+     "top_departments": [
+      "電腦輔助工業設計系_精密機械生產製造與管理專班",
+      "智慧自動化工程系"
+     ]
+    },
+    {
+     "name": "國立中興大學",
+     "district": "南區",
+     "km": 9.3,
+     "graduates": 722,
+     "top_departments": [
+      "電機工程學系",
+      "機械工程學系",
+      "材料科學與工程學系"
+     ]
+    }
+   ],
+   "postings": 12,
+   "openings": 27,
+   "salary_floor_median": 35500,
+   "salary_samples": 8,
+   "salary_ceiling_median": 38430,
+   "salary_ceiling_samples": 3
+  },
+  "潭子區": {
+   "graduates_nearby": 2132,
+   "schools": [
+    {
+     "name": "逢甲大學",
+     "district": "西屯區",
+     "km": 7.3,
+     "graduates": 763,
+     "top_departments": [
+      "材料科學與工程學系",
+      "電機工程學系",
+      "工業工程與系統管理學系"
+     ]
+    },
+    {
+     "name": "僑光科技大學",
+     "district": "西屯區",
+     "km": 7.3,
+     "graduates": 17,
+     "top_departments": [
+      "電腦輔助工業設計系_精密機械生產製造與管理專班",
+      "智慧自動化工程系"
+     ]
+    },
+    {
+     "name": "國立勤益科技大學",
+     "district": "太平區",
+     "km": 7.6,
+     "graduates": 1352,
+     "top_departments": [
+      "工業工程與管理系",
+      "機械工程系",
+      "電機工程系"
+     ]
+    }
+   ],
+   "postings": 52,
+   "openings": 393,
+   "salary_floor_median": 32000,
+   "salary_samples": 51,
+   "salary_ceiling_median": 37085,
+   "salary_ceiling_samples": 30
+  },
+  "東區": {
+   "graduates_nearby": 3471,
+   "schools": [
+    {
+     "name": "國立中興大學",
+     "district": "南區",
+     "km": 2.9,
+     "graduates": 722,
+     "top_departments": [
+      "電機工程學系",
+      "機械工程學系",
+      "材料科學與工程學系"
+     ]
+    },
+    {
+     "name": "國立勤益科技大學",
+     "district": "太平區",
+     "km": 3.4,
+     "graduates": 1352,
+     "top_departments": [
+      "工業工程與管理系",
+      "機械工程系",
+      "電機工程系"
+     ]
+    },
+    {
+     "name": "修平學校財團法人修平科技大學",
+     "district": "大里區",
+     "km": 4.7,
+     "graduates": 428,
+     "top_departments": [
+      "機械工程系",
+      "電機工程系",
+      "工業工程與管理系"
+     ]
+    },
+    {
+     "name": "逢甲大學",
+     "district": "西屯區",
+     "km": 6.9,
+     "graduates": 763,
+     "top_departments": [
+      "材料科學與工程學系",
+      "電機工程學系",
+      "工業工程與系統管理學系"
+     ]
+    },
+    {
+     "name": "朝陽科技大學",
+     "district": "霧峰區",
+     "km": 7.7,
+     "graduates": 189,
+     "top_departments": [
+      "工業工程與管理系",
+      "航空機械系",
+      "工業工程與管理系_國際學生產學合作專班"
+     ]
+    },
+    {
+     "name": "僑光科技大學",
+     "district": "西屯區",
+     "km": 7.9,
+     "graduates": 17,
+     "top_departments": [
+      "電腦輔助工業設計系_精密機械生產製造與管理專班",
+      "智慧自動化工程系"
+     ]
+    }
+   ],
+   "postings": 14,
+   "openings": 28,
+   "salary_floor_median": 33250,
+   "salary_samples": 14,
+   "salary_ceiling_median": 40000,
+   "salary_ceiling_samples": 14
+  },
+  "太平區": {
+   "graduates_nearby": 2691,
+   "schools": [
+    {
+     "name": "國立勤益科技大學",
+     "district": "太平區",
+     "km": 5.9,
+     "graduates": 1352,
+     "top_departments": [
+      "工業工程與管理系",
+      "機械工程系",
+      "電機工程系"
+     ]
+    },
+    {
+     "name": "修平學校財團法人修平科技大學",
+     "district": "大里區",
+     "km": 5.9,
+     "graduates": 428,
+     "top_departments": [
+      "機械工程系",
+      "電機工程系",
+      "工業工程與管理系"
+     ]
+    },
+    {
+     "name": "朝陽科技大學",
+     "district": "霧峰區",
+     "km": 6.8,
+     "graduates": 189,
+     "top_departments": [
+      "工業工程與管理系",
+      "航空機械系",
+      "工業工程與管理系_國際學生產學合作專班"
+     ]
+    },
+    {
+     "name": "國立中興大學",
+     "district": "南區",
+     "km": 9.6,
+     "graduates": 722,
+     "top_departments": [
+      "電機工程學系",
+      "機械工程學系",
+      "材料科學與工程學系"
+     ]
+    }
+   ],
+   "postings": 68,
+   "openings": 387,
+   "salary_floor_median": 31500,
+   "salary_samples": 63,
+   "salary_ceiling_median": 34965,
+   "salary_ceiling_samples": 57
+  },
+  "和平區": {
+   "graduates_nearby": 0,
+   "schools": [],
+   "postings": 0,
+   "openings": 0,
+   "salary_floor_median": null,
+   "salary_samples": 0,
+   "salary_ceiling_median": null,
+   "salary_ceiling_samples": 0
+  }
+ }
+}

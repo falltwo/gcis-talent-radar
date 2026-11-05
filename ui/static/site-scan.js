@@ -15,22 +15,28 @@
   const MIN_FACTORIES = 100, MIN_SETUPS = 30;
   const PREFERENCE = {'上下游群聚優先':'cluster','避開激烈競爭':'competition','靠近交通樞紐':null};
   const NO_DATA_WORDS = ['交流道','國道','交通','港口','機場','高鐵'];
-  let map, geo, activity, stats, intent, industry, checked = {}, boosted = {}, ranking = [], frame = 0, started = false;
+  let map, geo, activity, stats, talent, intent, industry, checked = {}, boosted = {}, ranking = [], frame = 0, started = false;
   let revealed = false, located = false;
 
   const stage = $('city-stage');
   const left = document.createElement('aside');
   left.className = 'scan-side scan-left';left.setAttribute('aria-label','選址條件');left.inert = true;
   left.innerHTML = `
-    <div class="scan-pane"><h3>從需求擷取的條件</h3><div class="scan-body"><div class="scan-tags" id="scan-tags"></div><p class="scan-note" id="scan-intent-note"></p></div></div>
-    <div class="scan-pane"><h3>商工行政環境篩選</h3><div class="scan-body"><div id="scan-criteria"></div><p class="scan-note" id="scan-gap"></p></div></div>
+    <div class="scan-pane scan-report-only"><h3>1. 人才供給與職缺需求</h3><div class="scan-body"><div id="report-supply"></div><p class="scan-note" id="report-supply-note"></p></div></div>
+    <div class="scan-pane scan-report-only"><h3>2. 附近的關鍵學校</h3><div class="scan-body"><div id="report-schools"></div></div></div>
+    <div class="scan-pane scan-rank-only"><h3>從需求擷取的條件</h3><div class="scan-body"><div class="scan-tags" id="scan-tags"></div><p class="scan-note" id="scan-intent-note"></p></div></div>
+    <div class="scan-pane scan-rank-only"><h3>商工行政環境篩選</h3><div class="scan-body"><div id="scan-criteria"></div><p class="scan-note" id="scan-gap"></p></div></div>
     <button type="button" class="scan-close" id="scan-close">結束掃描，回到街區地圖</button>`;
   const right = document.createElement('aside');
   right.className = 'scan-side scan-right';right.setAttribute('aria-label','推薦建廠熱區');right.inert = true;
   right.innerHTML = `
-    <div class="scan-pane"><h3>商工資料推薦熱區 <span>Top 12</span></h3>
+    <div class="scan-pane scan-report-only"><h3>3. 職缺開出的月薪</h3><div class="scan-body"><div id="report-salary"></div><p class="scan-note">雇主在就業通刊登的薪資，不是求職者的期望薪資。</p></div></div>
+    <div class="scan-pane scan-report-only"><h3>4. 招募建議 <span>系統依上面數字產生，非 AI</span></h3><div class="scan-body"><ul class="report-advice" id="report-advice"></ul>
+      <div class="report-actions"><button type="button" id="report-back">← 回到排名</button><a id="report-full" target="_blank" rel="noopener">完整比較報告 ↗</a></div>
+      <p class="scan-note" id="report-source"></p></div></div>
+    <div class="scan-pane scan-rank-only"><h3>商工資料推薦熱區 <span>Top 12</span></h3>
       <div class="scan-body"><ol class="scan-grid" id="scan-podium"></ol>
-      <a class="scan-compare" id="scan-compare" target="_blank" rel="noopener">比較前三區的人才 ↗</a>
+      <button type="button" class="scan-compare" id="scan-compare">比較前三區的人才</button>
       <details class="scan-check"><summary><b>換權重會換答案嗎？</b><span id="scan-check-summary"></span></summary><ul id="scan-check-list"></ul></details>
       <ol class="scan-grid scan-rest" id="scan-grid" start="4"></ol>
       <p class="scan-note" id="scan-source"></p></div></div>`;
@@ -163,8 +169,7 @@
     $('scan-podium').replaceChildren(...cards.slice(0, 3));
     $('scan-grid').replaceChildren(...cards.slice(3));
     const three = top.slice(0, 3).map(item => item.name);
-    $('scan-compare').href = '/compare?' + new URLSearchParams({districts:three.join(',')});
-    $('scan-compare').textContent = `比較${three.join('、')}的人才 ↗`;
+    $('scan-compare').textContent = `比較${three.join('、')}的人才 →`;
     const runs = sensitivity(), firsts = [...new Set(runs.map(run => run.first))];
     const sameTop3 = runs.every(run => run.top3.slice().sort().join() === three.slice().sort().join());
     $('scan-check-summary').textContent = firsts.length === 1
@@ -227,9 +232,9 @@
     map.addSource('scan', {type:'geojson', data:geo, promoteId:'TOWNNAME'});
     const lit = ['coalesce', ['feature-state','lit'], 0], score = ['coalesce', ['feature-state','score'], 0];
     map.addLayer({id:'scan-fill', type:'fill', source:'scan', paint:{
-      'fill-color':['case', ['all', ['boolean', ['feature-state','top'], false], ['>=', lit, 1]], '#f97316', ['boolean', ['feature-state','out'], false], '#9aa3ae',
+      'fill-color':['case', ['boolean', ['feature-state','pick'], false], '#fb923c', ['all', ['boolean', ['feature-state','top'], false], ['>=', lit, 1]], '#f97316', ['boolean', ['feature-state','out'], false], '#9aa3ae',
         ['interpolate', ['linear'], ['*', score, lit], 0, '#1e2b40', .5, '#3f7fd0', 1, '#9fd0ff']],
-      'fill-opacity':['*', lit, ['case', ['boolean', ['feature-state','out'], false], .25, .66]]}});
+      'fill-opacity':['*', lit, ['case', ['boolean', ['feature-state','dim'], false], .12, ['boolean', ['feature-state','out'], false], .25, .66]]}});
     map.addLayer({id:'scan-edge', type:'line', source:'scan', paint:{'line-color':'#ffffff', 'line-width':.8, 'line-opacity':['*', lit, .7]}});
     map.addLayer({id:'scan-top-glow', type:'line', source:'scan', filter:['==', ['get','TOWNNAME'], ''], paint:{'line-color':'#fb923c', 'line-width':9, 'line-blur':6, 'line-opacity':.55}});
     map.addLayer({id:'scan-top', type:'line', source:'scan', filter:['==', ['get','TOWNNAME'], ''], paint:{'line-color':'#ea580c', 'line-width':2.4, 'line-opacity':0, 'line-opacity-transition':{duration:400}}});
@@ -237,6 +242,144 @@
   function setVisible(on) {
     for (const id of ['scan-fill','scan-edge','scan-top-glow','scan-top']) if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', on ? 'visible' : 'none');
   }
+
+  // Three-district report: what the open data can say about hiring in each place, nothing estimated.
+  function centre(name) {
+    const [[w, s], [e, n]] = bounds(geo.features.find(f => f.properties.TOWNNAME === name));
+    return [(w + e) / 2, (s + n) / 2];
+  }
+  function bar(label, value, max, unit, tone) {
+    const row = document.createElement('div');row.className = 'report-bar ' + tone;
+    row.innerHTML = '<span></span><i><b></b></i><em></em>';
+    row.firstChild.textContent = label;
+    row.querySelector('b').style.width = (max ? Math.max(2, value / max * 100) : 0) + '%';
+    row.querySelector('em').textContent = value.toLocaleString() + ' ' + unit;
+    return row;
+  }
+  const short = name => name.replace('學校財團法人修平', '');
+  function section(name) {
+    const box = document.createElement('section');box.className = 'report-district';
+    const head = document.createElement('h4');head.textContent = name;box.append(head);
+    return [box, head];
+  }
+  function renderReport(three) {
+    const rows = three.map(name => ({name, ...talent.districts[name]}));
+    rows.forEach(row => {row.ratio = row.graduates_nearby ? row.openings / row.graduates_nearby : null;});
+    const order = rows.filter(row => row.ratio !== null).sort((a, b) => a.ratio - b.ratio);
+    const level = row => row.ratio === null ? '附近沒有相關科系' : order.length < 2 ? '' : row === order[0] ? '三區中較容易' : row === order[order.length - 1] ? '三區中較難' : '居中';
+    const maxGrad = Math.max(...rows.map(r => r.graduates_nearby)), maxOpen = Math.max(...rows.map(r => r.openings));
+    $('report-supply').replaceChildren(...rows.map(row => {
+      const [box, head] = section(row.name);
+      const tag = document.createElement('span');tag.className = 'report-level' + (row === order[0] ? ' is-easy' : '');tag.textContent = level(row);head.append(tag);
+      const ratio = document.createElement('p');ratio.className = 'report-ratio';
+      ratio.textContent = row.ratio === null ? `${talent.radius_km} 公里內沒有大專相關科系` : `每位畢業生對應 ${row.ratio.toFixed(2)} 個職缺需求`;
+      box.append(bar('相關科系畢業生', row.graduates_nearby, maxGrad, '人', 'is-supply'), bar('製造類職缺需求', row.openings, maxOpen, '人', 'is-demand'), ratio);
+      return box;
+    }));
+    $('report-supply-note').textContent = `畢業生：區中心 ${talent.radius_km} 公里內大專校院機械、電機等相關科系 ${talent.academic_year} 學年畢業生，不含高職。職缺：就業通 ${talent.jobs_snapshot} 快照的技術、製造、工程類需求人數。沒有各區求職者人數的資料，所以這不是求職求才比。`;
+    $('report-schools').replaceChildren(...rows.map(row => {
+      const [box] = section(row.name);
+      const list = document.createElement('ul');list.className = 'report-school-list';
+      const top = row.schools.slice().sort((a, b) => b.graduates - a.graduates).slice(0, 2);
+      if (!top.length) {const li = document.createElement('li');li.textContent = `${talent.radius_km} 公里內沒有大專校院相關科系`;list.append(li);}
+      top.forEach(school => {
+        const li = document.createElement('li');li.innerHTML = '<b></b><small></small>';
+        li.firstChild.textContent = short(school.name);
+        li.lastChild.textContent = `${school.district}・距 ${school.km} 公里・相關科系 ${school.graduates} 人・${school.top_departments.slice(0, 2).join('、')}`;
+        list.append(li);
+      });
+      box.append(list);return box;
+    }));
+    const maxPay = Math.max(...rows.map(r => r.salary_ceiling_median || r.salary_floor_median || 0));
+    $('report-salary').replaceChildren(...rows.map(row => {
+      const [box] = section(row.name);
+      if (row.salary_floor_median) box.append(bar(`起薪中位數（${row.salary_samples} 筆）`, row.salary_floor_median, maxPay, '元', 'is-pay'));
+      if (row.salary_ceiling_median) box.append(bar(`上限中位數（${row.salary_ceiling_samples} 筆）`, row.salary_ceiling_median, maxPay, '元', 'is-pay-high'));
+      if (!row.salary_floor_median) {const p = document.createElement('p');p.className = 'report-ratio';p.textContent = '沒有月薪刊登';box.append(p);}
+      return box;
+    }));
+    const advice = [];
+    if (order.length) advice.push(`對照相關科系畢業生和職缺需求，${order[0].name}每位畢業生對應的職缺需求最少（${order[0].ratio.toFixed(2)}），新鮮人的招募壓力在三區中最低。`);
+    rows.filter(row => row.ratio === null).forEach(row => advice.push(`${row.name} ${talent.radius_km} 公里內沒有大專相關科系，新鮮人要從外區通勤，比較適合用刊登召募找有經驗的人。`));
+    three.forEach((a, i) => three.slice(i + 1).forEach(b => {
+      const both = talent.districts[a].schools.filter(x => talent.districts[b].schools.some(y => y.name === x.name)).map(x => short(x.name));
+      if (both.length) advice.push(`${a}和${b}附近有相同的學校（${both.slice(0, 2).join('、')}），選其中一區，另一區的學校也在通勤範圍內。`);
+    }));
+    const floors = rows.map(r => r.salary_floor_median).filter(Boolean);
+    if (floors.length > 1) advice.push(new Set(floors).size === 1
+      ? `三區開出的起薪中位數都是 ${floors[0].toLocaleString()} 元，起薪不是區分因素。`
+      : `起薪中位數最高的是${rows.find(r => r.salary_floor_median === Math.max(...floors)).name}（${Math.max(...floors).toLocaleString()} 元），在那裡招人起薪要開得比較高。`);
+    advice.push('這只看新鮮人供給和公開職缺；沒有求職者人數、期望薪資和地價資料，最後仍要實地評估。');
+    $('report-advice').replaceChildren(...advice.map(text => {const li = document.createElement('li');li.textContent = text;return li;}));
+    $('report-full').href = '/compare?' + new URLSearchParams({districts:three.join(',')});
+    $('report-source').textContent = `資料：${talent.sources.graduates}；${talent.sources.campuses}；${talent.sources.jobs}。`;
+  }
+  let pulse = 0;
+  function showReportMap(three) {
+    const points = three.map(centre);
+    const data = {type:'FeatureCollection', features:[
+      ...points.flatMap((a, i) => points.slice(i + 1).map(b => ({type:'Feature', properties:{}, geometry:{type:'LineString', coordinates:[a, b]}}))),
+      ...points.map((point, i) => ({type:'Feature', properties:{name:three[i]}, geometry:{type:'Point', coordinates:point}})),
+    ]};
+    if (map.getSource('report')) map.getSource('report').setData(data);
+    else {
+      map.addSource('report', {type:'geojson', data});
+      map.addLayer({id:'report-link', type:'line', source:'report', filter:['==', ['geometry-type'], 'LineString'], paint:{'line-color':'#f97316', 'line-width':2.5, 'line-dasharray':[2, 1.5], 'line-opacity':.9}});
+      map.addLayer({id:'report-pulse', type:'circle', source:'report', filter:['==', ['geometry-type'], 'Point'], paint:{'circle-color':'rgba(0,0,0,0)', 'circle-stroke-color':'#f97316', 'circle-stroke-width':2, 'circle-radius':10, 'circle-stroke-opacity':.8}});
+      map.addLayer({id:'report-node', type:'circle', source:'report', filter:['==', ['geometry-type'], 'Point'], paint:{'circle-color':'#ea580c', 'circle-radius':6, 'circle-stroke-color':'#fff', 'circle-stroke-width':2}});
+    }
+    geo.features.forEach(f => map.setFeatureState({source:'scan', id:f.properties.TOWNNAME}, {pick:three.includes(f.properties.TOWNNAME), dim:!three.includes(f.properties.TOWNNAME)}));
+    for (const id of ['report-link','report-pulse','report-node']) map.setLayoutProperty(id, 'visibility', 'visible');
+    const boxes = three.map(name => bounds(geo.features.find(f => f.properties.TOWNNAME === name)));
+    const frameBox = [[Math.min(...boxes.map(b => b[0][0])), Math.min(...boxes.map(b => b[0][1]))], [Math.max(...boxes.map(b => b[1][0])), Math.max(...boxes.map(b => b[1][1]))]];
+    map.fitBounds(frameBox, {padding:padding(), pitch:0, bearing:0, duration:reduced ? 0 : 1200});
+    cancelAnimationFrame(pulse);
+    if (reduced) return;
+    // A ring breathes out of each district centre: three radar locks at once.
+    const tick = now => {
+      const t = (now % 1600) / 1600;
+      map.setPaintProperty('report-pulse', 'circle-radius', 8 + t * 26);
+      map.setPaintProperty('report-pulse', 'circle-stroke-opacity', .85 * (1 - t));
+      pulse = requestAnimationFrame(tick);
+    };
+    pulse = requestAnimationFrame(tick);
+  }
+  function hideReportMap() {
+    cancelAnimationFrame(pulse);
+    if (!map || !geo) return;
+    for (const id of ['report-link','report-pulse','report-node']) if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', 'none');
+    if (map.getSource('scan')) geo.features.forEach(f => map.setFeatureState({source:'scan', id:f.properties.TOWNNAME}, {pick:false, dim:false}));
+  }
+  // Panels slide out, swap their content, then slide back in.
+  function swap(toReport) {
+    const workspace = document.querySelector('.radar-workspace');
+    workspace.classList.add('scan-swap');
+    setTimeout(() => {
+      workspace.classList.toggle('scan-report', toReport);
+      left.scrollTop = right.scrollTop = 0;
+      workspace.classList.remove('scan-swap');
+      (toReport ? $('report-back') : $('scan-compare')).focus({preventScroll:true});
+    }, reduced ? 0 : 320);
+  }
+  async function openReport() {
+    try {
+      if (!talent) {
+        const response = await fetch('/static/district-talent.json');
+        if (!response.ok) throw Error('talent');
+        talent = await response.json();
+      }
+    } catch {status.textContent = '人才資料讀取失敗，請重新整理後再試。';return;}
+    const three = ranking.slice(0, 3).map(item => item.name);
+    renderReport(three);showReportMap(three);swap(true);
+    status.textContent = `正在比較${three.join('、')}`;
+  }
+  function closeReport() {
+    hideReportMap();swap(false);
+    map.fitBounds(bounds(), {padding:padding(), pitch:0, bearing:0, duration:reduced ? 0 : 1000});
+    status.textContent = '';
+  }
+  $('scan-compare').addEventListener('click', openReport);
+  $('report-back').addEventListener('click', closeReport);
 
   async function start() {
     if (started) return;
@@ -264,9 +407,9 @@
     setTimeout(() => {paintScores(false);renderCards();right.classList.add('cards-in');}, reduced ? 0 : 900);
   }
   function stop() {
-    cancelAnimationFrame(frame);
+    cancelAnimationFrame(frame);hideReportMap();
     const workspace = document.querySelector('.radar-workspace');
-    workspace.classList.remove('scan-active');right.classList.remove('cards-in');left.inert = true;right.inert = true;
+    workspace.classList.remove('scan-active', 'scan-report');right.classList.remove('cards-in');left.inert = true;right.inert = true;
     if (workspace.classList.contains('sidebar-collapsed')) $('sidebar-toggle').click();
     setVisible(false);started = false;revealed = located = false;status.textContent = '';
     $('map-home').click();
