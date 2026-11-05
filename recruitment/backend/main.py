@@ -5,15 +5,17 @@ import secrets
 from pathlib import Path
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta, timezone
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends, HTTPException, Request, Query
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy import create_engine, select, update, event
 from sqlalchemy.orm import sessionmaker, Session
 from sqlalchemy.exc import IntegrityError
 from dotenv import load_dotenv
 from .models import *
-from .schemas import Register, Login, Message, TemplateIn, ReferenceIn, ItemEdit
+from .schemas import Register, Login, Message, AssistantMessage, TemplateIn, ReferenceIn, ItemEdit, ExecutionRequest
 from .ai import RecruitmentAI
+from .ai import AIError
+from .assistant import plan_request, search_answer, preserve_question_topics
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 load_dotenv(PROJECT_ROOT / '.env', encoding='utf-8-sig')
@@ -88,8 +90,31 @@ def create_app(database_url=None):
         return data
     @app.get('/health')
     def health(): return {'status':'ok','parser':'openrouter' if app.state.ai.enabled else 'rules','llm_enabled':app.state.ai.enabled}
+    @app.post('/auth/demo')
+    def demo_session(request:Request,s:Session=Depends(db)):
+        # Password-free access is explicitly limited to the local demo tenant.
+        if os.getenv('RECRUITMENT_DEMO_ENABLED')!='1': raise HTTPException(404,'本機示範模式未啟用')
+        if not request.client or request.client.host not in {'127.0.0.1','::1','testclient'} or request.url.hostname not in {'127.0.0.1','localhost','::1','testserver'}:
+            raise HTTPException(403,'示範工作階段僅限本機使用')
+        if request.headers.get('origin') and request.headers['origin']!=f'{request.url.scheme}://{request.url.netloc}':
+            raise HTTPException(403,'不允許跨站建立工作階段')
+        email='local-demo@recruitment.invalid'
+        u=s.scalar(select(User).where(User.email==email))
+        if not u:
+            c=Company(company_name='本機示範公司');s.add(c);s.flush()
+            u=User(company_id=c.id,name='示範HR',email=email,password_hash=password_hash(secrets.token_urlsafe(48)))
+            s.add(u)
+            try: s.commit()
+            except IntegrityError:
+                s.rollback();u=s.scalar(select(User).where(User.email==email))
+                if not u: raise HTTPException(503,'建立示範工作階段失敗，請重試')
+        raw=secrets.token_urlsafe(32)
+        s.add(AccessToken(digest=hashlib.sha256(raw.encode()).hexdigest(),user_id=u.id,expires_at=now()+timedelta(hours=8)))
+        audit(s,u,'demo_session');s.commit()
+        return {'access_token':raw,'company_name':'本機示範公司','token_type':'bearer','expires_in':28800}
     @app.post('/auth/register', status_code=201)
     def register(body:Register,s:Session=Depends(db)):
+        if body.email.lower()=='local-demo@recruitment.invalid': raise HTTPException(422,'此信箱保留給本機示範模式')
         if os.getenv('ALLOW_REGISTRATION','true').lower() != 'true': raise HTTPException(403,'註冊已停用')
         c = Company(company_name=body.company_name); s.add(c); s.flush()
         u = User(company_id=c.id,name=body.name,email=body.email.lower(),password_hash=password_hash(body.password)); s.add(u)
@@ -105,6 +130,10 @@ def create_app(database_url=None):
         s.add(AccessToken(digest=hashlib.sha256(raw.encode()).hexdigest(),user_id=u.id,expires_at=now()+timedelta(hours=8)))
         audit(s,u,'login'); s.commit()
         return {'access_token':raw,'token_type':'bearer','expires_in':28800}
+    @app.get('/auth/me')
+    def me(u=Depends(current),s:Session=Depends(db)):
+        company=s.get(Company,u.company_id)
+        return {'id':u.id,'company_id':u.company_id,'name':u.name,'company_name':company.company_name}
     @app.post('/auth/logout',status_code=204)
     def logout(creds:HTTPAuthorizationCredentials=Depends(bearer),u=Depends(current),s:Session=Depends(db)):
         s.delete(s.get(AccessToken,hashlib.sha256(creds.credentials.encode()).hexdigest())); audit(s,u,'logout'); s.commit()
@@ -126,18 +155,64 @@ def create_app(database_url=None):
     @app.get('/salary-templates')
     def salaries(u=Depends(current),s:Session=Depends(db)):
         return [serialize(x) for x in s.scalars(select(SalaryTemplate).where(SalaryTemplate.company_id==u.company_id))]
-    @app.post('/batches',status_code=201)
-    def draft(body:Message,u=Depends(current),s:Session=Depends(db)):
-        try: parsed, ai_info = app.state.ai.extract(body.message)
+    def create_batch(body,u,s,salary_turns=None):
+        try: parsed, ai_info = app.state.ai.extract(body.message,**({'salary_turns':salary_turns} if salary_turns is not None else {}))
         except ValueError as e: raise HTTPException(422,str(e))
         b=RecruitmentBatch(company_id=u.company_id,created_by=u.id,original_text=body.message); s.add(b); s.flush()
         for data in parsed: s.add(RecruitmentBatchItem(batch_id=b.id,**enrich(s,u,data)))
         s.add(ChatLog(company_id=u.company_id,user_id=u.id,role='user',content=body.message))
         s.add(ChatLog(company_id=u.company_id,user_id=u.id,role='assistant',content=f'已建立草稿批次 {b.id}，請補齊缺漏欄位並確認。'))
         audit(s,u,'create_batch',b.id,{'ai':ai_info}); s.commit(); return {**view(s,b),'ai':ai_info}
+    @app.post('/batches',status_code=201)
+    def draft(body:Message,u=Depends(current),s:Session=Depends(db)):
+        return create_batch(body,u,s)
     @app.get('/batches')
     def list_batches(u=Depends(current),s:Session=Depends(db)):
         return [serialize(b) for b in s.scalars(select(RecruitmentBatch).where(RecruitmentBatch.company_id==u.company_id))]
+    @app.post('/assistant')
+    def assistant(body:AssistantMessage,u=Depends(current),s:Session=Depends(db)):
+        from agent.prompt_guard import inspect_hiring_prompt
+        previous=s.scalars(select(ChatLog).where(ChatLog.company_id==u.company_id,ChatLog.user_id==u.id).order_by(ChatLog.id.desc()).limit(12)).all()
+        messages=[{'role':r.role,'content':r.content} for r in reversed(previous)]+[{'role':'user','content':body.message}]
+        if inspect_hiring_prompt(body.message)['decision']=='REJECT':
+            result={'kind':'clarify','message':'請以工作技能、職責與必要經驗設定條件，不使用年齡、性別等個人特徵篩選。','sources':[]}
+        else:
+            try: plan=plan_request(app.state.ai,messages)
+            except (AIError,ValueError):
+                raise HTTPException(503,'助理暫時無法判斷需求，請稍後重試；未建立職缺。') from None
+            if plan['action']=='draft':
+                if inspect_hiring_prompt(plan['brief'])['decision']=='REJECT':
+                    raise HTTPException(422,'請移除個人特徵篩選條件，改以職責與技能建立職缺')
+                if len(plan['brief'])>4000:raise HTTPException(422,'這次需求過長，請分批提供職稱與人數')
+                try:
+                    created=create_batch(Message(message=plan['brief']),u,s,plan.get('salary_turns'))
+                    result={'kind':'batch','message':'已依你提供的條件建立企業職缺草稿；請審核後再刊登。','batch':created,'sources':[]}
+                except HTTPException as exc:
+                    if exc.status_code!=422:raise
+                    result={'kind':'clarify','message':str(exc.detail),'sources':[]}
+            elif plan['action']=='search':
+                from recruitment.taiwan_salary import location_in
+                query=preserve_question_topics(plan['query'],body.message)
+                if not location_in(query):query+=' 臺中市（整體，不限行政區）'
+                result={'kind':'answer',**search_answer(app.state.ai,query)}
+            else:result={'kind':'clarify','message':plan['reply'] or '請告訴我職稱與招募人數，或直接詢問職缺、薪資相關問題。','sources':[]}
+        s.add(ChatLog(company_id=u.company_id,user_id=u.id,role='user',content=body.message))
+        s.add(ChatLog(company_id=u.company_id,user_id=u.id,role='assistant',content=result['message']))
+        audit(s,u,'assistant_turn',detail={'kind':result['kind'],'sources':len(result.get('sources',[]))});s.commit()
+        return result
+    @app.get('/salary-reference')
+    def salary_reference(role:str=Query(min_length=1,max_length=120),district:str=Query(default='',max_length=80),u=Depends(current)):
+        from recruitment.taiwan_salary import get_reference
+        return get_reference(role,district)
+    @app.post('/execution/prepare')
+    def execution(body:ExecutionRequest,u=Depends(current),s:Session=Depends(db)):
+        from .execution import prepare_execution
+        b=batch(s,u,body.batch_id)
+        if b.status=='published':raise HTTPException(409,'這次職缺已刊登，請提出新的招募需求。')
+        company=s.get(Company,u.company_id)
+        try:prepared=prepare_execution(app.state.ai,view(s,b),company.company_name,body.district)
+        except (ValueError,AIError) as exc:raise HTTPException(422,str(exc) if isinstance(exc,ValueError) else 'AI擬定內容暫時未完成，請重試。') from None
+        return {'jobs':prepared,'requires_final_confirmation':True}
     @app.get('/batches/{bid}')
     def get_batch(bid:int,u=Depends(current),s:Session=Depends(db)): return view(s,batch(s,u,bid))
     @app.put('/batches/{bid}/items/{iid}')

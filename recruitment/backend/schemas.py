@@ -13,6 +13,9 @@ class Login(Strict):
     password: str = Field(max_length=128)
 class Message(Strict):
     message: str = Field(min_length=1, max_length=4000)
+class ExecutionRequest(Strict):
+    batch_id:int=Field(gt=0)
+    district:str=Field(default='',max_length=80)
 class SalaryFields(Strict):
     salary_min: int | None = Field(default=None, gt=0, le=1000000000)
     salary_max: int | None = Field(default=None, gt=0, le=1000000000)
@@ -41,3 +44,6 @@ class ItemEdit(SalaryFields):
     requirements: str = Field(max_length=10000)
     location: str = Field(max_length=200)
     confirm_salary: bool = False
+
+class AssistantMessage(Message):
+    district: str = Field(default="", max_length=80)

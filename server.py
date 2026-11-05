@@ -39,6 +39,8 @@ def find_available_port(preferred_port=8888):
 
 if __name__ == "__main__":
     load_local_env()
+    os.environ.setdefault('RECRUITMENT_DEMO_ENABLED','1')
+    os.environ.setdefault('RECRUITMENT_AGENT_DEMO_AI_ENABLED','1')
     port = find_available_port(8888)
     print("="*65)
     print("🚀 啟動本機端服務：區域產業 × 高教人才供需錯配預警系統 (v1.0)")
