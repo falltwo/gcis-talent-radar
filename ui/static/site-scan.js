@@ -6,9 +6,9 @@
   // ponytail: keyword rules stand in for the AI parser; first match wins. Swap for the real parser when it exists.
   const INDUSTRY_WORDS = [['機械','機械設備業'],['金屬','金屬製品業'],['加工','金屬製品業'],['塑膠','塑膠製品業'],['半導體','電子零組件業'],['電子','電子零組件業'],['光學','電腦電子產品及光學製品業'],['食品','食品及飼品業'],['飲料','飲料及菸草業'],['汽車','汽車及其零件業'],['自行車','其他運輸工具及其零件業'],['家具','家具業'],['紡織','紡織業'],['成衣','成衣及服飾品業'],['化學','其他化學製品業'],['橡膠','橡膠製品業'],['印刷','印刷及資料儲存媒體複製業']];
   const CRITERIA = [
-    {id:'vitality', label:'市場活力', hint:'全產業公司近一年新設減解散（名冊沒有行業欄）', unit:'家', better:1, words:['活力','成長','新創']},
+    {id:'vitality', label:'市場活力', hint:'近一年（新設−解散）÷ 現有公司家數＝淨增率，全產業（名冊沒有行業欄）', unit:'%', better:1, words:['活力','成長','新創']},
     {id:'stability', label:'經營穩定', hint:'解散家數 ÷ 新設家數，越低越好', unit:'', better:-1, words:['穩定','風險']},
-    {id:'cluster', label:'同業群聚', hint:'同業工廠家數', unit:'家', better:1, words:['供應鏈','上下游','群聚','聚落']},
+    {id:'cluster', label:'同業群聚', hint:'同業員工數（規模）與區位商數 LQ（集中度，>1 代表比全市集中）各占一半', unit:'人', better:1, words:['供應鏈','上下游','群聚','聚落']},
     {id:'competition', label:'避開競爭', hint:'每百家工廠的製造類職缺，越少越好（職缺與工廠年份不同）', unit:'筆', better:-1, words:['競爭','搶人']},
   ];
   // ponytail: fixed gate; districts with few factories are not realistic sites and would win "low competition" by default.
@@ -105,21 +105,34 @@
     const known = Object.values(stats.factories.districts[name] || {}).filter(count => count !== null);
     return known.reduce((sum, count) => sum + count, 0);
   }
+  // Business demography (Census BDS, Eurostat, ONS) divides births and deaths by the active firms.
   function value(name, id) {
     const row = activity.districts[name] || {setup:0, dissolved:0};
-    if (id === 'vitality') return row.setup - row.dissolved;
+    if (id === 'vitality') return row.companies ? (row.setup - row.dissolved) / row.companies : null;
     if (id === 'stability') return row.setup >= MIN_SETUPS ? row.dissolved / row.setup : null;
-    if (id === 'cluster') {
-      const factories = stats.factories.districts[name];
-      if (!factories) return null;
-      if (industry) return factories[industry] ?? null;
-      const known = Object.values(factories).filter(count => count !== null);
-      return known.length ? known.reduce((sum, count) => sum + count, 0) : null;
-    }
+    if (id === 'cluster') return clusterParts(name);
     if (stats.jobs.capped.includes(name)) return null;
     const postings = stats.jobs.metrics.manufacturing_postings[name];
     return postings === undefined ? null : postings / factoryTotal(name) * 100;
   }
+  // Cluster = size and specialisation, as the EU Cluster Observatory and US Cluster Mapping do: employees in the
+  // industry, and the location quotient (its share of the district's factory jobs over its share city-wide).
+  const sumKnown = row => Object.values(row || {}).reduce((sum, count) => sum + (count ?? 0), 0);
+  function clusterParts(name) {
+    const staff = stats.factories.employees?.[name];
+    if (!staff) return null;
+    const total = sumKnown(staff);
+    if (!industry) return total ? {size:total, lq:null} : null;
+    const size = staff[industry];
+    if (size === null || size === undefined || !total) return null;
+    const city = Object.values(stats.factories.employees), cityTotal = city.reduce((sum, row) => sum + sumKnown(row), 0);
+    const cityIndustry = city.reduce((sum, row) => sum + (row[industry] ?? 0), 0);
+    return {size, lq: cityIndustry ? (size / total) / (cityIndustry / cityTotal) : null};
+  }
+  const minMax = values => {
+    const known = Object.values(values).filter(v => v !== null && v !== undefined), low = Math.min(...known), high = Math.max(...known);
+    return Object.fromEntries(Object.entries(values).map(([name, v]) => [name, v === null || v === undefined || high === low ? null : (v - low) / (high - low)]));
+  };
   // Each criterion is rescaled to 0–1 across the candidate districts; a missing value drops that criterion for that district only.
   let candidates = [];
   function rank() {
@@ -127,6 +140,14 @@
     const raw = Object.fromEntries(CRITERIA.map(c => [c.id, Object.fromEntries(names.map(name => [name, value(name, c.id)]))]));
     const scaled = {};
     for (const c of CRITERIA) {
+      if (c.id === 'cluster') {
+        // Size and LQ are rescaled separately, then averaged; without a named industry there is no LQ, so size alone.
+        const size = minMax(Object.fromEntries(names.map(name => [name, raw.cluster[name]?.size ?? null])));
+        const lq = minMax(Object.fromEntries(names.map(name => [name, raw.cluster[name]?.lq ?? null])));
+        scaled.cluster = Object.fromEntries(names.map(name => [name,
+          size[name] === null ? null : lq[name] === null ? size[name] : (size[name] + lq[name]) / 2]));
+        continue;
+      }
       const known = Object.values(raw[c.id]).filter(v => v !== null), low = Math.min(...known), high = Math.max(...known);
       scaled[c.id] = Object.fromEntries(names.map(name => {
         const v = raw[c.id][name];
@@ -165,7 +186,8 @@
   function describe(c, v) {
     if (v === null || v === undefined) return '無資料';
     if (c.id === 'stability') return `每新設 100 家解散 ${Math.round(v * 100)} 家`;
-    if (c.id === 'vitality') return `${v >= 0 ? '+' : ''}${v.toLocaleString()} 家`;
+    if (c.id === 'vitality') return `淨增 ${v >= 0 ? '+' : ''}${(v * 100).toFixed(1)}%`;
+    if (c.id === 'cluster') return `${v.size.toLocaleString()} 人${v.lq === null ? '' : `・LQ ${v.lq.toFixed(2)}`}`;
     if (c.id === 'competition') return `每百家工廠 ${Math.round(v)} 筆`;
     return `${v.toLocaleString()} ${c.unit}`;
   }
@@ -216,7 +238,7 @@
       row.textContent = `${run.label}：${run.top3.join('、')}`;
       return row;
     }));
-    $('scan-source').textContent = `分數 0–100 是 ${candidates.length} 個候選區互相比較的相對值，不是預測或匹配率；製造業工廠不到 ${MIN_FACTORIES} 家的 ${geo.features.length - candidates.length} 區不列入。資料：商工登記 ${activity.window.join(' 至 ')}${activity.missing_months.length ? `（缺 ${activity.missing_months.join('、')}）` : ''}、工廠校正 ${stats.factories.year} 年、就業通職缺 ${stats.jobs.snapshot_date}。`;
+    $('scan-source').textContent = `分數 0–100 是 ${candidates.length} 個候選區互相比較的相對值，不是預測或匹配率；製造業工廠不到 ${MIN_FACTORIES} 家的 ${geo.features.length - candidates.length} 區不列入。資料：商工登記 ${activity.window.join(' 至 ')}${activity.missing_months.length ? `（缺 ${activity.missing_months.join('、')}）` : ''}、稅籍現有公司 ${activity.companies_as_of}、工廠校正 ${stats.factories.year} 年（家數與員工數）、就業通職缺 ${stats.jobs.snapshot_date}。市場活力與同業群聚的算法依美國普查局 BDS、歐盟統計局企業人口統計與產業群聚觀測站。`;
   }
 
   function bounds(feature) {
@@ -534,7 +556,7 @@
     map = window.streetMap.getMap();
     if (!map) {started = false;return;}
     try {
-      if (!geo) [geo, activity, stats] = await Promise.all(['/static/taichung-districts.geojson','/static/gcis-district-activity.json?v=20261105-road1','/static/district-stats.json'].map(async url => {
+      if (!geo) [geo, activity, stats] = await Promise.all(['/static/taichung-districts.geojson','/static/gcis-district-activity.json?v=20261106-rate1','/static/district-stats.json?v=20261106-lq1'].map(async url => {
         const response = await fetch(url);
         if (!response.ok) throw Error(url);
         return response.json();

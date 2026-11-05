@@ -15,18 +15,22 @@ def factory_stats():
     with FACTORIES.open(encoding="utf-8-sig", newline="") as file:
         rows = list(csv.DictReader(file))
     year = max(int(row["year"]) for row in rows)
-    districts = {}
+    districts, employees = {}, {}
     for row in rows:
         if int(row["year"]) != year:
             continue
         # A missing value stays null: the source published no number, which is not zero.
         count = int(float(row["factories"])) if row["factories"] else None
         districts.setdefault(row["district"], {})[row["industry"]] = count
+        # Employees give the cluster size and the location quotient (BLS, US Cluster Mapping, EU Cluster Observatory).
+        staff = int(float(row["employees"])) if row["employees"] else None
+        employees.setdefault(row["district"], {})[row["industry"]] = staff
     return {
         "year": year,
         "source": "經濟部工廠校正統計調查（EE520）",
         "source_url": "https://service.moea.gov.tw/EE520/investigate/InvestigateG.aspx",
         "districts": districts,
+        "employees": employees,
     }
 
 

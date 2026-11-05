@@ -75,3 +75,10 @@ test('editing the original demand resets criteria rather than reusing stale cond
  e.ids.get('scan-back').click();e.window.radarIntent={text:'電子工廠',preference:''};await e.window.siteScan.start();await e.tick();
  assert.equal(e.ids.get('scan-criteria').querySelector('input').checked,true);assert.match(e.ids.get('scan-tags').textContent,/電子零組件/);
 });
+test('market vitality is a net entry rate and the cluster shows size with a location quotient',async()=>{
+ const e=setup();const loading=e.window.siteScan.start();await e.resolveAll();await loading;await e.tick();
+ const podium=e.ids.get('scan-podium').querySelectorAll('small').map(small=>small.textContent).join('\n');
+ assert.match(podium,/市場活力：淨增 [+-]?\d+\.\d%/,'vitality is (setups − dissolutions) ÷ companies, not a raw count');
+ assert.match(podium,/同業群聚：[\d,]+ 人・LQ \d+\.\d\d/,'cluster names its employees and location quotient');
+ assert.doesNotMatch(podium,/Infinity|NaN/);
+});
