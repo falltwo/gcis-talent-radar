@@ -24,7 +24,9 @@
 
 ### 工廠
 
-取校正統計的最新年度，每區每製造業中類只接受一筆觀察。保密旗標、原始空白或無數值保留 `null`，不補成零。`factories_flag` 非空亦保留 `null`；重複列、負數及非有限數值會使重建失敗。
+取校正統計的最新年度，每區每製造業中類只接受一筆觀察。保密旗標、原始空白或無數值保留 `null`，不補成零。正式產生器也輸出 `factories.employees`；員工數使用 `employees_flag` 獨立判斷，不從工廠家數推估。`factories_flag` 非空亦保留 `null`；重複列、負數及非有限數值會使重建失敗。
+
+舊入口 `scripts/frontend/build_district_stats.py` 已改成呼叫同一個正式產生器；不再從 SQLite 用另一套規則覆寫地圖資料。
 
 ### 職缺
 

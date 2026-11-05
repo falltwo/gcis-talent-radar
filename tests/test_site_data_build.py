@@ -19,9 +19,9 @@ def csv_file(path, rows, fields=None):
 def site_inputs(tmp_path):
     processed, raw = tmp_path/'processed', tmp_path/'raw'
     csv_file(processed/'tc_factory_district_industry_annual.csv', [
-        {'year':'2023','district':'太平區','industry':'機械設備業','factories':'99','factories_flag':''},
-        {'year':'2024','district':'太平區','industry':'機械設備業','factories':'12','factories_flag':''},
-        {'year':'2024','district':'太平區','industry':'金屬製品業','factories':'','factories_flag':'suppressed_lt4'},
+        {'year':'2023','district':'太平區','industry':'機械設備業','factories':'99','factories_flag':'','employees':'999','employees_flag':''},
+        {'year':'2024','district':'太平區','industry':'機械設備業','factories':'12','factories_flag':'','employees':'120','employees_flag':''},
+        {'year':'2024','district':'太平區','industry':'金屬製品業','factories':'','factories_flag':'suppressed_lt4','employees':'9','employees_flag':'suppressed_lt4'},
     ])
     def job(date, district, url, family='技術／維修／操作', location=None, flag=''):
         return {'snapshot_date':date,'query_district':district,'url':url,'job_major':family,'openings':'3',
@@ -174,3 +174,32 @@ def test_unknown_or_capped_talent_district_is_not_published_as_zero(site_inputs,
     with path.open(encoding='utf-8-sig') as handle:rows=list(csv.DictReader(handle))
     csv_file(path,rows*500)
     with pytest.raises(ValueError,match='audited, uncapped'):module.build(processed_dir=processed,raw_dir=raw)
+
+
+def test_refresh_preserves_employees_and_suppression_for_rankings(site_inputs,tmp_path,monkeypatch):
+    from etl import build_site_data as module
+    from etl.build_district_stats import build
+    processed,raw=site_inputs
+    monkeypatch.setitem(module.BUILDERS,'district-stats.json',lambda:build(processed_dir=processed,raw_dir=raw))
+    monkeypatch.setitem(module.BUILDERS,'gcis-district-activity.json',lambda:{})
+    monkeypatch.setitem(module.BUILDERS,'district-talent.json',lambda:{})
+    target=tmp_path/'published'
+    module.refresh(output_dir=target)
+    data=json.loads((target/'district-stats.json').read_text())
+    assert data['factories']['employees']['太平區']=={'機械設備業':120,'金屬製品業':None}
+    assert data['factories']['employees']['大雅區']=={'機械設備業':None,'金屬製品業':None}
+    # A second scheduled rebuild must not drop the field again.
+    module.refresh(output_dir=target)
+    assert json.loads((target/'district-stats.json').read_text())==data
+
+
+def test_employee_unknowns_and_invalid_counts_are_not_zeroed(site_inputs):
+    from etl.build_district_stats import build
+    processed,raw=site_inputs
+    path=processed/'tc_factory_district_industry_annual.csv'
+    with path.open(encoding='utf-8-sig') as handle:rows=list(csv.DictReader(handle))
+    rows[1]['employees']=''
+    csv_file(path,rows)
+    assert build(processed_dir=processed,raw_dir=raw)['factories']['employees']['太平區']['機械設備業'] is None
+    rows[1]['employees']='NaN';csv_file(path,rows)
+    with pytest.raises(ValueError,match='employee count'):build(processed_dir=processed,raw_dir=raw)
