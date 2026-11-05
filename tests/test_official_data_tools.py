@@ -23,10 +23,11 @@ class OfficialDataToolTests(unittest.TestCase):
         result = get_gcis_new_company_trend("IND_MFG", months=6)
         self.assertTrue(result["available"])
         self.assertEqual(result["official_industry"], "製造業")
-        self.assertEqual(result["latest_month"], "2026-08")
-        self.assertEqual(result["latest_new_companies"], 75)
-        self.assertEqual(result["missing_months"], ["2025-08", "2025-09"])
-        self.assertIsNone(result["complete_window_change_pct"])
+        self.assertGreaterEqual(result["latest_month"], "2026-08")  # 每日更新後會有更新的月份
+        self.assertIsInstance(result["latest_new_companies"], int)
+        self.assertTrue(set(result["missing_months"]) <= {"2025-08", "2025-09"})
+        if result["missing_months"]:  # 期間有缺月就不算整段變化率
+            self.assertIsNone(result["complete_window_change_pct"])
         self.assertEqual(result["evidence"]["dataset_ids"], ["01E5CFC6-9F09-4CB5-BE81-22B451E4B1BD"])
 
     def test_taiwanjobs_daya_is_location_filtered(self):
@@ -146,6 +147,7 @@ class OfficialDataToolTests(unittest.TestCase):
             {
                 "official_job_vacancies",
                 "gcis_new_company_monthly",
+                "gcis_company_events",
                 "labor_insurance_baseline",
             },
         )

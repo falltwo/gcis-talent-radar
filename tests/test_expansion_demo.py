@@ -145,8 +145,8 @@ def test_api_real_snapshot_and_scenario_are_separate():
     assert data["scenario"] == {"district": "大雅區", "planned_hires": 10, "industry": "製造業"}
     assert data["factory_snapshot"]["period"] == "2026-07"
     assert data["factory_snapshot"]["factory_count"] == 989
-    assert data["company_trend"]["latest_month"] == "2026-08"
-    assert data["company_trend"]["latest_new_companies"] == 75
+    assert data["company_trend"]["latest_month"] >= "2026-08"  # 每日更新後會有更新的月份
+    assert data["company_trend"]["latest_new_companies"] > 0
     assert data["company_trend"]["evidence"]["geography"] == "臺中市（全市）"
     assert data["job_demand"]["district"] == "大雅區"
     assert data["job_demand"]["snapshot_date"]

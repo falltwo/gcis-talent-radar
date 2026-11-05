@@ -184,6 +184,33 @@ CREATE TABLE IF NOT EXISTS gcis_new_company_monthly (
     PRIMARY KEY (year_month, county, industry)
 );
 
+-- 臺中市公司事件（每日更新）：GCIS 月份清冊＋每日設立／解散／變更 API（etl/daily_refresh.py），只留最近 24 個月。
+-- event：new 設立、dissolved 解散、capital_increase 增資；source：monthly_list 或 daily_api（月份清冊公布前的暫時資料）。
+CREATE TABLE IF NOT EXISTS gcis_company_events (
+    event_date TEXT NOT NULL,
+    event TEXT NOT NULL,
+    company_id TEXT NOT NULL,
+    company_name TEXT,
+    district TEXT,
+    industry_code TEXT,
+    industry_section TEXT,
+    industry_section_name TEXT,
+    industry_source TEXT,
+    capital_twd REAL,
+    capital_delta_twd REAL,
+    source TEXT NOT NULL,
+    loaded_at TEXT NOT NULL,
+    PRIMARY KEY (event_date, event, company_id)
+);
+CREATE INDEX IF NOT EXISTS idx_gcis_company_events_date ON gcis_company_events (event_date);
+
+-- gcis_company_events 哪些日子有資料：monthly_list、daily_api、daily_api_partial（當天抓的，還不完整）。
+-- 不在這張表的日子是「沒有資料」，不是「0 家」。
+CREATE TABLE IF NOT EXISTS gcis_event_coverage (
+    day TEXT PRIMARY KEY,
+    source TEXT NOT NULL
+);
+
 -- 勞保局年末原始統計：地區 × 單位類別 × 行業大類 × 就保註記。
 CREATE TABLE IF NOT EXISTS labor_insurance_baseline (
     data_period TEXT NOT NULL,
