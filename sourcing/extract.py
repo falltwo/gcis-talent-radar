@@ -42,9 +42,12 @@ class Candidate:
     fit: str = "未判斷"  # 符合 | 部分符合 | 不符合 | 未判斷（gpt-6-luna 判斷）
     fit_reason: str = ""
     location: str = ""  # 候選人自己公開填的地點（Stack Overflow 等）
+    location_note: str = ""  # 來源網站無法依地點篩選時的提醒，例如「此網站無法依地點篩選，不一定在台中」
+    nearby: bool = False  # 不在指定城市、但在同一個國家（只給流程排順序用，不輸出）
 
     def as_dict(self) -> dict:
         data = asdict(self)
+        data.pop("nearby")
         # 連結一律只放 http(s)：網站上的自填網址可能是 javascript: 之類，前端直接放進 href 會被利用
         data["evidence"] = [e for e in data["evidence"] if safe_url(e.get("url"))]
         data["personal_site"] = safe_url(data["personal_site"])
@@ -326,4 +329,45 @@ def from_orcid(site: Site, plan: Plan, *, limit: int) -> Optional[list[Candidate
                 cand.personal_site = cand.personal_site or url
                 cand.evidence.append({"label": "研究者網站", "url": url})
         out.append(cand)
+    return out
+
+
+COUNTRY_OF = {city: "Taiwan" for city in set(LOCATIONS.values()) if city != "Taiwan"}
+COUNTRY_LABEL = {"Taiwan": "台灣"}
+
+
+def from_stackoverflow(site: Site, plan: Plan, *, limit: int) -> Optional[list[Candidate]]:
+    """Stack Overflow 官方 API：技能標籤的回答排行 → 一次批次查公開資料 → 篩地點 → 讀常答標籤並判斷。
+
+    排行與 API 都不能依地點搜尋：需求城市的列入，同國家其他城市列為部分符合，其他略過。
+    """
+    tag = (plan.terms.skills[0] if plan.terms.skills else "python").lower().replace(" ", "-")
+    ranked = apis.stackoverflow_top_answerers(tag)
+    if ranked is None:
+        return None
+    infos = apis.stackoverflow_users([uid for uid, _ in ranked])
+    if infos is None:
+        return None
+    wanted = plan.terms.location
+    country = COUNTRY_OF.get(wanted or "")
+    out: list[Candidate] = []
+    for uid, name in ranked:
+        info = infos.get(uid)
+        if not info:
+            continue
+        same_city = location_matches(wanted, info["location"])
+        same_country = bool(country) and location_matches(country, info["location"])
+        if wanted and not (same_city or same_country):
+            continue
+        cand = from_stackoverflow_api(site, info.get("link") or f"https://stackoverflow.com/users/{uid}", plan,
+                                      fallback_name=name, info=info)
+        if cand is None:
+            continue
+        if wanted and not same_city:
+            cand.nearby = True
+            cand.fit = "部分符合" if cand.fit in ("符合", "未判斷") else cand.fit
+            cand.fit_reason = f"在{COUNTRY_LABEL.get(country, country)}其他城市（{cand.location}）。" + cand.fit_reason
+        out.append(cand)
+        if len(out) >= limit:
+            break
     return out

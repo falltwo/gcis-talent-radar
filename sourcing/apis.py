@@ -26,6 +26,23 @@ def stackoverflow_users(user_ids: list[str], *, timeout: float = 15.0) -> Option
     } for i in items}
 
 
+def stackoverflow_top_answerers(tag: str, *, timeout: float = 15.0) -> Optional[list[tuple[str, str]]]:
+    """標籤的歷來與本月回答排行（各最多 20 位），回傳 [(user_id, 顯示名稱)]，不重複。"""
+    out: dict[str, str] = {}
+    try:
+        for period in ("all_time", "month"):
+            r = requests.get(f"{STACKEXCHANGE}/tags/{tag}/top-answerers/{period}",
+                             params={"site": "stackoverflow", "pagesize": 20}, timeout=timeout)
+            r.raise_for_status()
+            for item in r.json().get("items", []):
+                user = item.get("user") or {}
+                if user.get("user_id"):
+                    out.setdefault(str(user["user_id"]), user.get("display_name") or "")
+    except (requests.RequestException, ValueError):
+        return None
+    return list(out.items())
+
+
 def stackoverflow_top_tags(user_id: str, *, timeout: float = 15.0) -> Optional[list[str]]:
     try:
         r = requests.get(f"{STACKEXCHANGE}/users/{user_id}/top-tags", params={"site": "stackoverflow", "pagesize": 6},
@@ -223,4 +240,15 @@ def orcid_researchers(topics: list[str], location: Optional[str], *, limit: int 
                 break
         return out
     except (requests.RequestException, ValueError, KeyError, TypeError):
+        return None
+
+
+def github_user_count(query: str, *, timeout: float = 10.0) -> Optional[int]:
+    """GitHub 官方搜尋 API：這組條件找得到幾個人（不需金鑰，每分鐘 10 次）；失敗回 None。"""
+    try:
+        r = requests.get("https://api.github.com/search/users", params={"q": query, "per_page": 1},
+                         headers={"Accept": "application/vnd.github+json"}, timeout=timeout)
+        r.raise_for_status()
+        return int(r.json().get("total_count", 0))
+    except (requests.RequestException, ValueError, TypeError):
         return None
