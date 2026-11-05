@@ -394,6 +394,39 @@
   }
   // Picking a district moves the street map there; the three hiring features read that location on their own.
   const FEATURES = {campus:'校園人才媒合', posting:'刊登召募', hunter:'獵頭Agent'};
+  // ponytail: keyword rules for what each feature is told to look for; they only fill fields the user can still edit.
+  const ROLE_WORDS = [['CNC','CNC 技術員'],['焊接','焊接技術員'],['模具','模具技術員'],['品管','品管人員'],['作業員','作業員'],['技術員','技術員']];
+  const SENIOR_WORDS = [['廠長','廠長'],['主管','生產主管'],['工程師','工程師']];
+  const DEPT_FOR = {'機械設備業':'機械','金屬製品業':'機械','汽車及其零件業':'機械','其他運輸工具及其零件業':'機械','產業用機械設備維修及安裝業':'機械','電子零組件業':'電機','電腦電子產品及光學製品業':'電機','電力設備及配備業':'電機','塑膠製品業':'化工','橡膠製品業':'化工','其他化學製品業':'化工'};
+  function carryOver(name) {
+    const text = intent?.text || '';
+    const field = industry ? industry.replace(/業$/, '') : '';
+    const role = ROLE_WORDS.find(([word]) => text.toUpperCase().includes(word))?.[1] || '';
+    const senior = SENIOR_WORDS.find(([word]) => text.includes(word))?.[1];
+    return {
+      district:name, place:`${name}${$('city-road').value}`, role,
+      department: DEPT_FOR[industry] || (text.includes('電') ? '電機' : '機械'),
+      senior: senior ? (senior === '工程師' && field ? `${field.replace(/設備$/, '')}工程師` : senior) : (field ? `${field.replace(/設備$/, '')}工程師` : '製程工程師'),
+      salary: talent.districts[name].salary_floor_median,
+    };
+  }
+  // Each feature resets its own fields when it opens, so the values go in on the next frame.
+  function fill(key, carry) {
+    const set = (id, value) => {const el = $(id);if (!el || !value) return;el.value = value;el.dispatchEvent(new Event('input', {bubbles:true}));};
+    if (key === 'campus') {set('campus-query', carry.department);return;}
+    requestAnimationFrame(() => {
+      if (key === 'posting') {
+        set('posting-role', carry.role);set('posting-address', carry.place);
+        set('posting-brief', `在${carry.district}設廠，想招${carry.role || '現場技術人員'}${carry.salary ? `；當地製造類職缺起薪中位數 ${carry.salary.toLocaleString()} 元，薪資請參考` : ''}`);
+      } else {
+        // The agent checks for live mode after it opens and then writes its own sample query, so
+        // re-apply ours for two seconds unless the user has started typing something else.
+        const defaults = ['CNC 技術員', '找會 Python 的軟體工程師，在台中'];
+        const apply = () => {if (defaults.includes($('hunter-job').value) || $('hunter-job').value === carry.senior) {set('hunter-job', carry.senior);$('hunter-tag').textContent = carry.senior;}};
+        apply();[300, 800, 1500, 2200].forEach(delay => setTimeout(apply, delay));
+      }
+    });
+  }
   function channels(name) {
     const row = talent.districts[name], ratio = row.graduates_nearby ? row.openings / row.graduates_nearby : null;
     const schools = row.schools.filter(s => s.weight >= .5).sort((a, b) => b.graduates * b.weight - a.graduates * a.weight).slice(0, 2).map(s => short(s.name));
@@ -431,7 +464,9 @@
     $('hire-plan-list').replaceChildren(...list.map((item, index) => {
       const card = document.createElement('li');card.className = 'hire-card' + (index === 0 ? ' is-first' : '');
       card.style.setProperty('--delay', (reduced ? 0 : 400 + index * 90) + 'ms');
-      card.innerHTML = '<header><b></b><span></span></header><strong></strong><p></p><small></small><button type="button"></button>';
+      card.innerHTML = '<header><b></b><span></span></header><strong></strong><p></p><small></small><em></em><button type="button"></button>';
+      const carry = carryOver(name);
+      card.querySelector('em').textContent = '會帶入：' + {campus:`${name}、搜尋「${carry.department}」相關科系`, posting:`${carry.place}${carry.role ? `、${carry.role}` : ''}${carry.salary ? `、起薪參考 ${carry.salary.toLocaleString()} 元` : ''}`, hunter:`職缺「${carry.senior}」`}[item.key];
       card.querySelector('b').textContent = item.who;
       card.querySelector('span').textContent = index === 0 ? '建議優先' : `第 ${index + 1} 順位`;
       card.querySelector('strong').textContent = item.big;
@@ -440,7 +475,11 @@
       card.querySelector('button').textContent = `開啟${FEATURES[item.key]} →`;
       card.querySelector('button').addEventListener('click', () => {
         plan.hidden = true;
+        const carry = carryOver(name);
+        // Campus matching searches as soon as it opens, so its query has to be set first.
+        if (item.key === 'campus') fill('campus', carry);
         document.querySelector(`.primary-feature-button[data-feature="${FEATURES[item.key]}"]`)?.click();
+        if (item.key !== 'campus') fill(item.key, carry);
       });
       return card;
     }));

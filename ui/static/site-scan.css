@@ -143,3 +143,4 @@
 .hire-plan li.hire-card:first-child button{background:#ea580c;border-color:#ea580c;color:#fff}
 .hire-plan li.hire-card:not(.is-first) button{background:#fff;color:#2563eb}
 @media(prefers-reduced-motion:reduce){.hire-plan li.hire-card{animation:none;opacity:1}}
+.hire-card em{margin-top:4px;font-style:normal;font-size:11px;color:#2563eb}
