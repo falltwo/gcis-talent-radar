@@ -27,6 +27,8 @@ from database.db_manager import db
 from agent.audit_log import AuditLogError
 from agent.agent_service import OpenRouterError, agent_service
 from engine.gcis_live_verifier import verify_company_live
+from engine.gcis_company_events import get_company_events
+from etl import scheduler as gcis_daily_scheduler
 from sourcing import runs as sourcing_runs
 from sourcing import service as sourcing_service
 from sourcing.sites import catalog as sourcing_catalog
@@ -49,6 +51,9 @@ app = FastAPI(
     description="台中市區域產業動能 × 高教人才供給結構性錯配預警系統 (System Spec v1.0)",
     version="1.0.0"
 )
+
+# 每日更新經濟部商工資料：設 GCIS_DAILY_REFRESH=1 才會在背景排程（etl/scheduler.py）
+gcis_daily_scheduler.start()
 
 app.include_router(recruitment_router)
 app.include_router(recruitment_demo_router)
@@ -121,6 +126,7 @@ class SourcingRunSnapshot(BaseModel):
 OFFICIAL_DATA_REFRESH_QUERIES = {
     "official_job_vacancies": "SELECT MAX(fetched_at) AS refreshed_at FROM official_job_vacancies",
     "gcis_new_company_monthly": "SELECT MAX(loaded_at) AS refreshed_at FROM gcis_new_company_monthly",
+    "gcis_company_events": "SELECT MAX(loaded_at) AS refreshed_at FROM gcis_company_events",
     "labor_insurance_baseline": "SELECT MAX(loaded_at) AS refreshed_at FROM labor_insurance_baseline",
 }
 
@@ -520,6 +526,19 @@ def official_company_trend(
 ) -> Dict[str, Any]:
     """Approved tool: GCIS monthly new-company trend at city/industry-major level."""
     result = get_gcis_new_company_trend(industry_id, months)
+    if not result.get("available"):
+        _raise_official_tool_error(result)
+    return result
+
+@app.get("/api/official/company-events")
+def official_company_events(
+    days: int = Query(30, ge=1, le=90),
+    district: Optional[str] = Query(None, description="臺中市行政區，例如 西屯區"),
+    section: Optional[str] = Query(None, min_length=1, max_length=1, description="行業大類代碼，例如 C（製造業）"),
+    limit: int = Query(50, ge=0, le=200),
+) -> Dict[str, Any]:
+    """臺中市最近 N 天的公司設立、解散、增資（每日更新，資料來自 GCIS 清冊與每日異動 API）。"""
+    result = get_company_events(days, district, section, limit)
     if not result.get("available"):
         _raise_official_tool_error(result)
     return result
