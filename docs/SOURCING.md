@@ -67,7 +67,7 @@ const {run_id, status, events_url} = await res.json();   // 被護欄拒絕時 s
 // 2. 訂閱事件（GET，可直接用 EventSource；斷線會自動帶 Last-Event-ID 重連，不會漏事件）
 const source = new EventSource(events_url);
 ['plan', 'decision', 'step', 'frame', 'candidate', 'candidate_skipped', 'site_skipped', 'site_error',
- 'notice', 'rejected', 'no_public_work', 'error', 'done']
+ 'notice', 'rejected', 'no_public_work', 'out_of_area', 'error', 'done']
   .forEach(type => source.addEventListener(type, e => handle(JSON.parse(e.data))));
 source.addEventListener('end', () => source.close());     // 任務結束、事件送完
 
@@ -95,7 +95,7 @@ await fetch(`/api/sourcing/runs/${run_id}`, {method: 'DELETE'});
 | `sites` | 選填，只搜這些網站 id；不給就依職類自動挑 |
 | `screenshots` | 預設 `false`，每一步另附截圖；即時畫面由事件串流的 `frame` 提供 |
 
-任務 `status`：`running`、`done`、`cancelled`、`error`、`rejected`（公平招募護欄擋下）、`no_public_work`（職類網路上少有公開作品）。
+任務 `status`：`running`、`done`、`cancelled`、`error`、`rejected`（公平招募護欄擋下）、`no_public_work`（職類網路上少有公開作品）、`out_of_area`（需求寫了台灣以外的地點）。
 
 **部署注意**：任務存在後端行程的記憶體裡，結束 30 分鐘後清掉；多個 worker 或重啟後就查不到，正式部署要改成共用儲存。每個任務會開一個 Chrome，同時執行上限用 `SOURCING_MAX_RUNS` 設定（預設 2）。
 
@@ -105,6 +105,7 @@ await fetch(`/api/sourcing/runs/${run_id}`, {method: 'DELETE'});
 |---|---|---|
 | `rejected` | 需求帶有年齡、性別、國籍等條件，被公平招募護欄擋下（不開瀏覽器） | `reason`、`matched_traits` |
 | `no_public_work` | 職類網路上少有公開作品，例如作業員、業務（不開瀏覽器） | `advice`、`plan` |
+| `out_of_area` | 需求寫了台灣以外的地點，例如東京（只找台灣的人才，不開瀏覽器） | `reason`、`plan` |
 | `plan` | 開始搜尋前 | `plan`（職類、技能、地點、判斷來源）、`sites` |
 | `frame` | `live=true` 時，畫面有變化就送 | `data`（`data:image/jpeg;base64,…`），直接設成 `<img>` 的 `src` |
 | `decision` | gpt-6-luna（或規則）做決定時 | `site`、`what`（`search_text` 搜尋字、`pick` 挑人）、`detail`、`by`（`gpt-6-luna` 或 `rules`） |
@@ -117,9 +118,15 @@ await fetch(`/api/sourcing/runs/${run_id}`, {method: 'DELETE'});
 | `error` | 瀏覽器或套件無法使用 | `reason` |
 | `done` | 結束 | `count`、`plan`、`message`、`usage`（實際 token 與費用）、`cancelled` |
 
-搜尋字怎麼決定：GitHub 找人時每個條件都要同時符合，所以 gpt-6-luna 只提「一個程式語言＋一個關鍵字」，程式先用 GitHub 官方搜尋 API 數人數，太少就依序放寬（地點＋語言＋關鍵字 → 地點＋關鍵字 → 地點＋語言 → 只有地點），放寬經過會寫在 `search_text` 的 `detail`。Hugging Face、Kaggle、Dribbble 不能依地點搜尋，搜尋字只放一到三個關鍵詞、不放地點。
+找人範圍只限台灣：
 
-`step.action`：`open_entry`（開網站入口頁）、`next_page`（一頁不夠，換下一頁或往下捲動載入更多）、`fallback`（Jev 沒完成，改用備案）、`read_api`（OpenAlex、ORCID、Stack Exchange 官方 API）、`open_search`（開搜尋結果頁）、`jev_click`／`jev_type_text`／`jev_press_enter`／`jev_press_escape`／`jev_scroll_down`／`jev_done`／`jev_none`／`jev_refused`…（Jev 的動作；`jev_refused` 是被安全規則擋下的動作）、`open_profile`（點擊或開啟個人頁）。
+1. 需求沒寫地點時預設台中；寫了台灣的縣市（或台中的行政區，例如大雅）就以那裡為準；寫「台灣」就找全台灣。`plan.search_area` 會回傳 `primary`（先找的地區）、`fallback`（不夠時擴大的範圍，`Taiwan` 或 `null`）、`default`（是不是預設的台中）。
+2. 寫了台灣以外的地點（例如東京、矽谷）不會開始搜尋，回 `out_of_area`。
+3. 先用能依地點篩選的來源（GitHub、Stack Overflow、ORCID、OpenAlex）找指定地區；不夠再擴大到台灣其他地區（發 `notice`）；還不夠才用 Hugging Face、Kaggle、Dribbble 補。這三個網站不能依地點搜尋，會讀個人頁上寫的所在地：不在台灣的略過（`candidate_skipped`），看不出地點的先保留（`step.action = hold`），最後才列出並標「無法確認是否在台灣」。
+
+搜尋字怎麼決定：GitHub 找人時每個條件都要同時符合，所以 gpt-6-luna 只提「一個程式語言＋一個關鍵字」，程式先用 GitHub 官方搜尋 API 數人數，太少就依序放寬（地點＋語言＋關鍵字 → 地點＋關鍵字 → 地點＋語言），不會放寬到只剩地點；都不夠時用人數最多的條件，不足的名額改由擴大到台灣其他地區補，放寬經過會寫在 `search_text` 的 `detail`。Hugging Face、Kaggle、Dribbble 不能依地點搜尋，搜尋字只放一到三個關鍵詞、不放地點。
+
+`step.action`：`open_entry`（開網站入口頁）、`next_page`（一頁不夠，換下一頁或往下捲動載入更多）、`fallback`（Jev 沒完成，改用備案）、`read_api`（OpenAlex、ORCID、Stack Exchange 官方 API）、`open_search`（開搜尋結果頁）、`jev_click`／`jev_type_text`／`jev_press_enter`／`jev_press_escape`／`jev_scroll_down`／`jev_done`／`jev_none`／`jev_refused`…（Jev 的動作；`jev_refused` 是被安全規則擋下的動作）、`open_profile`（點擊或開啟個人頁）、`hold`（個人頁沒寫所在地，先保留、最後才列出）。
 
 `candidate` 欄位：
 
@@ -129,7 +136,9 @@ await fetch(`/api/sourcing/runs/${run_id}`, {method: 'DELETE'});
 | `name`、`headline` | 顯示名稱、一句話介紹 |
 | `skills`、`matched_skills` | 頁面上的技能；其中符合需求的 |
 | `summary`、`summary_source` | 專長摘要；`llm`、`rules` 或 `api` |
-| `location_note` | 指定地點、但來源網站無法依地點篩選時的提醒（Hugging Face、Kaggle、Dribbble），例如「此網站無法依地點篩選，不一定在台中」；其他情況是空字串 |
+| `area`、`area_label` | 所在地區：`primary`（指定地區，`area_label` 是地名，例如「台中」）、`taiwan`（「台灣其他地區」）、`unknown`（「無法確認是否在台灣」，個人頁沒寫所在地，一律排在最後） |
+| `location_note` | 地區的補充說明，例如「在台灣其他地區（Taipei, Taiwan）」「頁面沒有寫所在地，無法確認是否在台灣」；指定地區是空字串 |
+| `location` | 候選人自己公開寫的所在地（原文），沒寫是空字串 |
 | `fit`、`fit_reason` | gpt-6-luna 判斷：`符合`、`部分符合`、`未判斷`；判斷根據。官方 API 來的候選人（Stack Overflow、OpenAlex、ORCID）用 API 給的標籤、研究主題、關鍵字判斷 |
 | `location` | 候選人自己公開填的地點（目前只有 Stack Overflow），沒有就是空字串 |
 
