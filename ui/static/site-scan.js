@@ -33,7 +33,7 @@
   right.className = 'scan-side scan-right';right.setAttribute('aria-label','推薦建廠熱區');right.inert = true;
   right.innerHTML = `
     <div class="scan-pane scan-report-only"><h3>3. 職缺開出的月薪</h3><div class="scan-body"><div id="report-salary"></div><p class="scan-note">雇主在就業通刊登的薪資，不是求職者的期望薪資。</p></div></div>
-    <div class="scan-pane scan-report-only"><h3>4. 招募建議 <span>系統依上面數字產生，非 AI</span></h3><div class="scan-body"><ul class="report-advice" id="report-advice"></ul>
+    <div class="scan-pane scan-report-only"><h3>4. 招募建議 <span id="report-advice-source">系統依上面數字產生，非 AI</span></h3><div class="scan-body"><ul class="report-advice" id="report-advice"></ul>
       <div class="report-actions"><button type="button" id="report-back">← 回到排名</button></div>
       <p class="scan-note" id="report-source"></p></div></div>
     <div class="scan-pane scan-rank-only"><h3>商工資料推薦熱區 <span>Top 12</span></h3>
@@ -321,17 +321,21 @@
     const head = document.createElement('h4');head.textContent = name;box.append(head);
     return [box, head];
   }
+  // Small-number rule: health agencies suppress rates built on counts under ten (e.g. Washington DOH
+  // small-numbers guideline), so a district with fewer postings than this is not ranked on the ratio.
+  const MIN_POSTINGS = 10;
+  const demandRatio = row => row.graduates_nearby && row.postings >= MIN_POSTINGS ? row.openings / row.graduates_nearby : null;
   function renderReport(three) {
     const rows = three.map(name => ({name, ...talent.districts[name]}));
-    rows.forEach(row => {row.ratio = row.graduates_nearby ? row.openings / row.graduates_nearby : null;});
+    rows.forEach(row => {row.thin = row.postings < MIN_POSTINGS;row.ratio = demandRatio(row);});
     const order = rows.filter(row => row.ratio !== null).sort((a, b) => a.ratio - b.ratio);
-    const level = row => row.ratio === null ? '附近沒有相關科系' : order.length < 2 ? '' : row === order[0] ? '三區中較容易' : row === order[order.length - 1] ? '三區中較難' : '居中';
+    const level = row => row.thin ? '職缺樣本太少' : row.ratio === null ? '附近沒有相關科系' : order.length < 2 ? '' : row === order[0] ? '三區中較容易' : row === order[order.length - 1] ? '三區中較難' : '居中';
     const maxGrad = Math.max(...rows.map(r => r.graduates_nearby)), maxOpen = Math.max(...rows.map(r => r.openings));
     $('report-supply').replaceChildren(...rows.map(row => {
       const [box, head] = section(row.name);
       const tag = document.createElement('span');tag.className = 'report-level' + (row === order[0] ? ' is-easy' : '');tag.textContent = level(row);head.append(tag);
       const ratio = document.createElement('p');ratio.className = 'report-ratio';
-      ratio.textContent = row.ratio === null ? `區內和離區界 ${talent.radius_km} 公里內都沒有大專相關科系` : `每位畢業生對應 ${row.ratio.toFixed(2)} 個職缺需求・區內學校 ${row.graduates_in_district.toLocaleString()} 人`;
+      ratio.textContent = row.thin ? `製造類職缺只有 ${row.postings} 筆，樣本太少，不比較招募壓力` : row.ratio === null ? `區內和離區界 ${talent.radius_km} 公里內都沒有大專相關科系` : `每位畢業生對應 ${row.ratio.toFixed(2)} 個職缺需求・區內學校 ${row.graduates_in_district.toLocaleString()} 人`;
       const pick = document.createElement('button');pick.type = 'button';pick.className = 'report-pick';
       pick.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M1 12h4M19 12h4"/></svg><span></span>';
       pick.lastChild.textContent = `選定${row.name}設廠並招人`;
@@ -363,7 +367,8 @@
     }));
     const advice = [];
     if (order.length) advice.push(`對照相關科系畢業生和職缺需求，${order[0].name}每位畢業生對應的職缺需求最少（${order[0].ratio.toFixed(2)}），新鮮人的招募壓力在三區中最低。`);
-    rows.filter(row => row.ratio === null).forEach(row => advice.push(`${row.name}區內和附近都沒有大專相關科系，新鮮人要從外區通勤，比較適合用刊登召募找有經驗的人。`));
+    rows.filter(row => row.thin).forEach(row => advice.push(`${row.name}的製造類職缺只有 ${row.postings} 筆，樣本太少，看不出招募壓力；當地製造業需求可能不大，要另外確認。`));
+    rows.filter(row => !row.thin && row.ratio === null).forEach(row => advice.push(`${row.name}區內和附近都沒有大專相關科系，新鮮人要從外區通勤，比較適合用刊登召募找有經驗的人。`));
     // A school counts as shared only when it is in one district and close (weight >= .5) to the other.
     three.forEach((a, i) => three.slice(i + 1).forEach(b => {
       const own = (x, y) => talent.districts[x].schools.filter(s => s.km === 0 && talent.districts[y].schools.some(t => t.name === s.name && t.weight >= .5)).map(s => short(s.name));
@@ -374,9 +379,44 @@
     if (floors.length > 1) advice.push(new Set(floors).size === 1
       ? `三區開出的起薪中位數都是 ${floors[0].toLocaleString()} 元，起薪不是區分因素。`
       : `起薪中位數最高的是${rows.find(r => r.salary_floor_median === Math.max(...floors)).name}（${Math.max(...floors).toLocaleString()} 元），在那裡招人起薪要開得比較高。`);
-    advice.push('這只看新鮮人供給和公開職缺；沒有求職者人數、期望薪資和地價資料，最後仍要實地評估。');
-    $('report-advice').replaceChildren(...advice.map(text => {const li = document.createElement('li');li.textContent = text;return li;}));
+    const caveat = '這只看新鮮人供給和公開職缺；沒有求職者人數、期望薪資和地價資料，最後仍要實地評估。';
+    const showAdvice = (lines, source) => {
+      $('report-advice').replaceChildren(...[...lines, caveat].map(text => {const li = document.createElement('li');li.textContent = text;return li;}));
+      $('report-advice-source').textContent = source;
+    };
+    showAdvice(advice, '系統依上面數字產生，非 AI');
+    askAdvice(rows, three);
     $('report-source').textContent = `資料：${talent.sources.graduates}；${talent.sources.campuses}；${talent.sources.jobs}。`;
+  }
+  // The facts are the numbers already on screen; the model may only refer to them as {f1}, {f2}...
+  function adviceFacts(rows, three) {
+    const facts = [], add = (label, value) => facts.push({id:`f${facts.length + 1}`, label:label.slice(0, 40), value:String(value).slice(0, 40)});
+    rows.forEach(row => {
+      add(`${row.name}相關科系畢業生（加權）`, `${row.graduates_nearby.toLocaleString()} 人`);
+      add(`${row.name}製造類職缺需求`, `${row.openings.toLocaleString()} 人（${row.postings} 筆）`);
+      add(`${row.name}每位畢業生對應的職缺需求`, row.thin ? '職缺樣本太少，不計算' : row.ratio === null ? '附近沒有相關科系' : row.ratio.toFixed(2));
+      const schools = row.schools.filter(x => x.weight >= .5).sort((a, b) => b.graduates * b.weight - a.graduates * a.weight).slice(0, 2).map(x => short(x.name));
+      if (schools.length) add(`${row.name}附近主要學校`, schools.join('、'));
+      if (row.salary_floor_median) add(`${row.name}起薪中位數`, `${row.salary_floor_median.toLocaleString()} 元`);
+    });
+    three.forEach((a, i) => three.slice(i + 1).forEach(b => {
+      const own = (x, y) => talent.districts[x].schools.filter(t => t.km === 0 && talent.districts[y].schools.some(u => u.name === t.name && u.weight >= .5)).map(t => short(t.name));
+      const both = [...own(a, b), ...own(b, a)];
+      if (both.length) add(`${a}與${b}共同通勤範圍內的學校`, both.slice(0, 2).join('、'));
+    }));
+    return facts;
+  }
+  async function askAdvice(rows, three) {
+    const request = navigationEpoch;
+    try {
+      const response = await fetch('/api/site-advice', {method:'POST', headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({districts:three, industry:industry, role:aiIntent?.role || null, facts:adviceFacts(rows, three)})});
+      const result = response.ok ? await response.json() : null;
+      if (request !== navigationEpoch || result?.source !== 'llm') return;
+      const caveat = '這只看新鮮人供給和公開職缺；沒有求職者人數、期望薪資和地價資料，最後仍要實地評估。';
+      $('report-advice').replaceChildren(...[...result.sentences, caveat].map(text => {const li = document.createElement('li');li.textContent = text;return li;}));
+      $('report-advice-source').textContent = 'AI 依上面數字整理，數字由系統填入';
+    } catch {}
   }
   let pulse = 0;
   function showReportMap(three) {
@@ -482,7 +522,7 @@
     });
   }
   function channels(name) {
-    const row = talent.districts[name], ratio = row.graduates_nearby ? row.openings / row.graduates_nearby : null;
+    const row = talent.districts[name], ratio = demandRatio(row);
     const schools = row.schools.filter(s => s.weight >= .5).sort((a, b) => b.graduates * b.weight - a.graduates * a.weight).slice(0, 2).map(s => short(s.name));
     const list = [
       {key:'campus', who:'新鮮人', big: row.graduates_nearby ? row.graduates_nearby.toLocaleString() + ' 人' : '0 人', label:'附近相關科系畢業生（加權）',
@@ -537,7 +577,7 @@
       });
       return card;
     }));
-    $('hire-plan-note').textContent = `順序依「每位畢業生對應的職缺需求」${ratio === null ? '（附近沒有學校）' : `（${ratio.toFixed(2)}）`}排：0.3 以下先找學校，以上或附近沒有學校就先刊登。這是展示用的規則，不是預測招募成效。`;
+    $('hire-plan-note').textContent = `順序依「每位畢業生對應的職缺需求」${ratio === null ? (talent.districts[name].postings < MIN_POSTINGS ? '（職缺樣本太少，無法計算）' : '（附近沒有學校）') : `（${ratio.toFixed(2)}）`}排：0.3 以下先找學校，以上、附近沒有學校或職缺樣本太少就先刊登。這是展示用的規則，不是預測招募成效。`;
     fadeHeat(() => {
       if(request!==navigationEpoch)return;
       stop({home:false,keepJourney:true});
