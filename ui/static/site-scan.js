@@ -98,7 +98,9 @@
     if (aiIntent?.role) tags.push(['職務', aiIntent.role]);
     if (aiIntent?.senior_role) tags.push(['關鍵職務', aiIntent.senior_role]);
     if (aiIntent?.hires) tags.push(['人數', `${aiIntent.hires} 人`]);
-    const missing = aiIntent ? aiIntent.unsupported.map(key => GAP_LABELS[key] || key)
+    (aiIntent?.related_industries || []).forEach(name => tags.push(['相關產業', name]));
+    // The user's own words come first, so the gap note shows exactly what was read but not used.
+    const missing = aiIntent ? (aiIntent.unsupported_phrases?.length ? aiIntent.unsupported_phrases : aiIntent.unsupported.map(key => GAP_LABELS[key] || key))
       : NO_DATA_WORDS.filter(word => text.includes(word)).concat(preference === '靠近交通樞紐' ? ['交通樞紐'] : []);
     $('scan-tags').replaceChildren(...tags.map(([kind, value]) => {
       const tag = document.createElement('span');tag.className = 'scan-tag';
@@ -106,9 +108,12 @@
       return tag;
     }));
     $('scan-intent-note').textContent = !text ? '沒有輸入文字，只依偏好按鈕設定。'
-      : aiIntent ? `「${text}」・AI 擷取，只從固定選項挑；排名數字由系統計算`
+      : aiIntent?.uncodable_question ? `「${text}」・AI 判斷不出產業，先看全部製造業。${aiIntent.uncodable_question}`
+      : aiIntent ? `「${text}」・AI 依主計總處行業分類擷取，只從固定選項挑；排名數字由系統計算`
       : `「${text}」・關鍵字擷取（AI 這次沒有回應）`;
-    $('scan-gap').textContent = missing.length ? `沒有${[...new Set(missing)].join('、')}的資料，這次未納入排名。` : '';
+    $('scan-gap').textContent = !missing.length ? '' : aiIntent?.unsupported_phrases?.length
+      ? `「${[...new Set(missing)].join('」「')}」：沒有這方面的資料，這次未納入排名。`
+      : `沒有${[...new Set(missing)].join('、')}的資料，這次未納入排名。`;
   }
 
   function factoryTotal(name) {
@@ -122,7 +127,12 @@
     if (id === 'cluster') {
       const factories = stats.factories.districts[name];
       if (!factories) return null;
-      if (industry) return factories[industry] ?? null;
+      // Related industries (other lines, outsourced processes) count as part of the cluster.
+      const wanted = [industry, ...(aiIntent?.related_industries || [])].filter(Boolean);
+      if (wanted.length) {
+        const known = wanted.map(name => factories[name]).filter(count => count !== null && count !== undefined);
+        return known.length ? known.reduce((sum, count) => sum + count, 0) : null;
+      }
       const known = Object.values(factories).filter(count => count !== null);
       return known.length ? known.reduce((sum, count) => sum + count, 0) : null;
     }
@@ -185,7 +195,8 @@
       const row = document.createElement('label');row.className = 'scan-criterion';
       row.innerHTML = '<input type="checkbox"><span><b></b><small></small></span><em></em>';
       const box = row.querySelector('input');box.checked = checked[c.id];
-      row.querySelector('b').textContent = c.id === 'cluster' && industry ? `${c.label}（${industry}）` : c.label;
+      const clusterNames = [industry, ...(aiIntent?.related_industries || [])].filter(Boolean);
+      row.querySelector('b').textContent = c.id === 'cluster' && clusterNames.length ? `${c.label}（${clusterNames.join('＋')}）` : c.label;
       row.querySelector('small').textContent = c.hint;
       row.querySelector('em').textContent = boosted[c.id] ? '權重 ×2' : '';
       box.addEventListener('change', () => {

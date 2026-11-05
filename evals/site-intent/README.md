@@ -1,8 +1,8 @@
 # Site-intent eval
 
-Seven siting sentences checked against `engine/site_intent.py`, the code behind `POST /api/site-intent`. The provider calls the real `parse()`, so the eval tests what ships, model included.
+Ten siting sentences checked against `engine/site_intent.py`, the code behind `POST /api/site-intent`. The provider calls the real `parse()`, so the eval tests what ships, model included.
 
-Each run makes one paid OpenRouter call per test (7 calls; about USD 0.0003 in total on 2026-11-06 with the default `openai/gpt-6-luna`). It needs `OPENROUTER_API_KEY` in `.env`.
+Each run makes one paid OpenRouter call per test (10 calls). It needs `OPENROUTER_API_KEY` in `.env`.
 
 ```bash
 cd evals/site-intent

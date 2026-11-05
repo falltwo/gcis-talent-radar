@@ -1,4 +1,4 @@
-# Seven siting sentences with the fields a reader would expect. Each run makes one paid
+# Ten siting sentences with the fields a reader would expect. Each run makes one paid
 # OpenRouter call per test. Run from this folder (see README.md).
 description: site-intent extraction
 prompts:
@@ -29,8 +29,8 @@ tests:
         value: |
           const o = JSON.parse(output);
           return o.industry === '汽車及其零件業' && /廠長/.test(o.senior_role || '') && o.emphasis.includes('competition');
-  - description: plastics, stability
-    vars: {text: 塑膠射出工廠，希望找經營環境比較穩定的區域}
+  - description: plastics by process name only (射出 is not in the official text), stability
+    vars: {text: 我們做射出成型，希望找經營環境比較穩定的區域}
     assert:
       - type: javascript
         value: |
@@ -49,7 +49,8 @@ tests:
       - type: javascript
         value: |
           const o = JSON.parse(output);
-          return o.industry === null && o.role === null && o.hires === null && o.emphasis.length === 0;
+          return o.industry === null && o.role === null && o.hires === null && o.emphasis.length === 0
+            && typeof o.uncodable_question === 'string' && o.uncodable_question.length > 0;
   - description: food, workers, vitality, preference chip
     vars: {text: 食品工廠，招 5 位作業員，希望附近新公司多、有活力, preference: 避開激烈競爭}
     assert:
@@ -64,5 +65,30 @@ tests:
       - type: javascript
         value: |
           const o = JSON.parse(output);
-          // The user typed 總經理, so echoing it is allowed; the enum must still block 半導體業.
-          return o.industry === null;
+          // 半導體業 is not an option, but semiconductors fall under division 26 in the official text,
+          // so 電子零組件業 is a correct reading of what the user typed; anything else must stay null.
+          return [null, '電子零組件業'].includes(o.industry);
+  - description: two lines plus outsourced processes, transport in the user's words
+    vars: {text: 我想在台中設立一個中型的精密機械加工廠與模具沖壓線。希望周邊有完整的上下游供應鏈（如熱處理、表面處理外包），且大貨車進出方便，交通上不要離國道交流道或台74線太遠。}
+    assert:
+      - type: javascript
+        value: |
+          // Dies and stamping (金屬模具製造業), heat treatment (2543) and surface treatment (2544) are all
+          // division 25, and contract machining is closer to 25 than to building machines (29).
+          const o = JSON.parse(output), both = [o.industry, ...o.related_industries];
+          return both.includes('金屬製品業') && o.emphasis.includes('cluster')
+            && o.unsupported.includes('transport') && o.unsupported_phrases.some(p => p.includes('74'));
+  - description: printed circuit boards
+    vars: {text: PCB 印刷電路板廠，招 30 位作業員}
+    assert:
+      - type: javascript
+        value: |
+          const o = JSON.parse(output);
+          return o.industry === '電子零組件業' && o.hires === 30 && /作業員/.test(o.role || '');
+  - description: textile dyeing and finishing
+    vars: {text: 布料染整廠，想避開同業搶人}
+    assert:
+      - type: javascript
+        value: |
+          const o = JSON.parse(output);
+          return o.industry === '紡織業' && o.emphasis.includes('competition');
