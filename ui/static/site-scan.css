@@ -123,3 +123,23 @@
 .hire-plan li:first-child button{background:#2563eb;color:#fff}
 @media(max-width:720px){.hire-plan{top:auto;bottom:16px;left:12px;right:12px;width:auto}}
 @media(prefers-reduced-motion:reduce){.report-pick,.hire-plan{animation:none}}
+/* Channel allocation bay: slides in over 0.4s, then the three cards rise one after another. */
+.hire-plan{animation-duration:.4s}
+.hire-plan h3{font-size:18px}
+.hire-cards{display:grid;gap:10px}
+.hire-plan li.hire-card{display:flex;flex-direction:column;align-items:stretch;gap:2px;padding:12px 14px;border:1px solid rgba(37,99,235,.18);border-radius:12px;background:linear-gradient(180deg,#fff,#f5f9ff);box-shadow:inset 0 1px 0 #fff,0 4px 14px rgba(37,99,235,.08);opacity:0;animation:hire-card-in .45s cubic-bezier(.16,1,.3,1) var(--delay) both}
+.hire-plan li.hire-card.is-first{border-color:rgba(234,88,12,.45);background:linear-gradient(180deg,#fff,#fff6ee);box-shadow:inset 0 1px 0 #fff,0 0 0 3px rgba(234,88,12,.08),0 6px 18px rgba(234,88,12,.12)}
+@keyframes hire-card-in{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+.hire-card header{display:flex;align-items:center;justify-content:space-between}
+.hire-card header b{font-size:14px}
+.hire-plan .hire-card header span{margin:0;padding:1px 8px;border-radius:999px;background:#eef4fd;color:#1d4ed8;font-size:11px;font-weight:600}
+.hire-plan .hire-card.is-first header span{background:#ffedd5;color:#c2410c}
+.hire-card strong{margin-top:4px;font-size:24px;font-weight:700;color:#1e3a8a;font-variant-numeric:tabular-nums;line-height:1.2}
+.hire-card.is-first strong{color:#c2410c}
+.hire-card p{margin:0;font-size:12px;color:#475569}
+.hire-plan .hire-card small{margin-top:4px;font-size:11.5px;color:#64748b}
+.hire-plan .hire-card button{align-self:flex-start;margin-top:8px}
+.hire-plan .hire-card.is-first button{background:#ea580c;border-color:#ea580c;color:#fff}
+.hire-plan li.hire-card:first-child button{background:#ea580c;border-color:#ea580c;color:#fff}
+.hire-plan li.hire-card:not(.is-first) button{background:#fff;color:#2563eb}
+@media(prefers-reduced-motion:reduce){.hire-plan li.hire-card{animation:none;opacity:1}}

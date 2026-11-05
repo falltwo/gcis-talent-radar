@@ -47,7 +47,7 @@
   const plan = document.createElement('section');
   plan.className = 'hire-plan';plan.id = 'hire-plan';plan.hidden = true;plan.setAttribute('aria-labelledby', 'hire-plan-title');
   plan.innerHTML = `<header><div><small>已選定設廠地點</small><h3 id="hire-plan-title"></h3><p id="hire-plan-place"></p></div><button type="button" id="hire-plan-close" aria-label="關閉招人管道">×</button></header>
-    <p class="hire-plan-lead">依三區戰報的數字分配招人管道，點下去會用這個地點開啟功能。</p><ol id="hire-plan-list"></ol>
+    <p class="hire-plan-lead">沿用三區戰報的數字分配三種人才來源，點卡片按鈕會用這個地點開啟功能。</p><ol class="hire-cards" id="hire-plan-list"></ol>
     <p class="scan-note" id="hire-plan-note"></p>`;
   stage.append(plan);
   $('hire-plan-close').addEventListener('click', () => {plan.hidden = true;});
@@ -398,37 +398,59 @@
     const row = talent.districts[name], ratio = row.graduates_nearby ? row.openings / row.graduates_nearby : null;
     const schools = row.schools.filter(s => s.weight >= .5).sort((a, b) => b.graduates * b.weight - a.graduates * a.weight).slice(0, 2).map(s => short(s.name));
     const list = [
-      {key:'campus', who:'新鮮人', why: row.graduates_nearby ? `附近相關科系畢業生約 ${row.graduates_nearby.toLocaleString()} 人${schools.length ? `（${schools.join('、')}）` : ''}` : '附近沒有大專相關科系，新鮮人要從外區找', rank: ratio === null ? 2 : ratio < .3 ? 0 : 1},
-      {key:'posting', who:'一般求職者', why:`當地製造類職缺需求 ${row.openings.toLocaleString()} 人${row.salary_floor_median ? `、起薪中位數 ${row.salary_floor_median.toLocaleString()} 元，開薪可以參考` : ''}`, rank: ratio === null || ratio >= .3 ? 0 : 1},
-      {key:'hunter', who:'關鍵人才', why:'工程師、主管等難找的職位，主動接觸；這一項跟地點無關', rank:2},
+      {key:'campus', who:'新鮮人', big: row.graduates_nearby ? row.graduates_nearby.toLocaleString() + ' 人' : '0 人', label:'附近相關科系畢業生（加權）',
+        why: schools.length ? `主要來源：${schools.join('、')}` : '附近沒有大專相關科系，要從外區找', rank: ratio === null ? 2 : ratio < .3 ? 0 : 1},
+      {key:'posting', who:'一般求職者', big: row.openings.toLocaleString() + ' 人', label:'當地製造類職缺需求',
+        why: row.salary_floor_median ? `起薪中位數 ${row.salary_floor_median.toLocaleString()} 元，開薪可以參考` : '沒有月薪刊登可以參考', rank: ratio === null || ratio >= .3 ? 0 : 1},
+      {key:'hunter', who:'關鍵人才', big:'不分地點', label:'工程師、主管等難找的職位',
+        why:'由獵頭 Agent 主動搜尋與接觸', rank:2},
     ];
-    return list.sort((a, b) => a.rank - b.rank);
+    return {ratio, list:list.sort((a, b) => a.rank - b.rank)};
+  }
+  // Heat colours fade before the camera dives, so the city overview does not cut straight to streets.
+  function fadeHeat(done) {
+    if (reduced || !map?.getSource('scan')) return done();
+    cancelAnimationFrame(frame);cancelAnimationFrame(pulse);
+    for (const id of ['report-link','report-pulse','report-node']) if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', 'none');
+    const begin = performance.now();
+    const step = now => {
+      const t = Math.min(1, (now - begin) / 400);
+      geo.features.forEach(f => map.setFeatureState({source:'scan', id:f.properties.TOWNNAME}, {lit:1 - t}));
+      if (t < 1) frame = requestAnimationFrame(step); else done();
+    };
+    frame = requestAnimationFrame(step);
   }
   function choose(name) {
     const road = activity.districts[name]?.top_road;
     const district = $('city-district');
     district.value = name;district.dispatchEvent(new Event('change'));
     if (road && [...$('city-road').options].some(option => option.value === road)) $('city-road').value = road;
-    stop({home:false});
-    $('sidebar-location').requestSubmit();
-    $('hire-plan-title').textContent = name;
-    $('hire-plan-place').textContent = `${$('city-road').value}・近一年公司設立登記最多的道路，可在左側改選`;
-    $('hire-plan-list').replaceChildren(...channels(name).map((item, index) => {
-      const li = document.createElement('li');
-      li.innerHTML = '<div><b></b><span></span><small></small></div><button type="button"></button>';
-      li.querySelector('b').textContent = item.who;
-      li.querySelector('span').textContent = index === 0 ? '建議優先' : '';
-      li.querySelector('small').textContent = item.why;
-      li.querySelector('button').textContent = `開啟${FEATURES[item.key]}`;
-      li.querySelector('button').addEventListener('click', () => {
+    const {ratio, list} = channels(name);
+    $('hire-plan-title').textContent = `${name} → 招募管道分配`;
+    $('hire-plan-place').textContent = `定位：${$('city-road').value}（近一年公司設立登記最多的道路，可在左側改選）`;
+    $('hire-plan-list').replaceChildren(...list.map((item, index) => {
+      const card = document.createElement('li');card.className = 'hire-card' + (index === 0 ? ' is-first' : '');
+      card.style.setProperty('--delay', (reduced ? 0 : 400 + index * 90) + 'ms');
+      card.innerHTML = '<header><b></b><span></span></header><strong></strong><p></p><small></small><button type="button"></button>';
+      card.querySelector('b').textContent = item.who;
+      card.querySelector('span').textContent = index === 0 ? '建議優先' : `第 ${index + 1} 順位`;
+      card.querySelector('strong').textContent = item.big;
+      card.querySelector('p').textContent = item.label;
+      card.querySelector('small').textContent = item.why;
+      card.querySelector('button').textContent = `開啟${FEATURES[item.key]} →`;
+      card.querySelector('button').addEventListener('click', () => {
         plan.hidden = true;
         document.querySelector(`.primary-feature-button[data-feature="${FEATURES[item.key]}"]`)?.click();
       });
-      return li;
+      return card;
     }));
-    $('hire-plan-note').textContent = '管道順序依「每位畢業生對應的職缺需求」排：0.3 以下先找學校，以上或附近沒有學校就先刊登。這是展示用的規則，不是預測招募成效。';
-    plan.hidden = false;
-    plan.querySelector('button:not(#hire-plan-close)')?.focus({preventScroll:true});
+    $('hire-plan-note').textContent = `順序依「每位畢業生對應的職缺需求」${ratio === null ? '（附近沒有學校）' : `（${ratio.toFixed(2)}）`}排：0.3 以下先找學校，以上或附近沒有學校就先刊登。這是展示用的規則，不是預測招募成效。`;
+    fadeHeat(() => {
+      stop({home:false});
+      $('sidebar-location').requestSubmit();
+      plan.hidden = false;
+      plan.querySelector('.hire-card button')?.focus({preventScroll:true});
+    });
   }
   $('scan-compare').addEventListener('click', openReport);
   $('report-back').addEventListener('click', closeReport);
