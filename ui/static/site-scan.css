@@ -58,3 +58,8 @@
 .scan-check summary span{color:var(--muted)}
 .scan-check ul{margin:6px 0 0;padding-left:18px;color:var(--muted);line-height:1.7}
 .scan-rest{margin-top:12px}
+/* Spacing fixes: roomier close button, air under the weight check, scale bar clear of the attribution strip. */
+.scan-close{min-height:46px;padding:10px 14px;line-height:1.5}
+.scan-check{margin-bottom:12px}
+.scan-check+.scan-rest{margin-top:0}
+.scan-active .maplibregl-ctrl-bottom-left{bottom:10px}
