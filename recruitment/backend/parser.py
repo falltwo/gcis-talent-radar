@@ -43,7 +43,7 @@ def shared_headcounts(text):
         cursor=group.end()
     return rows
 
-def parse(text):
+def parse(text,include_salary=True):
     """Conservative deterministic parser: no invented titles, salaries, or LLM execution."""
     result=shared_headcounts(text)
     if result is None:
@@ -60,6 +60,6 @@ def parse(text):
     if len({i['title'] for i in result}) != len(result): raise ValueError('重複職稱，請合併人數')
     if any(i['quantity'] < 1 or i['quantity'] > 10000 for i in result): raise ValueError('人數必須為 1–10000')
     from .salary import verified_salary
-    salaries=verified_salary(text,[i['title'] for i in result])
+    salaries=verified_salary(text,[i['title'] for i in result]) if include_salary else {}
     for item in result:item.update(salaries.get(item['title'],{}))
     return result

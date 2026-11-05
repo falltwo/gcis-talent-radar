@@ -46,6 +46,14 @@ def test_salary_periods_are_not_converted_to_monthly():
     assert verified_salary('工程師時薪200元',['工程師'])['工程師']['salary_type']=='hourly'
 
 
+def test_latest_user_turn_replaces_salary_without_changing_other_role():
+    from recruitment.backend.salary import salary_from_turns
+    result=salary_from_turns(['前端工程師月薪4萬，網路管理師月薪5萬','前端工程師月薪6萬'],['前端工程師','網路管理師'])
+    assert result['前端工程師']['salary_min']==60000
+    assert result['網路管理師']['salary_min']==50000
+    with pytest.raises(ValueError):salary_from_turns(['工程師月薪5萬，工程師月薪6萬'],['工程師'])
+
+
 def test_model_can_map_colloquial_role_names_without_changing_amounts():
     from types import SimpleNamespace
     def structured(schema,system,data):

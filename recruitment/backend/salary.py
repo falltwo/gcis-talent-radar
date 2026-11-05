@@ -44,6 +44,16 @@ class Owners(BaseModel):
     clarification:str=Field(max_length=500)
 
 
+def salary_from_turns(turns,titles,ai=None):
+    """Later HR turns replace earlier salaries for the same role only."""
+    result={}
+    for text in reversed(turns):
+        if len(result)==len(titles):break
+        values=verified_salary(text,titles,ai)
+        for title,value in values.items():result.setdefault(title,value)
+    return result
+
+
 def verified_salary(text,titles,ai=None):
     clean=unicodedata.normalize('NFKC',text).replace('万','萬')
     mentions=[]

@@ -155,15 +155,17 @@ def create_app(database_url=None):
     @app.get('/salary-templates')
     def salaries(u=Depends(current),s:Session=Depends(db)):
         return [serialize(x) for x in s.scalars(select(SalaryTemplate).where(SalaryTemplate.company_id==u.company_id))]
-    @app.post('/batches',status_code=201)
-    def draft(body:Message,u=Depends(current),s:Session=Depends(db)):
-        try: parsed, ai_info = app.state.ai.extract(body.message)
+    def create_batch(body,u,s,salary_turns=None):
+        try: parsed, ai_info = app.state.ai.extract(body.message,**({'salary_turns':salary_turns} if salary_turns is not None else {}))
         except ValueError as e: raise HTTPException(422,str(e))
         b=RecruitmentBatch(company_id=u.company_id,created_by=u.id,original_text=body.message); s.add(b); s.flush()
         for data in parsed: s.add(RecruitmentBatchItem(batch_id=b.id,**enrich(s,u,data)))
         s.add(ChatLog(company_id=u.company_id,user_id=u.id,role='user',content=body.message))
         s.add(ChatLog(company_id=u.company_id,user_id=u.id,role='assistant',content=f'已建立草稿批次 {b.id}，請補齊缺漏欄位並確認。'))
         audit(s,u,'create_batch',b.id,{'ai':ai_info}); s.commit(); return {**view(s,b),'ai':ai_info}
+    @app.post('/batches',status_code=201)
+    def draft(body:Message,u=Depends(current),s:Session=Depends(db)):
+        return create_batch(body,u,s)
     @app.get('/batches')
     def list_batches(u=Depends(current),s:Session=Depends(db)):
         return [serialize(b) for b in s.scalars(select(RecruitmentBatch).where(RecruitmentBatch.company_id==u.company_id))]
@@ -183,7 +185,7 @@ def create_app(database_url=None):
                     raise HTTPException(422,'請移除個人特徵篩選條件，改以職責與技能建立職缺')
                 if len(plan['brief'])>4000:raise HTTPException(422,'這次需求過長，請分批提供職稱與人數')
                 try:
-                    created=draft(Message(message=plan['brief']),u,s)
+                    created=create_batch(Message(message=plan['brief']),u,s,plan.get('salary_turns'))
                     result={'kind':'batch','message':'已依你提供的條件建立企業職缺草稿；請審核後再刊登。','batch':created,'sources':[]}
                 except HTTPException as exc:
                     if exc.status_code!=422:raise

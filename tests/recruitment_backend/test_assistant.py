@@ -59,6 +59,28 @@ def test_offline_salary_question_is_search_not_draft(monkeypatch):
     assert plan['action']=='search'
     assert search_answer(ai,plan['query'])['web_search_used'] is False
 
+
+def test_repeated_shared_salary_update_and_confirmation_do_not_ask_again(c,monkeypatch):
+    import recruitment.backend.main as module
+    from types import SimpleNamespace
+    messages=[{'role':'user','content':'前端工程師與全端工程師各10位，月薪各5萬'},
+              {'role':'assistant','content':'兩筆薪資不同，請確認5萬或6萬。'},
+              {'role':'user','content':'前端工程師與全端工程師各10位，月薪各6萬'},
+              {'role':'assistant','content':'請確認5萬與6萬是否都適用。'},
+              {'role':'user','content':'都通用'}]
+    plan=plan_request(SimpleNamespace(enabled=True,structured=lambda *a:(_ for _ in ()).throw(AssertionError('No repeated clarification'))),messages)
+    assert plan['action']=='draft'
+    ai=RecruitmentAI();monkeypatch.setattr(ai,'key','')
+    rows,_=ai.extract(plan['brief'],salary_turns=plan['salary_turns'])
+    assert [(r['title'],r['quantity'],r['salary_min'],r['salary_max']) for r in rows]==[('前端工程師',10,60000,60000),('全端工程師',10,60000,60000)]
+    h=account(c)
+    # Keep the actual API path and rules extractor; no provider response needed.
+    monkeypatch.setattr(module,'plan_request',lambda *a:plan)
+    response=c.post('/assistant',headers=h,json={'message':'都通用'})
+    assert response.status_code==200,response.text
+    assert response.json()['kind']=='batch'
+    assert [r['salary_min'] for r in response.json()['batch']['items']]==[60000,60000]
+
 def test_missing_local_salary_samples_continue_to_cited_city_search(monkeypatch):
     import recruitment.taiwan_salary as salary
     monkeypatch.setattr(salary,'salary_answer',lambda query:None)

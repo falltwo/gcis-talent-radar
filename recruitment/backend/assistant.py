@@ -19,6 +19,16 @@ class AssistantPlan(ModelOutput):
 def plan_request(ai, messages):
     """Only HR-authored messages can become draft evidence, never search results."""
     users=[m['content'] for m in messages if m['role']=='user'][-8:]
+    # A complete latest brief (or confirmation of it) needs no LLM ambiguity loop.
+    from .parser import parse
+    confirmation=bool(re.fullmatch(r'\s*(?:都通用|都適用|兩個都適用|全部適用|對|是|沒錯|確認|好|可以)[。！!\s]*',users[-1]))
+    candidate=users[-2] if confirmation and len(users)>1 else users[-1]
+    if not re.search(r'[?？]|行情|平均|查詢|搜尋',candidate):
+        try:parse(candidate)
+        except ValueError:pass
+        else:
+            turns=[text for text in users if not re.search(r'[?？]|行情|平均|查詢|搜尋',text)]
+            return {'action':'draft','query':'','reply':'','brief':'\n'.join(turns),'salary_turns':turns}
     if not ai.enabled:
         text=users[-1]
         if re.search(r'平均|行情|多少|怎麼|如何|搜尋|查詢|[?？]',text):
@@ -35,13 +45,16 @@ def plan_request(ai, messages):
         '使用者已明確提供的薪資、地點、工作內容及任職條件必須保留；範本只補缺漏。'
         '例如「後端工程師月薪4萬，網路管理師月薪5萬」已分別指定薪資，不能追問歸屬或改為兩者5萬。'
         '選取需求索引時須包含本次招募各職位的既有條件，不得只保留最後一句建表指令或丟掉先前具名的薪資。'
+        '對話有時間順序：最新使用者明確指定的薪資覆蓋舊薪資，不是同時適用兩種金額。'
+        '例如先說兩職位各5萬，後說兩職位各6萬，再說「都通用」，兩職位皆採最新6萬，不再追問5萬或6萬。'
         'draft 時不要產生工作條件或薪資；只選使用者原文。搜尋 query 不含私人資料、公司內部薪資或帳戶資訊。',
         {'user_requests':users,'assistant_context':[m['content'][:2000] for m in messages if m['role']=='assistant'][-4:]})
     indexes=result.request_indexes
     if result.action=='draft' and (not indexes or len(users)-1 not in indexes or any(i<0 or i>=len(users) for i in indexes)):
         raise AIError('invalid_request_evidence')
+    turns=[users[i] for i in sorted(set(indexes))] if result.action=='draft' else []
     return {'action':result.action,'query':result.query or users[-1],'reply':result.reply,
-            'brief':'\n'.join(users[i] for i in sorted(set(indexes))) if result.action=='draft' else ''}
+            'brief':'\n'.join(turns),'salary_turns':turns}
 
 
 def safe_citation(citation):
