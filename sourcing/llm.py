@@ -20,7 +20,10 @@ def has_key() -> bool:
 
 
 def chat_json(system: str, user: str, schema_name: str, schema: dict[str, Any], *,
-              max_tokens: int = 800) -> Optional[dict[str, Any]]:
+              max_tokens: int = 800, timeout: tuple[float, float] = (10, 60),
+              provider: Optional[dict[str, Any]] = None) -> Optional[dict[str, Any]]:
+    """`provider` is OpenRouter's routing block, e.g. {"require_parameters": True} so only
+    endpoints that honour json_schema are used; `timeout` is (connect, read) seconds."""
     api_key = os.environ.get("OPENROUTER_API_KEY", "").strip()
     if not api_key:
         return None
@@ -34,6 +37,8 @@ def chat_json(system: str, user: str, schema_name: str, schema: dict[str, Any], 
         "max_completion_tokens": max_tokens,
         "usage": {"include": True},  # 請 OpenRouter 在回應裡附上實際花費
     }
+    if provider:
+        payload["provider"] = provider
     headers = {
         "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json",
@@ -41,7 +46,7 @@ def chat_json(system: str, user: str, schema_name: str, schema: dict[str, Any], 
         "X-Title": os.environ.get("OPENROUTER_APP_NAME", "Taichung Talent Radar"),
     }
     try:
-        response = requests.post(f"{base_url}/chat/completions", headers=headers, json=payload, timeout=(10, 60))
+        response = requests.post(f"{base_url}/chat/completions", headers=headers, json=payload, timeout=timeout)
         response.raise_for_status()
         data = response.json()
         meter = usage_meter.current()

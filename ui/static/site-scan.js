@@ -81,23 +81,33 @@
   for(const id of ['campus-exit','posting-exit','hunter-exit'])$(id)?.addEventListener('click',()=>{if(step==='feature')back();});
   $('replay-intro').addEventListener('click',()=>{if(step!=='intro')stop();});
 
-  function parseIntent(raw) {
+  const GAP_LABELS = {transport:'交通', land:'地價與廠房', utilities:'水電與環評', other:'部分條件'};
+  let aiIntent = null;
+  // `ai` is the /api/site-intent answer; without it (no key, timeout, error) the keyword rules below decide.
+  function parseIntent(raw, ai) {
     const text = raw?.text || '', preference = raw?.preference || '';
-    industry = INDUSTRY_WORDS.find(([word]) => text.includes(word))?.[1] || null;
+    aiIntent = ai?.source === 'llm' ? ai.intent : null;
+    industry = aiIntent?.industry || INDUSTRY_WORDS.find(([word]) => text.includes(word))?.[1] || null;
     checked = Object.fromEntries(CRITERIA.map(c => [c.id, true]));
-    boosted = Object.fromEntries(CRITERIA.map(c => [c.id, c.words.some(word => text.includes(word))]));
+    boosted = Object.fromEntries(CRITERIA.map(c => [c.id, aiIntent ? aiIntent.emphasis.includes(c.id) : c.words.some(word => text.includes(word))]));
     if (PREFERENCE[preference]) boosted[PREFERENCE[preference]] = true;
     const tags = [];
     tags.push(industry ? ['產業', industry] : ['產業', '未判斷，看全部製造業']);
     if (preference) tags.push(['偏好', preference]);
     CRITERIA.filter(c => boosted[c.id]).forEach(c => tags.push(['加重', c.label]));
-    const missing = NO_DATA_WORDS.filter(word => text.includes(word)).concat(preference === '靠近交通樞紐' ? ['交通樞紐'] : []);
+    if (aiIntent?.role) tags.push(['職務', aiIntent.role]);
+    if (aiIntent?.senior_role) tags.push(['關鍵職務', aiIntent.senior_role]);
+    if (aiIntent?.hires) tags.push(['人數', `${aiIntent.hires} 人`]);
+    const missing = aiIntent ? aiIntent.unsupported.map(key => GAP_LABELS[key] || key)
+      : NO_DATA_WORDS.filter(word => text.includes(word)).concat(preference === '靠近交通樞紐' ? ['交通樞紐'] : []);
     $('scan-tags').replaceChildren(...tags.map(([kind, value]) => {
       const tag = document.createElement('span');tag.className = 'scan-tag';
       tag.innerHTML = '<small></small><b></b>';tag.firstChild.textContent = kind;tag.lastChild.textContent = value;
       return tag;
     }));
-    $('scan-intent-note').textContent = text ? `「${text}」・目前用關鍵字擷取，尚未接 AI 解析` : '沒有輸入文字，只依偏好按鈕設定。';
+    $('scan-intent-note').textContent = !text ? '沒有輸入文字，只依偏好按鈕設定。'
+      : aiIntent ? `「${text}」・AI 擷取，只從固定選項挑；排名數字由系統計算`
+      : `「${text}」・關鍵字擷取（AI 這次沒有回應）`;
     $('scan-gap').textContent = missing.length ? `沒有${[...new Set(missing)].join('、')}的資料，這次未納入排名。` : '';
   }
 
@@ -434,12 +444,12 @@
   function carryOver(name) {
     const text = intent?.text || '';
     const field = industry ? industry.replace(/業$/, '') : '';
-    const role = ROLE_WORDS.find(([word]) => text.toUpperCase().includes(word))?.[1] || '';
-    const senior = SENIOR_WORDS.find(([word]) => text.includes(word))?.[1];
+    const role = aiIntent?.role || ROLE_WORDS.find(([word]) => text.toUpperCase().includes(word))?.[1] || '';
+    const senior = aiIntent?.senior_role || SENIOR_WORDS.find(([word]) => text.includes(word))?.[1];
     return {
       district:name, place:`${name}${$('city-road').value}`, role,
       department: DEPT_FOR[industry] || (text.includes('電') ? '電機' : '機械'),
-      senior: senior ? (senior === '工程師' && field ? `${field.replace(/設備$/, '')}工程師` : senior) : (field ? `${field.replace(/設備$/, '')}工程師` : '製程工程師'),
+      senior: aiIntent?.senior_role ? senior : senior ? (senior === '工程師' && field ? `${field.replace(/設備$/, '')}工程師` : senior) : (field ? `${field.replace(/設備$/, '')}工程師` : '製程工程師'),
       salary: talent.districts[name].salary_floor_median,
     };
   }
@@ -545,7 +555,12 @@
     if(request!==navigationEpoch||!started)return;
     intent = window.radarIntent || {};
     const nextKey=JSON.stringify(intent);
-    if(nextKey!==intentKey){parseIntent(intent);intentKey=nextKey;comparedDistricts=[];selectedDistrict=null;}
+    if(nextKey!==intentKey){
+      // The parse started when the user pressed Analyze, so it has had the whole transition to finish.
+      const ai=await Promise.race([window.radarIntentParse||Promise.resolve(null),new Promise(done=>setTimeout(()=>done(null),1500))]);
+      if(request!==navigationEpoch||!started)return;
+      parseIntent(intent,ai);intentKey=nextKey;comparedDistricts=[];selectedDistrict=null;
+    }
     renderCriteria();rank();
     addLayers();setVisible(true);
     window.campusMatching?.deactivate();window.headhunter?.deactivate();window.recruitment?.deactivate();
