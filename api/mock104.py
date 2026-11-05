@@ -9,7 +9,8 @@ from recruitment.models import Requirement, SimulationCreate, SimulationRetry, S
 
 
 router = APIRouter(prefix="/api/mock104", tags=["Mock job board"])
-sessions = DemoSessions()
+from api.mock104_store import PersistentPortalSessions, RETENTION_SECONDS
+sessions = PersistentPortalSessions()
 COOKIE = "mock104_demo"
 DETAIL_SCHEMA = """CREATE TABLE IF NOT EXISTS mock_job_details (
     request_id TEXT PRIMARY KEY REFERENCES recruitment_requests(id),
@@ -30,6 +31,7 @@ class JobForm(Requirement):
 
 class ReviewScenario(StrictModel):
     scenario: Literal["SUCCESS", "FAILURE"] = "SUCCESS"
+    expected_revision: int | None = Field(default=None, ge=1)
 
 
 def snapshot(session):
@@ -67,6 +69,8 @@ def start(request: Request, response: Response):
     key = request.cookies.get(COOKIE)
     try:
         with get_session(request) as session:
+            if hasattr(sessions,"refresh"):sessions.refresh(key)
+            response.set_cookie(COOKIE,key,httponly=True,samesite="strict",secure=request.url.scheme=="https",max_age=RETENTION_SECONDS,path="/api/mock104")
             return snapshot(session)
     except HTTPException as exc:
         if exc.status_code != 404:
@@ -77,7 +81,7 @@ def start(request: Request, response: Response):
             conn.execute(DETAIL_SCHEMA)
         data = snapshot(session)
     response.set_cookie(COOKIE, key, httponly=True, samesite="strict", secure=request.url.scheme == "https",
-                        max_age=1200, path="/api/mock104")
+                        max_age=RETENTION_SECONDS, path="/api/mock104")
     return data
 
 
@@ -132,6 +136,8 @@ def submit_job(identifier: str, body: ReviewScenario, request: Request, response
         with service.connection() as conn:
             req = service.get(conn, "requests", identifier, DEMO_HR)
             details = conn.execute("SELECT * FROM mock_job_details WHERE request_id=?", (identifier,)).fetchone()
+            if body.expected_revision is not None and req['revision'] != body.expected_revision:
+                raise HTTPException(409, '職缺已變更，請重新檢查並儲存確認後再送審。')
             if details is None or len(details["description"].strip()) < 10:
                 raise HTTPException(422, "請填寫至少10個字的工作內容後再送審。")
         if req["status"] == "DRAFT":

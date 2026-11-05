@@ -88,3 +88,6 @@ database/recruitment.sqlite3*
 
 # Local education database backups created by the ETL.
 /data/backups/education/
+
+# Durable local 404 portal records and session metadata
+/data/mock104/

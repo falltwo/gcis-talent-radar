@@ -644,6 +644,10 @@ def serve_recruitment_demo():
 def serve_mock_job_board():
     return FileResponse(UI_DIR / "mock104.html", headers={"Cache-Control": "no-store"})
 
+@app.get('/recruitment-browser')
+def serve_recruitment_browser():
+    return FileResponse(UI_DIR / 'recruitment-browser.html',headers={'Cache-Control':'no-store'})
+
 
 @app.get("/recruitment-agent")
 def serve_recruitment_agent():

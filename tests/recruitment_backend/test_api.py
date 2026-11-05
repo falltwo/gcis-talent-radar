@@ -41,7 +41,7 @@ def test_parser():
     assert [i['quantity'] for i in rows]==[3,5,1,2]
     assert rows[-1]['salary_min']==100000
     assert parse('2位工程師，工程師月薪40,000至60,000元')[0]['salary_max']==60000
-    for text in ['找一些人','一個經理，月薪十萬','一個經理，經理薪水十萬','零個助理','一個經理，經理月薪十萬，經理月薪五萬']:
+    for text in ['找一些人','一個經理、一個助理，月薪十萬','零個助理','一個經理，經理月薪十萬，經理月薪五萬']:
         with pytest.raises(ValueError): parse(text)
 
 def test_full_flow(c):
@@ -133,3 +133,19 @@ def test_concurrent_publish(c):
     with ThreadPoolExecutor(max_workers=2) as pool: statuses=list(pool.map(publish,range(2)))
     assert sorted(statuses)==[200,409]
     assert len(c.get('/job-postings',headers=h).json())==1
+
+@pytest.mark.parametrize('text',[
+    '我想招募前端工程師與全端工程師各5位 填寫履歷範本',
+    '請幫我建立前端工程師、全端工程師各五位，填寫招募表',
+    '前端工程師與全端工程師各5位',
+])
+def test_shared_headcounts_do_not_consume_following_form_instruction(text):
+    rows=parse(text)
+    assert [(r['title'],r['quantity']) for r in rows]==[('前端工程師',5),('全端工程師',5)]
+
+
+def test_form_instruction_cannot_be_a_job_title():
+    from recruitment.backend.parser import valid_title
+    assert not valid_title('填寫履歷範本')
+    assert not valid_title('填寫招募表')
+    with pytest.raises(ValueError):parse('5位填寫履歷範本')

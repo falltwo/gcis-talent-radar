@@ -27,6 +27,14 @@ def test_only_approved_text_and_bounded_mouse_keyboard_actions(monkeypatch):
     assert allowed_text('月薪面議',job)
 
 
+def test_real_frame_hook_runs_after_each_completed_action(monkeypatch):
+    monkeypatch.setattr('recruitment.computer_use.time.sleep',lambda _:None)
+    events=[]
+    page=SimpleNamespace(mouse=SimpleNamespace(click=lambda x,y:events.append('click')),keyboard=SimpleNamespace(insert_text=lambda t:events.append('type')))
+    execute_actions(page,[{'type':'click','x':10,'y':10},{'type':'type','text':'會計'}],{'title':'會計'},on_action=lambda action:events.append('frame:'+action['type']))
+    assert events==['click','frame:click','type','frame:type']
+
+
 def test_external_verifier_reads_saved_normal_webpage_data(client):
     import api.mock104 as portal
     from recruitment.computer_use import saved_job
@@ -36,6 +44,35 @@ def test_external_verifier_reads_saved_normal_webpage_data(client):
     assert actual['salary_mode']=='NEGOTIABLE'
     assert actual['salary_min'] is None and actual['salary_max'] is None
     assert actual['company_name']=='虛構示範企業'
+
+
+def test_fill_only_verifies_saved_form_and_blocks_publication(client,monkeypatch):
+    import api.mock104 as portal
+    import recruitment.computer_use as worker
+    from tests.test_mock104 import job
+    approved=job(work_hours='08:00–17:00',schedule_system='固定班制',company_intro='本機測試')
+    r=client.post('/api/mock104/agent/approve',json={'job':approved,'hr_confirmed':True,'fill_only':True})
+    assert r.status_code==200,r.text
+    run=r.json();cookie=client.cookies.get(portal.COOKIE)
+    handlers={}
+    def state():
+        with portal.sessions.session(cookie) as session:return session['agent_run']
+    def open_page(*args,**kwargs):
+        assert client.post('/api/mock104/jobs',json=approved).status_code==201
+    page=SimpleNamespace(route=lambda pattern,handler:handlers.update(route=handler),on=lambda *a:None,goto=open_page,
+                         is_closed=lambda:state()['phase']=='FILLED',screenshot=lambda **kw:b'test-jpeg')
+    context=SimpleNamespace(add_cookies=lambda *a:None,new_page=lambda:page)
+    browser=SimpleNamespace(new_context=lambda **kw:context,close=lambda:None)
+    chromium=SimpleNamespace(launch=lambda **kw:browser)
+    monkeypatch.setitem(sys.modules,'playwright.sync_api',SimpleNamespace(sync_playwright=lambda:nullcontext(SimpleNamespace(chromium=chromium))))
+    monkeypatch.setattr(worker,'decide',lambda *a:pytest.fail('Verified filled form must not trigger another decision'))
+    worker.operate(portal.sessions,cookie,'http://127.0.0.1:8891',run['run_id'])
+    assert state()['phase']=='FILLED'
+    assert client.get('/api/mock104/state').json()['jobs'][0]['status']=='DRAFT'
+    events=[]
+    route=SimpleNamespace(request=SimpleNamespace(url='http://127.0.0.1:8891/api/mock104/jobs/x/submit',method='POST'),abort=lambda:events.append('blocked'),continue_=lambda:events.append('allowed'))
+    handlers['route'](route)
+    assert events==['blocked']
 
 
 @pytest.mark.parametrize(('failure_at','error','code'),[
@@ -70,3 +107,71 @@ def test_malformed_model_response_reports_model_error(monkeypatch,content):
     monkeypatch.setattr(worker.requests,'post',lambda *a,**kw:SimpleNamespace(ok=True,json=lambda:{'choices':[{'message':{'content':content}}]}))
     with pytest.raises(RuntimeError,match='模型回傳的操作格式不完整'):
         worker.decide(b'screenshot',{'title':'會計'},'fill','')
+
+
+def test_truncated_decision_retries_before_any_action(monkeypatch):
+    import recruitment.computer_use as worker
+    monkeypatch.setenv('OPENROUTER_API_KEY','test-only')
+    calls=[]
+    def post(*args,**kwargs):
+        calls.append(kwargs['json'])
+        choice={'finish_reason':'length','message':{'content':'{"actions":['}} if len(calls)==1 else {'finish_reason':'stop','message':{'content':'{"note":"填寫","actions":[{"type":"click","x":10,"y":10}]}'}}
+        return SimpleNamespace(ok=True,json=lambda:{'choices':[choice]})
+    monkeypatch.setattr(worker.requests,'post',post)
+    assert worker.decide(b'screenshot',{'title':'會計'},'fill','')['actions'][0]['type']=='click'
+    assert len(calls)==2 and calls[0]['max_completion_tokens']==4000
+
+def test_skill_action_replaces_exact_list_and_clears_empty_training(monkeypatch):
+    import recruitment.computer_use as worker
+    monkeypatch.setattr(worker.time,'sleep',lambda _:None)
+    events=[]
+    page=SimpleNamespace(keyboard=SimpleNamespace(press=lambda k:events.append(('key',k)),insert_text=lambda t:events.append(('text',t))))
+    job={'required_skills':['html、css','需求分析，跨部門協作'],'trainable_skills':[]}
+    worker.execute_actions(page,[{'type':'fill_skills','field':'required_skills'},{'type':'fill_skills','field':'trainable_skills'}],job)
+    assert events==[('key','Control+A'),('text','html、css\n需求分析，跨部門協作\n'),('key','Control+A'),('text','')]
+    with pytest.raises(ValueError):worker.execute_actions(page,[{'type':'fill_skills','field':'description'}],job)
+
+
+def test_memory_keeps_verified_fields_separate_from_attempts_and_bounds_history():
+    from recruitment.computer_use import ProgressMemory
+    memory=ProgressMemory()
+    for n in range(40):memory.action({'type':'type','text':str(n)})
+    memory.verify({'title':'全端工程師','required_skills':['html','css']},{'title':'全端工程師','required_skills':['html、css']})
+    assert memory.verified==['title']
+    assert list(memory.differences)==['required_skills']
+    assert len(memory.recent)==24
+    assert memory.recent[0]['text']=='16'
+    memory.verify({'title':'全端工程師','required_skills':['html、css']},{'title':'全端工程師','required_skills':['html、css']})
+    assert memory.differences=={}
+    assert 'current_url' in memory.context('http://127.0.0.1:8088/mock104')
+
+def test_first_saved_mismatch_hands_to_human_without_another_model_call(client,monkeypatch):
+    import json
+    import api.mock104 as portal
+    import recruitment.computer_use as worker
+    from tests.test_mock104 import job
+    approved=job(required_skills=['html、css'],trainable_skills=[],work_hours='09:00–18:00')
+    run=client.post('/api/mock104/agent/approve',json={'job':approved,'hr_confirmed':True,'fill_only':True}).json()
+    cookie=client.cookies.get(portal.COOKIE);identifier=[];goals=[]
+    def state():
+        with portal.sessions.session(cookie) as session:return session['agent_run']
+    def click(x,y):
+        if not identifier:
+            response=client.post('/api/mock104/jobs',json={**approved,'required_skills':['html','css']})
+            identifier.append(response.json()['selected_id'])
+        else:assert client.put('/api/mock104/jobs/'+identifier[0],json=approved).status_code==200
+    page=SimpleNamespace(route=lambda *a:None,on=lambda *a:None,goto=lambda *a,**kw:None,
+        url='http://127.0.0.1:8891/mock104#new',is_closed=lambda:state()['phase'] in {'FILLED','REVIEW_REQUIRED'},
+        screenshot=lambda **kw:b'jpeg',wait_for_timeout=lambda _:None,mouse=SimpleNamespace(click=click))
+    browser=SimpleNamespace(new_context=lambda **kw:SimpleNamespace(add_cookies=lambda *a:None,new_page=lambda:page),close=lambda:None)
+    monkeypatch.setitem(sys.modules,'playwright.sync_api',SimpleNamespace(sync_playwright=lambda:nullcontext(SimpleNamespace(chromium=SimpleNamespace(launch=lambda **kw:browser)))))
+    monkeypatch.setattr(worker.time,'sleep',lambda _:None)
+    def decide(screenshot,data,goal,error):
+        goals.append(goal)
+        assert len(goals)==1
+        return {'actions':[{'type':'click','x':10,'y':20}]}
+    monkeypatch.setattr(worker,'decide',decide)
+    worker.operate(portal.sessions,cookie,'http://127.0.0.1:8891',run['run_id'])
+    assert state()['phase']=='REVIEW_REQUIRED' and len(goals)==1
+    assert list(state()['mismatches'])==['required_skills']
+    assert state()['job_id']==identifier[0]

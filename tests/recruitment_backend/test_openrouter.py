@@ -29,6 +29,7 @@ def test_openrouter_request_and_salary_protection(enabled):
     assert str(request.url)=='https://openrouter.ai/api/v1/chat/completions'
     assert request.headers['authorization']=='Bearer test-secret-not-real'
     assert payload['model']=='test/model'
+    assert 'temperature' not in payload  # Models may reject sampling overrides with strict routing.
     assert payload['response_format']['json_schema']['strict'] is True
     assert payload['provider']['require_parameters'] is True
     assert 'salary_min' not in payload['response_format']['json_schema']['schema']['$defs']['ExtractedItem']['properties']
@@ -49,13 +50,30 @@ def test_model_cannot_drop_or_invent_roles(enabled):
     assert 'location' not in rows[0]
     assert meta['fallback_reason']=='unverified_evidence'
 
+
+def test_shared_headcount_and_command_do_not_override_correct_ai(enabled):
+    text='十位前端工程師全端工程師\n各十位\n 幫我建立'
+    result={'items':[
+        extraction(title=title,quantity=10,quantity_text='十',evidence=text)['items'][0]
+        for title in ['前端工程師','全端工程師']], 'clarification':''}
+    rows,meta=RecruitmentAI(transport=provider(result)).extract(text)
+    assert meta['mode']=='openrouter'
+    assert [(r['title'],r['quantity']) for r in rows]==[('前端工程師',10),('全端工程師',10)]
+
+
+@pytest.mark.parametrize('title',['幫我建立','前端工程師全端工程師'])
+def test_wrong_instruction_or_merged_title_never_becomes_draft(enabled,title):
+    text='十位前端工程師全端工程師\n各十位\n 幫我建立'
+    bad=extraction(title=title,quantity=10,quantity_text='十',evidence=text)
+    with pytest.raises(ValueError):RecruitmentAI(transport=provider(bad)).extract(text)
+
 def test_salary_hallucination_rejected(enabled):
     bad=extraction();bad['items'][0]['salary_min']=50000
     rows,meta=RecruitmentAI(transport=provider(bad)).extract('兩個經理，經理月薪十萬元')
     assert rows[0]['salary_min']==100000
     assert meta['fallback_reason']=='invalid_response'
     ai=RecruitmentAI(transport=provider(extraction(evidence='經理需要兩位')))
-    with pytest.raises(ValueError): ai.extract('經理需要兩位，薪水十萬')
+    assert ai.extract('經理需要兩位，薪水十萬')[0][0]['salary_min']==100000
 
 @pytest.mark.parametrize('kind',['timeout','401','429','invalid_json','truncated','error'])
 def test_provider_failures_fallback(enabled,kind):
@@ -136,3 +154,11 @@ def test_api_failure_has_no_partial_batch(c,enabled):
     response=c.post('/chat',headers=h,json={'message':'助理薪資多少？'})
     assert response.status_code==200
     assert response.json()['ai']['fallback_reason']=='timeout'
+
+
+def test_model_choosing_instruction_as_role_falls_back_to_verified_real_roles(enabled):
+    text='我想招募前端工程師與全端工程師各5位 填寫履歷範本'
+    ai=RecruitmentAI(transport=provider(extraction(title='填寫履歷範本',quantity=5,quantity_text='5',evidence=text)))
+    rows,meta=ai.extract(text)
+    assert [(r['title'],r['quantity']) for r in rows]==[('前端工程師',5),('全端工程師',5)]
+    assert meta['mode']=='rules' and meta['fallback_reason']=='invalid_job_title'

@@ -15,31 +15,51 @@ def number(text):
     return total + section + digit
 
 NUM = r'[0-9零一二三四五六七八九十百千萬兩]+'
+
+def valid_title(title):
+    """Reject instruction fragments and merged roles instead of treating them as jobs."""
+    return bool(title and len(title)<=100
+                and not re.search(r'幫我|請幫|麻煩|我想|我要|幫忙|協助我|建立|新增|職缺表|履歷表|履歷範本|招募範本|表單範本',title)
+                and not re.match(r'^(?:填寫|填表|套用|使用範本|送出|送審)',title)
+                and title.count('工程師')<2
+                and not re.search(rf'{NUM}\s*(?:個|位|名|人)',title))
+
+
+def shared_headcounts(text):
+    """Bind role lists to 各N位 before looking for legacy count-first phrases."""
+    groups=list(re.finditer(rf'各\s*({NUM})\s*(?:個|位|名|人)',text))
+    if not groups:return None
+    # Mixed count-first/shared syntax remains the model's job; do not omit a role.
+    markers=list(re.finditer(rf'({NUM})\s*(?:個|位|名|人)',text))
+    if any(not any(g.start()<=m.start()<g.end() for g in groups) for m in markers):return None
+    rows=[];cursor=0
+    for group in groups:
+        names=text[cursor:group.start()].strip(' \t\r\n，,、；;。')
+        names=re.sub(r'^(?:(?:請|麻煩|幫我|協助我|我想|我要|我需要|想要|想|要|我們想|我們要|招募|招聘|徵求|找|建立|新增|聘請)\s*)+','',names)
+        names=names.rsplit('：',1)[-1].strip()
+        roles=[r.strip() for r in re.split(r'與|和|及|、|，|,',names) if r.strip()]
+        if not roles or any(not valid_title(role) for role in roles):return None
+        rows.extend({'title':role,'quantity':number(group[1])} for role in roles)
+        cursor=group.end()
+    return rows
+
 def parse(text):
     """Conservative deterministic parser: no invented titles, salaries, or LLM execution."""
-    matches = list(re.finditer(rf'({NUM})\s*(?:個|位|名)\s*([^、，,。；;\s]+)', text))
-    if not matches: raise ValueError('請使用「三個工程師、兩個經理，經理月薪十萬元」格式；未解析內容請以草稿編輯補齊。')
-    result = []
-    for m in matches:
-        title = re.split(r'月薪|時薪|年薪', m[2])[0]
-        if not title or len(title) > 100: raise ValueError('職稱不明確')
-        item = dict(title=title, quantity=number(m[1]))
-        # Salary must explicitly name this title, or immediately follow its count/title.
-        pattern = rf'{re.escape(title)}\s*(月薪|時薪|年薪)\s*({NUM}(?:,[0-9]{{3}})*)(?:\s*[至到~～-]\s*({NUM}(?:,[0-9]{{3}})*))?\s*元?'
-        salaries = list(re.finditer(pattern, text))
-        if len(salaries) > 1: raise ValueError(f'{title}有多個薪資指定，請先釐清')
-        if salaries:
-            s = salaries[0]
-            lo = number(s[2]); hi = number(s[3]) if s[3] else lo
-            if lo <= 0 or hi < lo: raise ValueError('薪資範圍不正確')
-            item.update(salary_min=lo, salary_max=hi, salary_type={'月薪':'monthly','時薪':'hourly','年薪':'yearly'}[s[1]], currency='TWD', salary_source='hr_explicit', salary_provenance=s[0], salary_confirmed=True)
-        result.append(item)
+    result=shared_headcounts(text)
+    if result is None:
+        markers=list(re.finditer(rf'({NUM})\s*(?:個|位|名|人)\s*',text))
+        matches=[]
+        for index,m in enumerate(markers):
+            segment=text[m.end():markers[index+1].start() if index+1<len(markers) else len(text)]
+            if re.match(r'(?:職位|職缺|職務)(?:各|都|均|皆|的|[，,；;。\s]|$)',segment):continue
+            title=re.split(r'[、，,。；;\s]|月薪|時薪|年薪',segment)[0]
+            if not valid_title(title):raise ValueError('職稱或人數歸屬不明確，請分別列出每個職位與人數；「幫我建立」不會當成職位。')
+            matches.append((m[1],title))
+        if not matches: raise ValueError('請使用「三個工程師、兩個經理，經理月薪十萬元」格式；未解析內容請以招募資料編輯補齊。')
+        result = [dict(title=title,quantity=number(count)) for count,title in matches]
     if len({i['title'] for i in result}) != len(result): raise ValueError('重複職稱，請合併人數')
     if any(i['quantity'] < 1 or i['quantity'] > 10000 for i in result): raise ValueError('人數必須為 1–10000')
-    # Unsupported salary expressions must never silently become template suggestions.
-    remaining = text
-    for i in result:
-        if i.get('salary_provenance'): remaining = remaining.replace(i['salary_provenance'], '')
-    if re.search(r'薪|薪水|薪資|待遇|萬|元|NT\$|TWD', remaining, re.I):
-        raise ValueError('有無法安全對應職缺的薪資敘述，請明確指定「職稱月薪金額元」')
+    from .salary import verified_salary
+    salaries=verified_salary(text,[i['title'] for i in result])
+    for item in result:item.update(salaries.get(item['title'],{}))
     return result
