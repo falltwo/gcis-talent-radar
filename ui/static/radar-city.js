@@ -65,14 +65,19 @@
     workspace.querySelector('.primary-feature-nav').classList.toggle('has-selection',!!name);
     workspace.querySelectorAll('[data-feature]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.feature===name)));
   }
-  window.radarFeatures={select:selectFeature};
+  // Opening one hiring feature closes the other two; the feature buttons and each feature's open() share this.
+  function closeOthers(name){
+    if(name!=='刊登召募')window.recruitment?.deactivate();
+    if(name==='校園人才媒合'){window.headhunter?.deactivate(true);return;}
+    window.campusMatching?.deactivate();
+    if(name!=='獵頭Agent')window.headhunter?.deactivate();
+  }
+  window.radarFeatures={select:selectFeature,closeOthers};
   selectFeature(null);
   workspace.querySelectorAll('[data-feature]').forEach(button=>button.addEventListener('click',()=>{
-    if(button.dataset.feature!=='刊登召募')window.recruitment?.deactivate();
-    if(button.dataset.feature==='校園人才媒合'&&window.campusMatching){window.headhunter?.deactivate(true);window.campusMatching.toggle();return;}
-    window.campusMatching?.deactivate();
+    closeOthers(button.dataset.feature);
+    if(button.dataset.feature==='校園人才媒合'&&window.campusMatching){window.campusMatching.toggle();return;}
     if(button.dataset.feature==='獵頭Agent'&&window.headhunter){window.headhunter.toggle();return;}
-    window.headhunter?.deactivate();
     if(button.dataset.feature==='刊登召募'&&window.recruitment){window.recruitment.toggle();return;}
     featureTrigger=button;selectFeature(button.dataset.feature);
     $('feature-placeholder-title').textContent=button.dataset.feature;featureDialog.showModal();

@@ -9,7 +9,7 @@ function setup(){
  e.document.querySelector=selector=>{const match=selector.match(/^\.primary-feature-button\[data-feature="(.+)"\]$/);return match?buttons.get(match[1]):originalQuery(selector);};
  const proto=Object.getPrototypeOf(e.workspace);
  Object.defineProperties(proto,{firstChild:{get(){return this.children[0];}},lastChild:{get(){return this.children.at(-1);}}});
- for(const id of ['city-district','city-road','sidebar-toggle','sidebar-location','map-home','replay-intro','campus-exit','posting-exit','hunter-exit','campus-query','posting-role','posting-address','posting-brief','hunter-job','hunter-tag']){
+ for(const id of ['city-district','city-road','sidebar-toggle','sidebar-location','map-home','replay-intro','campus-exit','posting-exit','hunter-exit']){
   const n=e.document.createElement('button');n.id=id;e.workspace.append(n);
  }
  e.ids.get('city-road').value='中清路三段';e.ids.get('city-road').options=[{value:'中清路三段'}];
@@ -19,14 +19,15 @@ function setup(){
  e.ids.get('replay-intro').addEventListener('click',()=>replayed++);
  for(const key of ['setFilter','setFeatureState','setLayoutProperty'])e.map[key]=()=>{};
  e.window.radarIntent={text:'機械工廠',preference:'上下游群聚優先'};
- for(const name of ['campusMatching','headhunter','recruitment'])e.window[name]={deactivate(){}};
+ const opened=[];
+ for(const [name,title] of [['campusMatching','校園人才媒合'],['headhunter','獵頭Agent'],['recruitment','刊登召募']])e.window[name]={deactivate(){},open(values){opened.push([title,values]);}};
  Object.assign(e.context,{innerWidth:1440,Event:class {constructor(type){this.type=type;}},
   setTimeout(fn){timers.push(fn);return timers.length;},clearTimeout(){},requestAnimationFrame(fn){timers.push(fn);return timers.length;}});
  vm.runInContext(source,e.context);
  const tick=async()=>{while(timers.length)timers.shift()();await flush();};
  const data=url=>JSON.parse(fs.readFileSync(path.join(__dirname,'../../ui/static',url.split('/').at(-1).split('?')[0]),'utf8'));
  const resolveAll=async()=>{for(const r of e.requests.filter(r=>!r.done)){r.done=true;r.resolve({ok:true,json:async()=>data(r.url)});}await flush();await tick();};
- return {...e,tick,resolveAll,replayed:()=>replayed,launched};
+ return {...e,tick,resolveAll,replayed:()=>replayed,launched,opened};
 }
 test('ranking back returns to the original demand and unchanged intent preserves criteria',async()=>{
  const e=setup();const loading=e.window.siteScan.start();await e.resolveAll();await loading;await e.tick();
@@ -60,7 +61,7 @@ test('each hiring feature returns to the selected site plan without losing its t
  const title=e.ids.get('hire-plan-title').textContent;
  for(const name of ['校園人才媒合','刊登召募','獵頭Agent']){
   const button=e.ids.get('hire-plan-list').querySelectorAll('button').find(b=>b.textContent.includes(name));button.click();await e.tick();
-  assert.equal(e.launched.at(-1),name);assert.equal(e.ids.get('scan-feature-back').hidden,false);
+  assert.equal(e.opened.at(-1)[0],name);assert.equal(e.ids.get('scan-feature-back').hidden,false);
   e.ids.get('scan-feature-back').click();await e.tick();
   assert.equal(e.ids.get('hire-plan').hidden,false);assert.equal(e.ids.get('hire-plan-title').textContent,title);assert.equal(e.ids.get('scan-feature-back').hidden,true);
  }
@@ -94,4 +95,18 @@ test('transport only counts when the demand asks for it, and stability is an exi
  assert.equal(labels(near).filter(Boolean).length,5);
  assert.match(podium(near),/交通便利：最近交流道 \d+\.\d 公里/);
  assert.doesNotMatch(podium(near),/Infinity|NaN|無資料/);
+});
+test('the site scan hands values to each feature through open() instead of its field ids',async()=>{
+ const e=setup();const loading=e.window.siteScan.start();await e.resolveAll();await loading;await e.tick();
+ e.ids.get('scan-compare').click();await e.resolveAll();await e.tick();
+ e.ids.get('report-supply').querySelector('button').click();await e.tick();
+ for(const name of ['校園人才媒合','刊登召募','獵頭Agent']){
+  e.ids.get('hire-plan-list').querySelectorAll('button').find(b=>b.textContent.includes(name)).click();await e.tick();
+  e.ids.get('scan-feature-back').click();await e.tick();
+ }
+ const values=Object.fromEntries(e.opened);
+ assert.equal(values['校園人才媒合'].query,'機械');
+ assert.match(values['刊登召募'].note,/^在.+區中清路三段設廠，想招/,'the drafted request names the picked district and road');
+ assert.equal(values['獵頭Agent'].job,'機械工程師');
+ assert.deepEqual(e.launched,[],'the feature buttons are no longer clicked to open a feature');
 });

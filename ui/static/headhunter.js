@@ -30,10 +30,11 @@
   left.className = 'hunter-side hunter-left';left.setAttribute('aria-label','獵頭 Agent 任務與紀錄');left.inert = true;
   right.className = 'hunter-side hunter-right';right.setAttribute('aria-label','獵頭 Agent 瀏覽器與人才清單');right.inert = true;
   const siteChip = (name,checked) => `<label class="hunter-site" data-site="${name}"><input type="checkbox"${checked ? ' checked' : ''}><i></i>${name}</label>`;
+  const DEMO_JOB = 'CNC 技術員';
   left.innerHTML = `<section class="hunter-pane hunter-head"><strong>獵頭 Agent 戰情室</strong><span class="hunter-mode">展示資料・模擬流程</span><button class="hunter-pill" id="hunter-sound" type="button"></button><button class="hunter-pill" id="hunter-exit" type="button">退出</button></section>
     <section class="hunter-pane"><h3>1. 任務發起面板</h3><div class="hunter-body">
-      <label class="hunter-field">職缺<input type="text" id="hunter-job" value="CNC 技術員"></label>
-      <span class="hunter-tag" id="hunter-tag">CNC 技術員</span>
+      <label class="hunter-field">職缺<input type="text" id="hunter-job" value="${DEMO_JOB}"></label>
+      <span class="hunter-tag" id="hunter-tag">${DEMO_JOB}</span>
       <p class="hunter-scope" id="hunter-scope" hidden><strong>適用職缺：</strong>軟體、AI／資料、設計、研究等會在網路上公開作品的職類。製程、設備、品保、生管、CNC 等製造業職缺在這些網站上很少有公開作品，通常找不到人；請改用「校園人才媒合」找相關科系，或用「刊登召募」刊登職缺。</p>
       <label class="hunter-field" id="hunter-max-field" hidden>要找幾位（1～20，每位約 4 秒）<input type="number" id="hunter-max" min="1" max="20" step="1" value="10" inputmode="numeric"></label>
       <details class="hunter-field hunter-sites-details"><summary>目標網站<span>展開／收合</span></summary><div class="hunter-sites">${['104','1111','LinkedIn','CakeResume'].map(name => siteChip(name,true)).join('')}${['GitHub','國科會'].map(name => siteChip(name,false)).join('')}</div></details>
@@ -549,7 +550,8 @@
       $('hunter-scope').hidden = false;
       right.querySelector('.hunter-note').textContent = '公開作品網站沒有住址，候選人不標在地圖上。';
       right.querySelector('.hunter-sim').textContent = 'Computer Use 即時畫面';
-      $('hunter-job').value = '找會 Python 的軟體工程師，在台中';$('hunter-tag').textContent = $('hunter-job').value;
+      // Only replace the demo default; a job handed in by open() or typed by the user stays.
+      if ($('hunter-job').value === DEMO_JOB) {$('hunter-job').value = '找會 Python 的軟體工程師，在台中';$('hunter-tag').textContent = $('hunter-job').value;}
     } catch { live = false; }
   }
   function reset() {
@@ -636,5 +638,11 @@
     unlockAudio();playCapture();
   });
   syncSound();reset();
-  window.headhunter = {toggle(){active ? deactivate() : activate();},deactivate};
+  // Entry point for other features (the site scan): open with a job already filled in.
+  function open({job} = {}) {
+    window.radarFeatures.closeOthers?.('獵頭Agent');
+    if (job) {$('hunter-job').value = job;$('hunter-tag').textContent = job;}
+    if (!active) activate();
+  }
+  window.headhunter = {toggle(){active ? deactivate() : activate();},open,deactivate};
 })();
