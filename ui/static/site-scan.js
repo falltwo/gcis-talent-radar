@@ -324,9 +324,11 @@
   // Small-number rule: health agencies suppress rates built on counts under ten (e.g. Washington DOH
   // small-numbers guideline), so a district with fewer postings than this is not ranked on the ratio.
   const MIN_POSTINGS = 10;
-  const demandRatio = row => row.graduates_nearby && row.postings >= MIN_POSTINGS ? row.openings / row.graduates_nearby : null;
+  // Demand and supply share one commuting ring: both count the district plus neighbours fading to zero at 10 km.
+  const nearby = d => ({postings: d.postings_nearby ?? d.postings, openings: d.openings_nearby ?? d.openings});
+  const demandRatio = d => d.graduates_nearby && nearby(d).postings >= MIN_POSTINGS ? nearby(d).openings / d.graduates_nearby : null;
   function renderReport(three) {
-    const rows = three.map(name => ({name, ...talent.districts[name]}));
+    const rows = three.map(name => ({name, ...talent.districts[name], ...nearby(talent.districts[name])}));
     rows.forEach(row => {row.thin = row.postings < MIN_POSTINGS;row.ratio = demandRatio(row);});
     const order = rows.filter(row => row.ratio !== null).sort((a, b) => a.ratio - b.ratio);
     const level = row => row.thin ? '職缺樣本太少' : row.ratio === null ? '附近沒有相關科系' : order.length < 2 ? '' : row === order[0] ? '三區中較容易' : row === order[order.length - 1] ? '三區中較難' : '居中';
@@ -335,15 +337,15 @@
       const [box, head] = section(row.name);
       const tag = document.createElement('span');tag.className = 'report-level' + (row === order[0] ? ' is-easy' : '');tag.textContent = level(row);head.append(tag);
       const ratio = document.createElement('p');ratio.className = 'report-ratio';
-      ratio.textContent = row.thin ? `製造類職缺只有 ${row.postings} 筆，樣本太少，不比較招募壓力` : row.ratio === null ? `區內和離區界 ${talent.radius_km} 公里內都沒有大專相關科系` : `每位畢業生對應 ${row.ratio.toFixed(2)} 個職缺需求・區內學校 ${row.graduates_in_district.toLocaleString()} 人`;
+      ratio.textContent = row.thin ? `附近製造類職缺只有約 ${row.postings} 筆，樣本太少，不比較招募壓力` : row.ratio === null ? `區內和離區界 ${talent.radius_km} 公里內都沒有大專相關科系` : `每位畢業生對應 ${row.ratio.toFixed(2)} 個職缺需求・區內學校 ${row.graduates_in_district.toLocaleString()} 人`;
       const pick = document.createElement('button');pick.type = 'button';pick.className = 'report-pick';
       pick.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M1 12h4M19 12h4"/></svg><span></span>';
       pick.lastChild.textContent = `選定${row.name}設廠並招人`;
       pick.addEventListener('click', () => choose(row.name));
-      box.append(bar('相關科系畢業生（加權）', row.graduates_nearby, maxGrad, '人', 'is-supply'), bar('製造類職缺需求', row.openings, maxOpen, '人', 'is-demand'), ratio, pick);
+      box.append(bar('相關科系畢業生（加權）', row.graduates_nearby, maxGrad, '人', 'is-supply'), bar('製造類職缺需求（加權）', row.openings, maxOpen, '人', 'is-demand'), ratio, pick);
       return box;
     }));
-    $('report-supply-note').textContent = `畢業生：大專校院機械、電機等相關科系 ${talent.academic_year} 學年畢業生，不含高職。區內的學校全數計入；區外的學校依離區界的距離打折，${talent.radius_km / 2} 公里算一半，${talent.radius_km} 公里以外不算。職缺：就業通 ${talent.jobs_snapshot} 快照的技術、製造、工程類需求人數。沒有各區求職者人數的資料，所以這不是求職求才比。`;
+    $('report-supply-note').textContent = `畢業生：大專校院機械、電機等相關科系 ${talent.academic_year} 學年畢業生，不含高職。區內的學校全數計入；區外的學校依離區界的距離打折，${talent.radius_km / 2} 公里算一半，${talent.radius_km} 公里以外不算。職缺：就業通 ${talent.jobs_snapshot} 快照的技術、製造、工程類需求人數，跟畢業生用同一個通勤圈：鄰區職缺依該區代表點到區界的距離打折。沒有各區求職者人數的資料，所以這不是求職求才比。`;
     $('report-schools').replaceChildren(...rows.map(row => {
       const [box] = section(row.name);
       const list = document.createElement('ul');list.className = 'report-school-list';
@@ -367,7 +369,7 @@
     }));
     const advice = [];
     if (order.length) advice.push(`對照相關科系畢業生和職缺需求，${order[0].name}每位畢業生對應的職缺需求最少（${order[0].ratio.toFixed(2)}），新鮮人的招募壓力在三區中最低。`);
-    rows.filter(row => row.thin).forEach(row => advice.push(`${row.name}的製造類職缺只有 ${row.postings} 筆，樣本太少，看不出招募壓力；當地製造業需求可能不大，要另外確認。`));
+    rows.filter(row => row.thin).forEach(row => advice.push(`${row.name}附近的製造類職缺只有約 ${row.postings} 筆，樣本太少，看不出招募壓力；當地製造業需求可能不大，要另外確認。`));
     rows.filter(row => !row.thin && row.ratio === null).forEach(row => advice.push(`${row.name}區內和附近都沒有大專相關科系，新鮮人要從外區通勤，比較適合用刊登召募找有經驗的人。`));
     // A school counts as shared only when it is in one district and close (weight >= .5) to the other.
     three.forEach((a, i) => three.slice(i + 1).forEach(b => {
@@ -395,7 +397,7 @@
     rows.forEach(row => {
       add(`${row.name}相關科系畢業生（加權）`, `${row.graduates_nearby.toLocaleString()} 人`);
       // A number is required where there is one; for a thin sample the head count itself is what must be said.
-      add(`${row.name}製造類職缺需求${row.thin ? '（樣本太少，不比較）' : ''}`, `${row.openings.toLocaleString()} 人（${row.postings} 筆）`, row.thin);
+      add(`${row.name}附近製造類職缺需求（加權）${row.thin ? '（樣本太少）' : ''}`, `${row.openings.toLocaleString()} 人（${row.postings} 筆）`, row.thin);
       if (!row.thin) add(`${row.name}每位畢業生對應的職缺需求`, row.ratio === null ? '附近沒有相關科系' : row.ratio.toFixed(2), row.ratio !== null);
       const schools = row.schools.filter(x => x.weight >= .5).sort((a, b) => b.graduates * b.weight - a.graduates * a.weight).slice(0, 2).map(x => short(x.name));
       if (schools.length) add(`${row.name}附近主要學校`, schools.join('、'));
@@ -473,7 +475,7 @@
     const request=navigationEpoch;$('scan-compare').disabled=true;
     try {
       if (!talent) {
-        const response = await fetch('/static/district-talent.json?v=20261105-edge1');
+        const response = await fetch('/static/district-talent.json?v=20261106-ring1');
         if (!response.ok) throw Error('talent');
         talent = await response.json();
       }
@@ -523,14 +525,20 @@
       }
     });
   }
+  // ponytail: relative cut-off (the city median ratio) so the order survives changes in how the ratio is counted;
+  // the rule itself is still open in issue #39.
+  function ratioMedian() {
+    const all = Object.values(talent.districts).map(demandRatio).filter(r => r !== null).sort((a, b) => a - b);
+    return all.length ? all[Math.floor(all.length / 2)] : null;
+  }
   function channels(name) {
     const row = talent.districts[name], ratio = demandRatio(row);
     const schools = row.schools.filter(s => s.weight >= .5).sort((a, b) => b.graduates * b.weight - a.graduates * a.weight).slice(0, 2).map(s => short(s.name));
     const list = [
       {key:'campus', who:'新鮮人', big: row.graduates_nearby ? row.graduates_nearby.toLocaleString() + ' 人' : '0 人', label:'附近相關科系畢業生（加權）',
-        why: schools.length ? `主要來源：${schools.join('、')}` : '附近沒有大專相關科系，要從外區找', rank: ratio === null ? 2 : ratio < .3 ? 0 : 1},
-      {key:'posting', who:'一般求職者', big: row.openings.toLocaleString() + ' 人', label:'當地製造類職缺需求',
-        why: row.salary_floor_median ? `起薪中位數 ${row.salary_floor_median.toLocaleString()} 元，開薪可以參考` : '沒有月薪刊登可以參考', rank: ratio === null || ratio >= .3 ? 0 : 1},
+        why: schools.length ? `主要來源：${schools.join('、')}` : '附近沒有大專相關科系，要從外區找', rank: ratio === null ? 2 : ratio < ratioMedian() ? 0 : 1},
+      {key:'posting', who:'一般求職者', big: nearby(row).openings.toLocaleString() + ' 人', label:'附近製造類職缺需求（加權）',
+        why: row.salary_floor_median ? `起薪中位數 ${row.salary_floor_median.toLocaleString()} 元，開薪可以參考` : '沒有月薪刊登可以參考', rank: ratio === null || ratio >= ratioMedian() ? 0 : 1},
       {key:'hunter', who:'關鍵人才', big:'不分地點', label:'工程師、主管等難找的職位',
         why:'由獵頭 Agent 主動搜尋與接觸', rank:2},
     ];
@@ -579,7 +587,7 @@
       });
       return card;
     }));
-    $('hire-plan-note').textContent = `順序依「每位畢業生對應的職缺需求」${ratio === null ? (talent.districts[name].postings < MIN_POSTINGS ? '（職缺樣本太少，無法計算）' : '（附近沒有學校）') : `（${ratio.toFixed(2)}）`}排：0.3 以下先找學校，以上、附近沒有學校或職缺樣本太少就先刊登。這是展示用的規則，不是預測招募成效。`;
+    $('hire-plan-note').textContent = `順序依「每位畢業生對應的職缺需求」${ratio === null ? (nearby(talent.districts[name]).postings < MIN_POSTINGS ? '（職缺樣本太少，無法計算）' : '（附近沒有學校）') : `（${ratio.toFixed(2)}）`}排：低於全市中位數（${ratioMedian()?.toFixed(2)}）先找學校；高於中位數、附近沒有學校或職缺樣本太少就先刊登。這是展示用的規則，不是預測招募成效。`;
     fadeHeat(() => {
       if(request!==navigationEpoch)return;
       stop({home:false,keepJourney:true});

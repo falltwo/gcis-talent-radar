@@ -129,8 +129,9 @@ def build():
             item["salaries"].append(float(row["salary_min"]))
             if row["salary_max"]:
                 item["ceilings"].append(float(row["salary_max"]))
+    shapes = districts_geometry()
     districts = {}
-    for name, shape in districts_geometry().items():
+    for name, shape in shapes.items():
         near = []
         for school in schools.values():
             if not school["graduates"]:
@@ -140,19 +141,29 @@ def build():
                 near.append({**school, "km": round(distance, 1), "weight": round(1 - distance / RADIUS_KM, 2)})
         near.sort(key=lambda school: (school["km"], -school["graduates"]))
         job = jobs.get(name, {"postings": 0, "openings": 0, "salaries": [], "ceilings": []})
+        # Demand uses the same commuting ring as supply. Postings only name a district, so a
+        # neighbour's postings sit at its label point and fade to zero 10 km from this boundary.
+        demand = []
+        for other, other_shape in shapes.items():
+            distance = 0.0 if other == name else edge_km(tuple(other_shape["label"]), shape["rings"])
+            if distance <= RADIUS_KM and other in jobs:
+                demand.append((other, round(distance, 1), 1 - distance / RADIUS_KM))
         districts[name] = {
             "label_point": shape["label"],
             "graduates_nearby": round(sum(school["graduates"] * school["weight"] for school in near)),
             "graduates_in_district": sum(school["graduates"] for school in near if school["km"] == 0),
             "schools": [{key: school[key] for key in ("name", "district", "km", "weight", "graduates", "top_departments")} for school in near],
             "postings": job["postings"], "openings": job["openings"],
+            "postings_nearby": round(sum(jobs[o]["postings"] * w for o, _, w in demand)),
+            "openings_nearby": round(sum(jobs[o]["openings"] * w for o, _, w in demand)),
+            "demand_districts": [{"district": o, "km": km, "weight": round(w, 2)} for o, km, w in sorted(demand, key=lambda d: d[1])],
             "salary_floor_median": round(statistics.median(job["salaries"])) if job["salaries"] else None,
             "salary_samples": len(job["salaries"]),
             "salary_ceiling_median": round(statistics.median(job["ceilings"])) if job["ceilings"] else None,
             "salary_ceiling_samples": len(job["ceilings"]),
         }
     return {
-        "academic_year": year, "radius_km": RADIUS_KM, "distance": "school to district boundary; 0 when inside", "jobs_snapshot": snapshot,
+        "academic_year": year, "radius_km": RADIUS_KM, "distance": "school to district boundary; 0 when inside. Job postings: neighbour label point to boundary", "jobs_snapshot": snapshot,
         "department_rule": DEPT.pattern, "job_families": sorted(JOB_FAMILIES),
         "sources": {
             "graduates": "教育部大專校院各校科系別學生數（畢業生數）",
