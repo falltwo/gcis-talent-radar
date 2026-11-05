@@ -7,15 +7,16 @@
   const INDUSTRY_WORDS = [['機械','機械設備業'],['金屬','金屬製品業'],['加工','金屬製品業'],['塑膠','塑膠製品業'],['半導體','電子零組件業'],['電子','電子零組件業'],['光學','電腦電子產品及光學製品業'],['食品','食品及飼品業'],['飲料','飲料及菸草業'],['汽車','汽車及其零件業'],['自行車','其他運輸工具及其零件業'],['家具','家具業'],['紡織','紡織業'],['成衣','成衣及服飾品業'],['化學','其他化學製品業'],['橡膠','橡膠製品業'],['印刷','印刷及資料儲存媒體複製業']];
   const CRITERIA = [
     {id:'vitality', label:'市場活力', hint:'近一年（新設−解散）÷ 現有公司家數＝淨增率，全產業（名冊沒有行業欄）', unit:'%', better:1, words:['活力','成長','新創']},
-    {id:'stability', label:'經營穩定', hint:'解散家數 ÷ 新設家數，越低越好', unit:'', better:-1, words:['穩定','風險']},
+    {id:'stability', label:'經營穩定', hint:'近一年解散 ÷ 現有公司家數＝退出率，越低越好', unit:'%', better:-1, words:['穩定','風險']},
     {id:'cluster', label:'同業群聚', hint:'同業員工數（規模）與區位商數 LQ（集中度，>1 代表比全市集中）各占一半', unit:'人', better:1, words:['供應鏈','上下游','群聚','聚落']},
+    {id:'transport', label:'交通便利', hint:'區公所到最近國道或快速公路交流道的距離，越近越好（不含系統交流道）', unit:'公里', better:-1, words:['交流道','國道','交通','物流','運輸'], optional:true},
     {id:'competition', label:'避開競爭', hint:'每百家工廠的製造類職缺，越少越好（職缺與工廠年份不同）', unit:'筆', better:-1, words:['競爭','搶人']},
   ];
   // ponytail: fixed gate; districts with few factories are not realistic sites and would win "low competition" by default.
-  const MIN_FACTORIES = 100, MIN_SETUPS = 30;
-  const PREFERENCE = {'上下游群聚優先':'cluster','避開激烈競爭':'competition','靠近交通樞紐':null};
-  const NO_DATA_WORDS = ['交流道','國道','交通','港口','機場','高鐵'];
-  let map, geo, activity, stats, talent, intent, industry, checked = {}, boosted = {}, ranking = [], frame = 0, started = false;
+  const MIN_FACTORIES = 100;
+  const PREFERENCE = {'上下游群聚優先':'cluster','避開激烈競爭':'competition','靠近交通樞紐':'transport'};
+  const NO_DATA_WORDS = ['港口','機場','高鐵'];
+  let map, geo, activity, stats, transport, talent, intent, industry, checked = {}, boosted = {}, ranking = [], frame = 0, started = false;
   let revealed = false, located = false, step = 'intro', navigationEpoch = 0, intentKey = null;
   let comparedDistricts = [], selectedDistrict = null;
 
@@ -84,14 +85,15 @@
   function parseIntent(raw) {
     const text = raw?.text || '', preference = raw?.preference || '';
     industry = INDUSTRY_WORDS.find(([word]) => text.includes(word))?.[1] || null;
-    checked = Object.fromEntries(CRITERIA.map(c => [c.id, true]));
     boosted = Object.fromEntries(CRITERIA.map(c => [c.id, c.words.some(word => text.includes(word))]));
     if (PREFERENCE[preference]) boosted[PREFERENCE[preference]] = true;
+    // Optional criteria (transport) only count when the demand asks for them, so other rankings stay as they were.
+    checked = Object.fromEntries(CRITERIA.map(c => [c.id, !c.optional || boosted[c.id]]));
     const tags = [];
     tags.push(industry ? ['產業', industry] : ['產業', '未判斷，看全部製造業']);
     if (preference) tags.push(['偏好', preference]);
     CRITERIA.filter(c => boosted[c.id]).forEach(c => tags.push(['加重', c.label]));
-    const missing = NO_DATA_WORDS.filter(word => text.includes(word)).concat(preference === '靠近交通樞紐' ? ['交通樞紐'] : []);
+    const missing = NO_DATA_WORDS.filter(word => text.includes(word));
     $('scan-tags').replaceChildren(...tags.map(([kind, value]) => {
       const tag = document.createElement('span');tag.className = 'scan-tag';
       tag.innerHTML = '<small></small><b></b>';tag.firstChild.textContent = kind;tag.lastChild.textContent = value;
@@ -109,7 +111,8 @@
   function value(name, id) {
     const row = activity.districts[name] || {setup:0, dissolved:0};
     if (id === 'vitality') return row.companies ? (row.setup - row.dissolved) / row.companies : null;
-    if (id === 'stability') return row.setup >= MIN_SETUPS ? row.dissolved / row.setup : null;
+    if (id === 'stability') return row.companies ? row.dissolved / row.companies : null;
+    if (id === 'transport') return transport.districts[name]?.nearest_km ?? null;
     if (id === 'cluster') return clusterParts(name);
     if (stats.jobs.capped.includes(name)) return null;
     const postings = stats.jobs.metrics.manufacturing_postings[name];
@@ -185,7 +188,8 @@
   }
   function describe(c, v) {
     if (v === null || v === undefined) return '無資料';
-    if (c.id === 'stability') return `每新設 100 家解散 ${Math.round(v * 100)} 家`;
+    if (c.id === 'stability') return `退出率 ${(v * 100).toFixed(1)}%`;
+    if (c.id === 'transport') return `最近交流道 ${v.toFixed(1)} 公里`;
     if (c.id === 'vitality') return `淨增 ${v >= 0 ? '+' : ''}${(v * 100).toFixed(1)}%`;
     if (c.id === 'cluster') return `${v.size.toLocaleString()} 人${v.lq === null ? '' : `・LQ ${v.lq.toFixed(2)}`}`;
     if (c.id === 'competition') return `每百家工廠 ${Math.round(v)} 筆`;
@@ -238,7 +242,7 @@
       row.textContent = `${run.label}：${run.top3.join('、')}`;
       return row;
     }));
-    $('scan-source').textContent = `分數 0–100 是 ${candidates.length} 個候選區互相比較的相對值，不是預測或匹配率；製造業工廠不到 ${MIN_FACTORIES} 家的 ${geo.features.length - candidates.length} 區不列入。資料：商工登記 ${activity.window.join(' 至 ')}${activity.missing_months.length ? `（缺 ${activity.missing_months.join('、')}）` : ''}、稅籍現有公司 ${activity.companies_as_of}、工廠校正 ${stats.factories.year} 年（家數與員工數）、就業通職缺 ${stats.jobs.snapshot_date}。市場活力與同業群聚的算法依美國普查局 BDS、歐盟統計局企業人口統計與產業群聚觀測站。`;
+    $('scan-source').textContent = `分數 0–100 是 ${candidates.length} 個候選區互相比較的相對值，不是預測或匹配率；製造業工廠不到 ${MIN_FACTORIES} 家的 ${geo.features.length - candidates.length} 區不列入。資料：商工登記 ${activity.window.join(' 至 ')}${activity.missing_months.length ? `（缺 ${activity.missing_months.join('、')}）` : ''}、稅籍現有公司 ${activity.companies_as_of}、工廠校正 ${stats.factories.year} 年（家數與員工數）、就業通職缺 ${stats.jobs.snapshot_date}、OpenStreetMap 交流道 ${transport.fetched_at.slice(0, 10)}。市場活力、經營穩定與同業群聚的算法依美國普查局 BDS、歐盟統計局企業人口統計與產業群聚觀測站。`;
   }
 
   function bounds(feature) {
@@ -556,7 +560,7 @@
     map = window.streetMap.getMap();
     if (!map) {started = false;return;}
     try {
-      if (!geo) [geo, activity, stats] = await Promise.all(['/static/taichung-districts.geojson','/static/gcis-district-activity.json?v=20261106-rate1','/static/district-stats.json?v=20261106-lq1'].map(async url => {
+      if (!geo) [geo, activity, stats, transport] = await Promise.all(['/static/taichung-districts.geojson','/static/gcis-district-activity.json?v=20261106-rate1','/static/district-stats.json?v=20261106-lq1','/static/district-transport.json?v=20261106-osm1'].map(async url => {
         const response = await fetch(url);
         if (!response.ok) throw Error(url);
         return response.json();

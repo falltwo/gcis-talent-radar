@@ -82,3 +82,16 @@ test('market vitality is a net entry rate and the cluster shows size with a loca
  assert.match(podium,/同業群聚：[\d,]+ 人・LQ \d+\.\d\d/,'cluster names its employees and location quotient');
  assert.doesNotMatch(podium,/Infinity|NaN/);
 });
+test('transport only counts when the demand asks for it, and stability is an exit rate',async()=>{
+ const plain=setup();let loading=plain.window.siteScan.start();await plain.resolveAll();await loading;await plain.tick();
+ const labels=e=>e.ids.get('scan-criteria').querySelectorAll('input').map(input=>input.checked);
+ const podium=e=>e.ids.get('scan-podium').querySelectorAll('small').map(small=>small.textContent).join('\n');
+ assert.equal(labels(plain).filter(Boolean).length,4,'without a transport request the four original criteria stay as they were');
+ assert.doesNotMatch(podium(plain),/交通便利/);
+ assert.match(podium(plain),/經營穩定：退出率 \d+\.\d%/);
+ const near=setup();near.window.radarIntent={text:'機械工廠',preference:'靠近交通樞紐'};
+ loading=near.window.siteScan.start();await near.resolveAll();await loading;await near.tick();
+ assert.equal(labels(near).filter(Boolean).length,5);
+ assert.match(podium(near),/交通便利：最近交流道 \d+\.\d 公里/);
+ assert.doesNotMatch(podium(near),/Infinity|NaN|無資料/);
+});
