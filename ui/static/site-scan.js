@@ -16,12 +16,14 @@
   const PREFERENCE = {'上下游群聚優先':'cluster','避開激烈競爭':'competition','靠近交通樞紐':null};
   const NO_DATA_WORDS = ['交流道','國道','交通','港口','機場','高鐵'];
   let map, geo, activity, stats, talent, intent, industry, checked = {}, boosted = {}, ranking = [], frame = 0, started = false;
-  let revealed = false, located = false;
+  let revealed = false, located = false, step = 'intro', navigationEpoch = 0, intentKey = null;
+  let comparedDistricts = [], selectedDistrict = null;
 
   const stage = $('city-stage');
   const left = document.createElement('aside');
   left.className = 'scan-side scan-left';left.setAttribute('aria-label','選址條件');left.inert = true;
   left.innerHTML = `
+    <nav class="scan-navigation" aria-label="選址流程"><button type="button" id="scan-back">← 上一步：修改需求</button><span id="scan-step-label">1 / 3 · 商工排名</span></nav>
     <div class="scan-pane scan-report-only"><h3>1. 人才供給與職缺需求</h3><div class="scan-body"><div id="report-supply"></div><p class="scan-note" id="report-supply-note"></p></div></div>
     <div class="scan-pane scan-report-only"><h3>2. 附近的關鍵學校</h3><div class="scan-body"><div id="report-schools"></div></div></div>
     <div class="scan-pane scan-rank-only"><h3>從需求擷取的條件</h3><div class="scan-body"><div class="scan-tags" id="scan-tags"></div><p class="scan-note" id="scan-intent-note"></p></div></div>
@@ -46,11 +48,38 @@
   stage.append(status);
   const plan = document.createElement('section');
   plan.className = 'hire-plan';plan.id = 'hire-plan';plan.hidden = true;plan.setAttribute('aria-labelledby', 'hire-plan-title');
-  plan.innerHTML = `<header><div><small>已選定設廠地點</small><h3 id="hire-plan-title"></h3><p id="hire-plan-place"></p></div><button type="button" id="hire-plan-close" aria-label="關閉招人管道">×</button></header>
-    <p class="hire-plan-lead">沿用三區戰報的數字分配三種人才來源，點卡片按鈕會用這個地點開啟功能。</p><ol class="hire-cards" id="hire-plan-list"></ol>
+  plan.innerHTML = `<header><div><small>已選定設廠地點</small><h3 id="hire-plan-title"></h3><p id="hire-plan-place"></p></div><button type="button" id="hire-plan-close" aria-label="返回人才比較">×</button></header>
+    <button type="button" class="scan-previous" id="hire-plan-back">← 上一步：人才比較</button><p class="hire-plan-lead">沿用三區戰報的數字分配三種人才來源，點卡片按鈕會用這個地點開啟功能。</p><ol class="hire-cards" id="hire-plan-list"></ol>
     <p class="scan-note" id="hire-plan-note"></p>`;
   stage.append(plan);
-  $('hire-plan-close').addEventListener('click', () => {plan.hidden = true;});
+  const featureBack = document.createElement('button');featureBack.type='button';featureBack.id='scan-feature-back';featureBack.className='scan-feature-back';featureBack.textContent='← 上一步：招募管道';featureBack.hidden=true;stage.append(featureBack);
+  function setStep(next) {
+    step=next;plan.hidden=next!=='plan';featureBack.hidden=next!=='feature';
+    $('scan-back').textContent=next==='report'?'← 上一步：商工排名':'← 上一步：修改需求';
+    $('scan-step-label').textContent=next==='report'?'2 / 3 · 人才比較':'1 / 3 · 商工排名';
+    $('scan-compare').disabled=false;
+  }
+  function closeFeatures() {window.campusMatching?.deactivate();window.headhunter?.deactivate();window.recruitment?.deactivate();}
+  function resumeReport() {
+    closeFeatures();started=true;addLayers();setVisible(true);paintScores(true);
+    const workspace=document.querySelector('.radar-workspace');
+    if(!workspace.classList.contains('sidebar-collapsed'))$('sidebar-toggle').click();
+    workspace.classList.add('scan-active','scan-report');left.inert=right.inert=false;right.classList.add('cards-in');
+    renderReport(comparedDistricts);showReportMap(comparedDistricts);setStep('report');
+    $('scan-back').focus({preventScroll:true});
+  }
+  function back() {
+    navigationEpoch++;cancelAnimationFrame(frame);
+    document.querySelector('.radar-workspace').classList.remove('scan-swap');
+    if(step==='feature'){closeFeatures();setStep('plan');$('hire-plan-back').focus({preventScroll:true});return;}
+    if(step==='plan'){resumeReport();return;}
+    if(step==='report'){closeReport();return;}
+    if(step==='rank'){stop();$('replay-intro').click();}
+  }
+  $('scan-back').addEventListener('click',back);$('hire-plan-back').addEventListener('click',back);
+  $('hire-plan-close').addEventListener('click',back);featureBack.addEventListener('click',back);
+  for(const id of ['campus-exit','posting-exit','hunter-exit'])$(id)?.addEventListener('click',()=>{if(step==='feature')back();});
+  $('replay-intro').addEventListener('click',()=>{if(step!=='intro')stop();});
 
   function parseIntent(raw) {
     const text = raw?.text || '', preference = raw?.preference || '';
@@ -368,7 +397,9 @@
   function swap(toReport) {
     const workspace = document.querySelector('.radar-workspace');
     workspace.classList.add('scan-swap');
+    const request=navigationEpoch;
     setTimeout(() => {
+      if(request!==navigationEpoch||!started)return;
       workspace.classList.toggle('scan-report', toReport);
       left.scrollTop = right.scrollTop = 0;
       workspace.classList.remove('scan-swap');
@@ -376,19 +407,21 @@
     }, reduced ? 0 : 320);
   }
   async function openReport() {
+    const request=navigationEpoch;$('scan-compare').disabled=true;
     try {
       if (!talent) {
         const response = await fetch('/static/district-talent.json?v=20261105-edge1');
         if (!response.ok) throw Error('talent');
         talent = await response.json();
       }
-    } catch {status.textContent = '人才資料讀取失敗，請重新整理後再試。';return;}
+    } catch {if(request===navigationEpoch){status.textContent = '人才資料讀取失敗，請再試一次。';$('scan-compare').disabled=false;}return;}
+    if(request!==navigationEpoch||!started)return;
     const three = ranking.slice(0, 3).map(item => item.name);
-    renderReport(three);showReportMap(three);swap(true);
+    comparedDistricts=three;setStep('report');renderReport(three);showReportMap(three);swap(true);
     status.textContent = `正在比較${three.join('、')}`;
   }
   function closeReport() {
-    hideReportMap();swap(false);
+    setStep('rank');hideReportMap();swap(false);
     map.fitBounds(bounds(), {padding:padding(), pitch:0, bearing:0, duration:reduced ? 0 : 1000});
     status.textContent = '';
   }
@@ -454,6 +487,7 @@
     frame = requestAnimationFrame(step);
   }
   function choose(name) {
+    const request=++navigationEpoch;selectedDistrict=name;
     const road = activity.districts[name]?.top_road;
     const district = $('city-district');
     district.value = name;district.dispatchEvent(new Event('change'));
@@ -464,17 +498,16 @@
     $('hire-plan-list').replaceChildren(...list.map((item, index) => {
       const card = document.createElement('li');card.className = 'hire-card' + (index === 0 ? ' is-first' : '');
       card.style.setProperty('--delay', (reduced ? 0 : 400 + index * 90) + 'ms');
-      card.innerHTML = '<header><b></b><span></span></header><strong></strong><p></p><small></small><em></em><button type="button"></button>';
+      card.innerHTML = '<header><b></b></header><strong></strong><p></p><small></small><em></em><button type="button"></button>';
       const carry = carryOver(name);
       card.querySelector('em').textContent = '會帶入：' + {campus:`${name}、搜尋「${carry.department}」相關科系`, posting:`${carry.place}${carry.role ? `、${carry.role}` : ''}${carry.salary ? `、起薪參考 ${carry.salary.toLocaleString()} 元` : ''}`, hunter:`職缺「${carry.senior}」`}[item.key];
       card.querySelector('b').textContent = item.who;
-      card.querySelector('span').textContent = index === 0 ? '建議優先' : `第 ${index + 1} 順位`;
       card.querySelector('strong').textContent = item.big;
       card.querySelector('p').textContent = item.label;
       card.querySelector('small').textContent = item.why;
       card.querySelector('button').textContent = `開啟${FEATURES[item.key]} →`;
       card.querySelector('button').addEventListener('click', () => {
-        plan.hidden = true;
+        setStep('feature');
         const carry = carryOver(name);
         // Campus matching searches as soon as it opens, so its query has to be set first.
         if (item.key === 'campus') fill('campus', carry);
@@ -485,18 +518,19 @@
     }));
     $('hire-plan-note').textContent = `順序依「每位畢業生對應的職缺需求」${ratio === null ? '（附近沒有學校）' : `（${ratio.toFixed(2)}）`}排：0.3 以下先找學校，以上或附近沒有學校就先刊登。這是展示用的規則，不是預測招募成效。`;
     fadeHeat(() => {
-      stop({home:false});
+      if(request!==navigationEpoch)return;
+      stop({home:false,keepJourney:true});
       $('sidebar-location').requestSubmit();
-      plan.hidden = false;
+      setStep('plan');
       plan.querySelector('.hire-card button')?.focus({preventScroll:true});
     });
   }
   $('scan-compare').addEventListener('click', openReport);
-  $('report-back').addEventListener('click', closeReport);
+  $('report-back').addEventListener('click', back);
 
   async function start() {
     if (started) return;
-    started = true;plan.hidden = true;
+    started = true;const request=++navigationEpoch;setStep('rank');
     map = window.streetMap.getMap();
     if (!map) {started = false;return;}
     try {
@@ -506,10 +540,13 @@
         return response.json();
       }));
     } catch {
-      started = false;status.textContent = '商工資料讀取失敗，請重新整理後再試。';return;
+      if(request===navigationEpoch){started = false;status.textContent = '商工資料讀取失敗，請重新整理後再試。';}return;
     }
+    if(request!==navigationEpoch||!started)return;
     intent = window.radarIntent || {};
-    parseIntent(intent);renderCriteria();rank();
+    const nextKey=JSON.stringify(intent);
+    if(nextKey!==intentKey){parseIntent(intent);intentKey=nextKey;comparedDistricts=[];selectedDistrict=null;}
+    renderCriteria();rank();
     addLayers();setVisible(true);
     window.campusMatching?.deactivate();window.headhunter?.deactivate();window.recruitment?.deactivate();
     const workspace = document.querySelector('.radar-workspace');
@@ -517,12 +554,13 @@
     workspace.classList.add('scan-active');left.inert = false;right.inert = false;
     status.textContent = `正在掃描臺中 ${geo.features.length} 個行政區…`;
     map.fitBounds(bounds(), {padding:padding(), pitch:0, bearing:0, duration:reduced ? 0 : 1600});
-    setTimeout(() => {paintScores(false);renderCards();right.classList.add('cards-in');}, reduced ? 0 : 900);
+    setTimeout(() => {if(request!==navigationEpoch||!started)return;paintScores(false);renderCards();right.classList.add('cards-in');}, reduced ? 0 : 900);
   }
-  function stop({home = true} = {}) {
+  function stop({home = true,keepJourney = false} = {}) {
+    navigationEpoch++;if(!keepJourney)setStep('intro');
     cancelAnimationFrame(frame);hideReportMap();
     const workspace = document.querySelector('.radar-workspace');
-    workspace.classList.remove('scan-active', 'scan-report');right.classList.remove('cards-in');left.inert = true;right.inert = true;
+    workspace.classList.remove('scan-active', 'scan-report','scan-swap');right.classList.remove('cards-in');left.inert = true;right.inert = true;
     if (workspace.classList.contains('sidebar-collapsed')) $('sidebar-toggle').click();
     setVisible(false);started = false;revealed = located = false;status.textContent = '';
     if (home) $('map-home').click();
@@ -534,5 +572,5 @@
   document.addEventListener('streetmap:location-changing', () => {located = false;});
   document.addEventListener('streetmap:location', () => {located = true;setTimeout(ready, reduced ? 0 : 400);});
   document.addEventListener('streetmap:location-error', () => {located = true;ready();});
-  window.siteScan = {start, stop};
+  window.siteScan = {start, stop, back};
 })();

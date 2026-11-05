@@ -144,3 +144,12 @@
 .hire-plan li.hire-card:not(.is-first) button{background:#fff;color:#2563eb}
 @media(prefers-reduced-motion:reduce){.hire-plan li.hire-card{animation:none;opacity:1}}
 .hire-card em{margin-top:4px;font-style:normal;font-size:11px;color:#2563eb}
+
+/* Previous-step controls stay visible while the analysis panels scroll. */
+.scan-navigation{position:sticky;top:0;z-index:2;display:flex;flex-direction:column;gap:7px;flex:none;padding:12px;border:1px solid #c7d5e8;border-radius:12px;background:#fff;box-shadow:0 4px 16px #18385814}
+.scan-navigation button,.scan-previous,.scan-feature-back{min-height:44px;padding:10px 14px;border:1px solid #b9cce8;border-radius:9px;background:#fff;color:#234d87;font-size:14px;font-weight:650;text-align:left;cursor:pointer}
+.scan-navigation span{font-size:12px;color:#64748b}.scan-previous{margin-top:12px;flex:none}.scan-feature-back{position:absolute;top:12px;left:50%;transform:translateX(-50%);z-index:35;box-shadow:0 6px 24px #1e293b26}.scan-feature-back[hidden]{display:none}
+.scan-navigation button:focus-visible,.scan-previous:focus-visible,.scan-feature-back:focus-visible{outline:3px solid #2563eb;outline-offset:3px}
+@media(max-width:960px){.scan-left{max-height:42%}.scan-feature-back{top:8px;max-width:90%;white-space:nowrap}}
+
+.hire-plan>.scan-previous{position:sticky;top:0;z-index:2;width:100%;margin:0 0 12px;background:#fff}
