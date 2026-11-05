@@ -15,7 +15,9 @@ def verify():
     with closing(sqlite3.connect(path.as_uri() + '?mode=ro', uri=True)) as conn:
         assert conn.execute('PRAGMA integrity_check').fetchone()[0] == 'ok'
         assert not conn.execute('PRAGMA foreign_key_check').fetchall()
-        assert conn.execute('SELECT COUNT(*) FROM education_releases').fetchone()[0] == 1
+        # Historical snapshots are retained; exactly one valid release is active.
+        assert conn.execute('SELECT COUNT(*) FROM education_active_release').fetchone()[0] == 1
+        assert conn.execute('SELECT COUNT(*) FROM education_active_release a JOIN education_releases r USING(release_id) WHERE a.singleton=1').fetchone()[0] == 1
         assert not conn.execute("SELECT name FROM sqlite_master WHERE name='education_programs'").fetchone()
         assert all(r[0].startswith('education_') for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'"))
     coverage = get_education_coverage()
