@@ -48,6 +48,26 @@ test('missing screenshot or verifier job id cannot be reported as filled',async(
  await assert.rejects(live.start([{}]),/完成證據/);
 });
 
+test('second job failure keeps only the first completed form',async()=>{
+ let count=0;const live=new Live(async path=>{
+  if(path==='agent/approve')return {run_id:'run-'+(++count)};
+  if(path==='agent/run')return count===1?{run_id:'run-1',phase:'FILLED',driver:'COMPUTER_USE',job_id:'frontend-only',screenshot:'frame'}:{run_id:'run-2',phase:'FAILED',message:'已達操作上限',browser_active:false};
+  return {};
+ },()=>{},async()=>{});
+ await assert.rejects(live.start([{},{}]),/操作上限/);
+ assert.equal(live.results.length,1);assert.equal(live.results[0].job_id,'frontend-only');
+});
+
+test('two jobs cannot share the same review form id',async()=>{
+ let count=0;const live=new Live(async path=>{
+  if(path==='agent/approve')return {run_id:'run-'+(++count)};
+  if(path==='agent/run')return {run_id:'run-'+count,phase:'FILLED',driver:'COMPUTER_USE',job_id:'same-form',screenshot:'frame',browser_active:false};
+  return {};
+ },()=>{},async()=>{});
+ await assert.rejects(live.start([{},{}]),/同一份表格/);
+ assert.equal(live.results.length,1);
+});
+
 test('stopping during a run cancels that run without starting the next job',async()=>{
  let approved=0;const live=new Live(async(path)=>{
   if(path==='agent/approve'){approved++;return {run_id:'one'};}

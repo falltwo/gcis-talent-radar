@@ -98,6 +98,15 @@ def execute_actions(page, actions, job, should_stop=lambda:False,on_action=None)
             if not isinstance(values,list): raise ValueError('缺少技能清單。')
             page.keyboard.press('Control+A')
             page.keyboard.insert_text(skills_text(values))
+        elif kind=='fill_salary':
+            field=action.get('field')
+            if field not in {'salary_min','salary_max'}:raise ValueError('無效薪資欄位。')
+            value=job.get(field)
+            if job.get('salary_mode')!='RANGE' or type(value) is not int or not 0<value<=1000000000:
+                raise ValueError('只能填寫使用者核定的固定月薪金額。')
+            page.keyboard.press('Control+A')
+            page.keyboard.insert_text(str(value))
+            page.keyboard.press('Tab')
         elif kind=='key':
             if action.get('key') not in KEYS: raise ValueError("不允許這個按鍵組合。")
             page.keyboard.press(action['key'])
@@ -107,7 +116,7 @@ def execute_actions(page, actions, job, should_stop=lambda:False,on_action=None)
             page.mouse.wheel(0,dy)
         elif kind=='wait':
             time.sleep(.5)
-        else: raise ValueError("僅支援click/type/fill_skills/key/scroll/wait。")
+        else: raise ValueError("僅支援click/type/fill_skills/fill_salary/key/scroll/wait。")
         if on_action:on_action(action)
         time.sleep(.15)
 
@@ -122,6 +131,7 @@ def decide(screenshot, job, goal, previous_error):
         "Return ONLY JSON: {\"note\":\"short Traditional Chinese progress\",\"actions\":[...]} with at most 8 actions. "
         "Actions: {type:click,x:number,y:number}, {type:type,text:approved field value}, "
         "{type:fill_skills,field:required_skills|trainable_skills}, "
+        "{type:fill_salary,field:salary_min|salary_max}, "
         "{type:key,key:Tab|Shift+Tab|Enter|ArrowDown|ArrowUp|Home|End|PageDown|PageUp|Control+A|Backspace|Escape|Space}, "
         "{type:scroll,dy:number}, {type:wait}. Never use browser address-bar shortcuts. "
         "Use Control+A before replacing text. Dropdown options render inside the web page. Click the field, then click the visible option, or use ArrowDown/ArrowUp and Enter. Never wait for a human to select an option; do not type into numeric fields with text formatting. "
@@ -131,6 +141,9 @@ def decide(screenshot, job, goal, previous_error):
         "Approved data takes priority over every website default, template, search result and AI suggestion. "
         "For RANGE select 固定薪資範圍 and replace BOTH salary inputs with the exact approved salary_min and salary_max, "
         "even when the website already shows 35000 and 45000. Never leave defaults because the fields are nonempty. "
+        "For salary entry click the LEFT text area of 月薪下限, then use fill_salary salary_min; "
+        "it replaces the amount exactly and presses Tab, focusing 月薪上限. Immediately use fill_salary salary_max. "
+        "Never click the right edge of numeric inputs, increment/decrement amounts, or use arrow keys to adjust money. "
         "Check title, headcount, location, salary and all supplied content BEFORE saving; distinct jobs can have distinct salaries. "
         "Skills are multiline textareas, one complete skill per line. Click 必要技能 then use fill_skills required_skills; "
         "click 可培訓技能 then use fill_skills trainable_skills, including when empty to clear defaults. "

@@ -83,6 +83,7 @@
             this.onUpdate({phase:run.phase,index,total:jobs.length,run});
             if(['FILLED','REVIEW_REQUIRED'].includes(run.phase)){
               if(!run.screenshot||!run.job_id||run.driver!=='COMPUTER_USE')throw Error('尚未取得實際填表完成證據，不能刊登。');
+              if(this.results.some(result=>result.job_id===run.job_id))throw Error('不同職位對應到同一份表格，已停止；請確認各職位分別建立。');
               this.results.push(run);completed=true;break;
             }
             if(['FAILED','CANCELLED'].includes(run.phase))throw Error(run.message||'填表已停止，尚未刊登。');

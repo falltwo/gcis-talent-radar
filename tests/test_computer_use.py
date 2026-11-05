@@ -35,6 +35,19 @@ def test_real_frame_hook_runs_after_each_completed_action(monkeypatch):
     assert events==['click','frame:click','type','frame:type']
 
 
+@pytest.mark.parametrize('amounts',[(50000,50000),(40000,60000)])
+def test_salary_action_replaces_both_amounts_exactly_without_spinner_keys(monkeypatch,amounts):
+    monkeypatch.setattr('recruitment.computer_use.time.sleep',lambda _:None)
+    events=[]
+    page=SimpleNamespace(keyboard=SimpleNamespace(press=lambda key:events.append(('key',key)),insert_text=lambda text:events.append(('text',text))))
+    approved={'salary_mode':'RANGE','salary_min':amounts[0],'salary_max':amounts[1]}
+    execute_actions(page,[{'type':'fill_salary','field':'salary_min','text':'49999'},{'type':'fill_salary','field':'salary_max'}],approved)
+    assert events==[('key','Control+A'),('text',str(amounts[0])),('key','Tab'),('key','Control+A'),('text',str(amounts[1])),('key','Tab')]
+    for change in [{'salary_mode':'NEGOTIABLE'},{'salary_min':None},{'salary_min':50000.0}]:
+        with pytest.raises(ValueError):execute_actions(page,[{'type':'fill_salary','field':'salary_min'}],{**approved,**change})
+    with pytest.raises(ValueError):execute_actions(page,[{'type':'fill_salary','field':'headcount'}],approved)
+
+
 def test_external_verifier_reads_saved_normal_webpage_data(client):
     import api.mock104 as portal
     from recruitment.computer_use import saved_job
