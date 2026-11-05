@@ -104,6 +104,31 @@ class CampusMapTests(unittest.TestCase):
     def query(self, **kwargs):
         return search_education_campuses(24.15, 120.65, **kwargs)
 
+    def test_school_and_department_query_prioritizes_named_school_before_distance(self):
+        with closing(sqlite3.connect(self.path)) as conn, conn:
+            conn.execute("UPDATE education_institutions SET name='逢甲大學' WHERE institution_id='b'")
+            conn.execute("UPDATE education_departments SET name='電機工程學系'")
+        for query in ('逢甲電機', '逢甲 電機', '逢甲大學電機', '逢甲'):
+            with self.subTest(query=query):
+                data = self.query(q=query, radius_km=50, include_related=True)
+                self.assertTrue(data['items'])
+                self.assertEqual(data['items'][0]['institution_name'], '逢甲大學')
+                if '電機' in query:
+                    departments = data['items'][0]['unlocated_department_matches']
+                    self.assertEqual([d['name'] for d in departments], ['電機工程學系'])
+
+    def test_common_school_alias_combines_with_ai_department(self):
+        with closing(sqlite3.connect(self.path)) as conn, conn:
+            conn.execute("UPDATE education_institutions SET name='國立臺中科技大學' WHERE institution_id='b'")
+            conn.execute("UPDATE education_departments SET name='人工智慧應用工程學士學位學程' WHERE institution_id='b'")
+        for query in ('中科大 ai', '中科大AI', '台中科大 人工智慧'):
+            with self.subTest(query=query):
+                data = self.query(q=query, radius_km=50, include_related=True)
+                self.assertTrue(data['items'])
+                first = data['items'][0]
+                self.assertEqual(first['institution_name'], '國立臺中科技大學')
+                self.assertEqual(first['unlocated_department_matches'][0]['name'], '人工智慧應用工程學士學位學程')
+
     def test_job_title_finds_direct_and_related_departments_in_the_same_search(self):
         title = '軟體設計工程師'
         school_evidence = {'title': title, 'source_url': 'https://school.example/careers'}

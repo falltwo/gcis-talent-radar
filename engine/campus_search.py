@@ -44,3 +44,14 @@ def suggestions(query, department_names):
                 names[normalize(term)] = term
     hits = difflib.get_close_matches(normalize(query), sorted(names), n=3, cutoff=.65)
     return [names[key] for key in hits if key != normalize(query)]
+
+
+def institution_aliases(name):
+    """Explicit abbreviations only; never guess a school from arbitrary initials."""
+    return {normalize(alias) for full_name, aliases in rules().get('institution_aliases', {}).items()
+            if normalize(full_name) == normalize(name) for alias in aliases}
+
+
+def excluded_program(institution_id, name):
+    scope = json.loads((BASE_DIR / 'data/processed/campus_program_exclusions.json').read_text(encoding='utf-8'))
+    return normalize(name) in {normalize(value) for value in scope['institutions'].get(institution_id, [])}

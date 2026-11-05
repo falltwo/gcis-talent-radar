@@ -242,6 +242,12 @@ const cases = {
     const links = popup.querySelectorAll('a'); assert.ok(links.length > 0);
     assert.ok(links.every(link => !link.href.startsWith('javascript:')), 'Source text cannot become a script link');
     await popup.querySelector('.campus-add').click(); assert.match(e.ids.get('campus-basket-summary').textContent, /1/);
+    assert.match(e.ids.get('campus-basket-list').textContent, /契約測試大學/);
+    assert.match(e.ids.get('campus-basket-list').textContent, /資訊工程學系/);
+    assert.equal(e.ids.get('campus-basket-list').querySelector('strong').textContent,'契約測試大學');
+    assert.match(e.ids.get('campus-basket-list').textContent,/科系：資訊工程學系/);
+    assert.equal(e.ids.get('campus-panel').querySelector('.campus-basket').open,true);
+    assert.match(e.ids.get('campus-basket-list').textContent, /教學校區待核驗/);
     await popup.querySelector('.campus-add').click(); assert.match(e.ids.get('campus-basket-summary').textContent, /0/);
     await popup.querySelector('.campus-add').click();
     await e.event('streetmap:location-changing'); assert.match(e.ids.get('campus-basket-summary').textContent, /0/);
