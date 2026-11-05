@@ -2,7 +2,8 @@
 (function(root){
   'use strict';
   class RecruitmentAPI{
-    constructor(fetcher=globalThis.fetch.bind(globalThis)){this.fetcher=fetcher;this.token=null;}
+    constructor(fetcher=globalThis.fetch.bind(globalThis)){this.fetcher=fetcher;this.token=null;this.newConversation();}
+    newConversation(){this.conversationId=globalThis.crypto?.randomUUID?.()||'chat-'+Date.now()+'-'+Math.random().toString(36).slice(2);}
     async request(path,body,method){
       const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),['/assistant','/execution/prepare'].includes(path)?120000:30000);
       try{
@@ -28,7 +29,7 @@
     async startDemo(){const data=await this.request('/auth/demo',{});this.token=data.access_token;return data;}
     register(data){return this.request('/auth/register',data);}
     async logout(){try{if(this.token)await this.request('/auth/logout',{});}finally{this.token=null;}}
-    async assistant(message,district=''){return this.request('/assistant',{message,district});}
+    async assistant(message,district=''){return this.request('/assistant',{message,district,conversation_id:this.conversationId});}
     async portal(path,body){
       const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),20000);
       try{

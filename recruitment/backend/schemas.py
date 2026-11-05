@@ -47,3 +47,4 @@ class ItemEdit(SalaryFields):
 
 class AssistantMessage(Message):
     district: str = Field(default="", max_length=80)
+    conversation_id: str = Field(default='legacy',pattern=r'^[A-Za-z0-9_-]{1,80}$')

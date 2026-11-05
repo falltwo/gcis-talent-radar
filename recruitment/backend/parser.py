@@ -47,6 +47,16 @@ def parse(text,include_salary=True):
     """Conservative deterministic parser: no invented titles, salaries, or LLM execution."""
     result=shared_headcounts(text)
     if result is None:
+        role_first=list(re.finditer(rf'(?:^|[、，,；;\n。])\s*(?P<title>[^0-9零一二三四五六七八九十百千萬兩、，,；;\n。]+?)\s*(?P<count>{NUM})\s*(?:位|人|名|個)',text))
+        if role_first and len(role_first)==len(list(re.finditer(rf'({NUM})\s*(?:個|位|名|人)',text))):
+            candidates=[]
+            for match in role_first:
+                title=re.sub(r'^(?:(?:請|幫我|我想|我要|招募|招聘|徵求|找)\s*)+','',match['title']).strip()
+                title=re.sub(r'(?:需要|招募|招聘)\s*$','',title).strip()
+                if title in {'各','都','全部'} or not valid_title(title):break
+                candidates.append({'title':title,'quantity':number(match['count'])})
+            if len(candidates)==len(role_first):result=candidates
+    if result is None:
         markers=list(re.finditer(rf'({NUM})\s*(?:個|位|名|人)\s*',text))
         matches=[]
         for index,m in enumerate(markers):

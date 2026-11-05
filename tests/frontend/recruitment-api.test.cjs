@@ -2,6 +2,16 @@ const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const API=require('../../ui/static/recruitment-api.js');
 
+test('assistant keeps a conversation id for followups and changes it for a new intake',async()=>{
+  const calls=[];
+  const api=new API(async(url,options)=>{calls.push(JSON.parse(options.body));return new Response(JSON.stringify({kind:'clarify',message:'ok'}));});
+  await api.assistant('1位前端工程師','大雅區');await api.assistant('月薪200000','大雅區');
+  assert.equal(calls[0].conversation_id,calls[1].conversation_id);
+  api.newConversation();await api.assistant('1位會計');
+  assert.notEqual(calls[1].conversation_id,calls[2].conversation_id);
+  const other=new API();assert.notEqual(api.conversationId,other.conversationId);
+});
+
 test('login token is sent to same-origin batch endpoint with original Chinese demand',async()=>{
   const calls=[];
   const api=new API(async(url,options)=>{calls.push([url,options]);return new Response(JSON.stringify(url.endsWith('/login')?{access_token:'test-token'}:{id:7,items:[]}));});

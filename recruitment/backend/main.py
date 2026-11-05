@@ -7,7 +7,7 @@ from contextlib import asynccontextmanager
 from datetime import datetime, timedelta, timezone
 from fastapi import FastAPI, Depends, HTTPException, Request, Query
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from sqlalchemy import create_engine, select, update, event
+from sqlalchemy import create_engine, select, update, event, delete
 from sqlalchemy.orm import sessionmaker, Session
 from sqlalchemy.exc import IntegrityError
 from dotenv import load_dotenv
@@ -16,6 +16,7 @@ from .schemas import Register, Login, Message, AssistantMessage, TemplateIn, Ref
 from .ai import RecruitmentAI
 from .ai import AIError
 from .assistant import plan_request, search_answer, preserve_question_topics
+from . import memory as context_memory
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 load_dotenv(PROJECT_ROOT / '.env', encoding='utf-8-sig')
@@ -155,8 +156,14 @@ def create_app(database_url=None):
     @app.get('/salary-templates')
     def salaries(u=Depends(current),s:Session=Depends(db)):
         return [serialize(x) for x in s.scalars(select(SalaryTemplate).where(SalaryTemplate.company_id==u.company_id))]
-    def create_batch(body,u,s,salary_turns=None):
-        try: parsed, ai_info = app.state.ai.extract(body.message,**({'salary_turns':salary_turns} if salary_turns is not None else {}))
+    def create_batch(body,u,s,salary_turns=None,parsed_override=None):
+        try:
+            if parsed_override is None:
+                parsed, ai_info = app.state.ai.extract(body.message,**({'salary_turns':salary_turns} if salary_turns is not None else {}))
+            else:
+                fields={'title','quantity','description','requirements','location','salary_min','salary_max','salary_type','currency','salary_source','salary_provenance','salary_confirmed'}
+                parsed=[{k:v for k,v in row.items() if k in fields} for row in parsed_override]
+                ai_info=app.state.ai.metadata('rules','short_term_context')
         except ValueError as e: raise HTTPException(422,str(e))
         b=RecruitmentBatch(company_id=u.company_id,created_by=u.id,original_text=body.message); s.add(b); s.flush()
         for data in parsed: s.add(RecruitmentBatchItem(batch_id=b.id,**enrich(s,u,data)))
@@ -172,12 +179,29 @@ def create_app(database_url=None):
     @app.post('/assistant')
     def assistant(body:AssistantMessage,u=Depends(current),s:Session=Depends(db)):
         from agent.prompt_guard import inspect_hiring_prompt
-        previous=s.scalars(select(ChatLog).where(ChatLog.company_id==u.company_id,ChatLog.user_id==u.id).order_by(ChatLog.id.desc()).limit(12)).all()
-        messages=[{'role':r.role,'content':r.content} for r in reversed(previous)]+[{'role':'user','content':body.message}]
-        if inspect_hiring_prompt(body.message)['decision']=='REJECT':
+        now=datetime.now(timezone.utc)
+        s.execute(delete(AssistantMemory).where(AssistantMemory.company_id==u.company_id,AssistantMemory.user_id==u.id,AssistantMemory.expires_at<=now))
+        memory=s.scalar(select(AssistantMemory).where(AssistantMemory.company_id==u.company_id,AssistantMemory.user_id==u.id,AssistantMemory.conversation_id==body.conversation_id))
+        state={}
+        if memory is not None and memory.expires_at.replace(tzinfo=timezone.utc)>now:state=dict(memory.state)
+        if memory is None:
+            memory=AssistantMemory(company_id=u.company_id,user_id=u.id,conversation_id=body.conversation_id,state={},expires_at=now+timedelta(seconds=context_memory.TTL_SECONDS));s.add(memory)
+        messages=([{'role':'user','content':context_memory.brief_for(state)}] if state.get('items') else [])+state.get('messages',[])+[{'role':'user','content':body.message}]
+        cleared=bool(context_memory.CLEAR.fullmatch(body.message.strip()))
+        rejected=inspect_hiring_prompt(body.message)['decision']=='REJECT'
+        if cleared:
+            state={};result={'kind':'clarify','message':'已清除這段對話的短期記憶。請提供新的招募需求。','sources':[]}
+        elif rejected:
             result={'kind':'clarify','message':'請以工作技能、職責與必要經驗設定條件，不使用年齡、性別等個人特徵篩選。','sources':[]}
         else:
-            try: plan=plan_request(app.state.ai,messages)
+            try:
+                patched=context_memory.patch(state,body.message)
+                if patched and patched['kind']=='patch':
+                    plan={'action':'draft','brief':context_memory.brief_for(patched['state']),'items':patched['state']['items']}
+                elif patched:
+                    if patched.get('pending_salary'):state['pending_salary']=patched['pending_salary']
+                    plan={'action':'clarify','reply':patched['message']}
+                else:plan=plan_request(app.state.ai,messages)
             except (AIError,ValueError):
                 raise HTTPException(503,'助理暫時無法判斷需求，請稍後重試；未建立職缺。') from None
             if plan['action']=='draft':
@@ -185,7 +209,8 @@ def create_app(database_url=None):
                     raise HTTPException(422,'請移除個人特徵篩選條件，改以職責與技能建立職缺')
                 if len(plan['brief'])>4000:raise HTTPException(422,'這次需求過長，請分批提供職稱與人數')
                 try:
-                    created=create_batch(Message(message=plan['brief']),u,s,plan.get('salary_turns'))
+                    created=create_batch(Message(message=plan['brief']),u,s,plan.get('salary_turns'),plan.get('items'))
+                    state=context_memory.snapshot(created,state)
                     result={'kind':'batch','message':'已依你提供的條件建立企業職缺草稿；請審核後再刊登。','batch':created,'sources':[]}
                 except HTTPException as exc:
                     if exc.status_code!=422:raise
@@ -198,8 +223,11 @@ def create_app(database_url=None):
             else:result={'kind':'clarify','message':plan['reply'] or '請告訴我職稱與招募人數，或直接詢問職缺、薪資相關問題。','sources':[]}
         s.add(ChatLog(company_id=u.company_id,user_id=u.id,role='user',content=body.message))
         s.add(ChatLog(company_id=u.company_id,user_id=u.id,role='assistant',content=result['message']))
+        if not cleared and not rejected:
+            state['messages']=(state.get('messages',[])+[{'role':'user','content':body.message},{'role':'assistant','content':result['message'][:2000]}])[-10:]
+        memory.state=state;memory.expires_at=now+timedelta(seconds=context_memory.TTL_SECONDS)
         audit(s,u,'assistant_turn',detail={'kind':result['kind'],'sources':len(result.get('sources',[]))});s.commit()
-        return result
+        return {**result,'context':{'expires_in':context_memory.TTL_SECONDS,'remembered_roles':[row['title'] for row in state.get('items',[])]}}
     @app.get('/salary-reference')
     def salary_reference(role:str=Query(min_length=1,max_length=120),district:str=Query(default='',max_length=80),u=Depends(current)):
         from recruitment.taiwan_salary import get_reference
