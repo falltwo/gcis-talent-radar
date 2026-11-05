@@ -25,9 +25,10 @@ function setup(){
   setTimeout(fn){timers.push(fn);return timers.length;},clearTimeout(){},requestAnimationFrame(fn){timers.push(fn);return timers.length;}});
  vm.runInContext(source,e.context);
  const tick=async()=>{while(timers.length)timers.shift()();await flush();};
- const data=url=>JSON.parse(fs.readFileSync(path.join(__dirname,'../../ui/static',url.split('/').at(-1).split('?')[0]),'utf8'));
+ const intent={response:{available:false}};
+ const data=url=>url.startsWith('/api/site-scan/intent')?intent.response:JSON.parse(fs.readFileSync(path.join(__dirname,'../../ui/static',url.split('/').at(-1).split('?')[0]),'utf8'));
  const resolveAll=async()=>{for(const r of e.requests.filter(r=>!r.done)){r.done=true;r.resolve({ok:true,json:async()=>data(r.url)});}await flush();await tick();};
- return {...e,tick,resolveAll,replayed:()=>replayed,launched,opened};
+ return {...e,tick,resolveAll,replayed:()=>replayed,launched,opened,intent};
 }
 test('ranking back returns to the original demand and unchanged intent preserves criteria',async()=>{
  const e=setup();const loading=e.window.siteScan.start();await e.resolveAll();await loading;await e.tick();
@@ -73,7 +74,7 @@ test('back while initial ranking data loads prevents stale scan from covering de
 test('editing the original demand resets criteria rather than reusing stale conditions',async()=>{
  const e=setup();const loading=e.window.siteScan.start();await e.resolveAll();await loading;await e.tick();
  const input=e.ids.get('scan-criteria').querySelector('input');input.checked=false;input.emit('change');
- e.ids.get('scan-back').click();e.window.radarIntent={text:'電子工廠',preference:''};await e.window.siteScan.start();await e.tick();
+ e.ids.get('scan-back').click();e.window.radarIntent={text:'電子工廠',preference:''};const again=e.window.siteScan.start();await e.resolveAll();await again;await e.tick();
  assert.equal(e.ids.get('scan-criteria').querySelector('input').checked,true);assert.match(e.ids.get('scan-tags').textContent,/電子零組件/);
 });
 test('market vitality is a net entry rate and the cluster shows size with a location quotient',async()=>{
@@ -109,4 +110,28 @@ test('the site scan hands values to each feature through open() instead of its f
  assert.match(values['刊登召募'].note,/^在.+區中清路三段設廠，想招/,'the drafted request names the picked district and road');
  assert.equal(values['獵頭Agent'].job,'機械工程師');
  assert.deepEqual(e.launched,[],'the feature buttons are no longer clicked to open a feature');
+});
+test('the demand text is parsed by the AI when available, keywords otherwise',async()=>{
+ const text='做螺絲的工廠，不需要靠近交流道，想找車床師傅';
+ const ai=setup();ai.window.radarIntent={text,preference:''};
+ ai.intent.response={available:true,source:'llm',industry:'金屬製品業',boost:['cluster'],avoid:['transport'],role:'車床技術員',senior:null,department:'機械'};
+ let loading=ai.window.siteScan.start();await ai.resolveAll();await loading;await ai.tick();
+ const asked=ai.requests.find(r=>r.url==='/api/site-scan/intent');
+ assert.equal(asked.options.method,'POST');
+ const body=JSON.parse(asked.options.body);
+ assert.equal(body.text,text);assert.ok(body.industries.includes('金屬製品業'));assert.ok(body.criteria.some(c=>c.id==='transport'));
+ assert.match(ai.ids.get('scan-tags').textContent,/金屬製品業/);
+ assert.match(ai.ids.get('scan-tags').textContent,/不考慮交通便利/,'"不需要靠近交流道" rules transport out instead of boosting it');
+ assert.match(ai.ids.get('scan-intent-note').textContent,/由 AI（gpt-6-luna）解析/);
+ const checked=ai.ids.get('scan-criteria').querySelectorAll('input').map(input=>input.checked);
+ assert.equal(checked.filter(Boolean).length,4);
+ ai.ids.get('scan-compare').click();await ai.resolveAll();await ai.tick();
+ ai.ids.get('report-supply').querySelector('button').click();await ai.tick();
+ ai.ids.get('hire-plan-list').querySelectorAll('button').find(b=>b.textContent.includes('刊登召募')).click();await ai.tick();
+ assert.match(ai.opened.at(-1)[1].note,/想招車床技術員/,'the role read by the AI is handed to job posting');
+
+ const rules=setup();rules.window.radarIntent={text,preference:''};
+ loading=rules.window.siteScan.start();await rules.resolveAll();await loading;await rules.tick();
+ assert.match(rules.ids.get('scan-intent-note').textContent,/用關鍵字擷取/);
+ assert.match(rules.ids.get('scan-tags').textContent,/未判斷/,'keywords alone do not know 螺絲');
 });

@@ -16,7 +16,7 @@
   const MIN_FACTORIES = 100;
   const PREFERENCE = {'上下游群聚優先':'cluster','避開激烈競爭':'competition','靠近交通樞紐':'transport'};
   const NO_DATA_WORDS = ['港口','機場','高鐵'];
-  let map, geo, activity, stats, transport, talent, intent, industry, checked = {}, boosted = {}, ranking = [], frame = 0, started = false;
+  let map, geo, activity, stats, transport, talent, intent, aiIntent = null, industry, checked = {}, boosted = {}, ranking = [], frame = 0, started = false;
   let revealed = false, located = false, step = 'intro', navigationEpoch = 0, intentKey = null;
   let comparedDistricts = [], selectedDistrict = null;
 
@@ -82,24 +82,31 @@
   for(const id of ['campus-exit','posting-exit','hunter-exit'])$(id)?.addEventListener('click',()=>{if(step==='feature')back();});
   $('replay-intro').addEventListener('click',()=>{if(step!=='intro')stop();});
 
-  function parseIntent(raw) {
+  function parseIntent(raw, ai = null) {
     const text = raw?.text || '', preference = raw?.preference || '';
-    industry = INDUSTRY_WORDS.find(([word]) => text.includes(word))?.[1] || null;
-    boosted = Object.fromEntries(CRITERIA.map(c => [c.id, c.words.some(word => text.includes(word))]));
+    aiIntent = ai;
+    industry = ai ? ai.industry : INDUSTRY_WORDS.find(([word]) => text.includes(word))?.[1] || null;
+    boosted = Object.fromEntries(CRITERIA.map(c => [c.id, ai ? ai.boost.includes(c.id) : c.words.some(word => text.includes(word))]));
+    // "不需要靠近交流道": the AI marks what the demand rules out; keywords alone would boost it instead.
+    const avoid = new Set(ai?.avoid || []);
+    avoid.forEach(id => {boosted[id] = false;});
     if (PREFERENCE[preference]) boosted[PREFERENCE[preference]] = true;
     // Optional criteria (transport) only count when the demand asks for them, so other rankings stay as they were.
-    checked = Object.fromEntries(CRITERIA.map(c => [c.id, !c.optional || boosted[c.id]]));
+    checked = Object.fromEntries(CRITERIA.map(c => [c.id, (!c.optional || boosted[c.id]) && !(avoid.has(c.id) && !boosted[c.id])]));
+    if (!CRITERIA.some(c => checked[c.id])) checked = Object.fromEntries(CRITERIA.map(c => [c.id, !c.optional]));
     const tags = [];
     tags.push(industry ? ['產業', industry] : ['產業', '未判斷，看全部製造業']);
     if (preference) tags.push(['偏好', preference]);
     CRITERIA.filter(c => boosted[c.id]).forEach(c => tags.push(['加重', c.label]));
+    CRITERIA.filter(c => avoid.has(c.id) && !checked[c.id]).forEach(c => tags.push(['不考慮', c.label]));
     const missing = NO_DATA_WORDS.filter(word => text.includes(word));
     $('scan-tags').replaceChildren(...tags.map(([kind, value]) => {
       const tag = document.createElement('span');tag.className = 'scan-tag';
       tag.innerHTML = '<small></small><b></b>';tag.firstChild.textContent = kind;tag.lastChild.textContent = value;
       return tag;
     }));
-    $('scan-intent-note').textContent = text ? `「${text}」・目前用關鍵字擷取，尚未接 AI 解析` : '沒有輸入文字，只依偏好按鈕設定。';
+    $('scan-intent-note').textContent = !text ? '沒有輸入文字，只依偏好按鈕設定。'
+      : ai ? `「${text}」・由 AI（gpt-6-luna）解析` : `「${text}」・用關鍵字擷取（AI 暫時無法使用時的備案）`;
     $('scan-gap').textContent = missing.length ? `沒有${[...new Set(missing)].join('、')}的資料，這次未納入排名。` : '';
   }
 
@@ -460,11 +467,11 @@
   function carryOver(name) {
     const text = intent?.text || '';
     const field = industry ? industry.replace(/業$/, '') : '';
-    const role = ROLE_WORDS.find(([word]) => text.toUpperCase().includes(word))?.[1] || '';
-    const senior = SENIOR_WORDS.find(([word]) => text.includes(word))?.[1];
+    const role = aiIntent?.role || ROLE_WORDS.find(([word]) => text.toUpperCase().includes(word))?.[1] || '';
+    const senior = aiIntent?.senior || SENIOR_WORDS.find(([word]) => text.includes(word))?.[1];
     return {
       district:name, place:`${name}${$('city-road').value}`, role,
-      department: DEPT_FOR[industry] || (text.includes('電') ? '電機' : '機械'),
+      department: aiIntent?.department || DEPT_FOR[industry] || (text.includes('電') ? '電機' : '機械'),
       senior: senior ? (senior === '工程師' && field ? `${field.replace(/設備$/, '')}工程師` : senior) : (field ? `${field.replace(/設備$/, '')}工程師` : '製程工程師'),
       salary: talent.districts[name].salary_floor_median,
     };
@@ -539,11 +546,31 @@
   $('scan-compare').addEventListener('click', openReport);
   $('report-back').addEventListener('click', back);
 
+  // Departments the campus search understands; the AI picks one of these.
+  const DEPARTMENTS = ['機械','電機','電子','化工','材料','工業工程','資訊工程','食品科學','紡織','企業管理'];
+  // The demand text goes to gpt-6-luna through the backend; any failure, a missing key or 8 s without an answer
+  // falls back to the keyword rules, so the scan never waits on the model.
+  async function requestIntent(raw) {
+    if (!raw?.text) return null;
+    const controller = typeof AbortController === 'function' ? new AbortController() : null;
+    const timer = controller ? setTimeout(() => controller.abort(), 8000) : null;
+    try {
+      const response = await fetch('/api/site-scan/intent', {method:'POST', headers:{'Content-Type':'application/json'}, signal:controller?.signal,
+        body:JSON.stringify({text:raw.text, preference:raw.preference || '', industries:[...new Set(INDUSTRY_WORDS.map(([, name]) => name))],
+          criteria:CRITERIA.map(c => ({id:c.id, label:c.label, hint:c.hint})), departments:DEPARTMENTS})});
+      if (!response.ok) return null;
+      const data = await response.json();
+      return data?.available ? data : null;
+    } catch {return null;} finally {if (timer) clearTimeout(timer);}
+  }
   async function start() {
     if (started) return;
     started = true;const request=++navigationEpoch;setStep('rank');
     map = window.streetMap.getMap();
     if (!map) {started = false;return;}
+    intent = window.radarIntent || {};
+    const nextKey=JSON.stringify(intent);
+    const aiRequest = nextKey!==intentKey ? requestIntent(intent) : null;
     try {
       if (!geo) [geo, activity, stats, transport] = await Promise.all(['/static/taichung-districts.geojson','/static/gcis-district-activity.json?v=20261106-rate1','/static/district-stats.json?v=20261106-lq1','/static/district-transport.json?v=20261106-osm1'].map(async url => {
         const response = await fetch(url);
@@ -554,9 +581,11 @@
       if(request===navigationEpoch){started = false;status.textContent = '商工資料讀取失敗，請重新整理後再試。';}return;
     }
     if(request!==navigationEpoch||!started)return;
-    intent = window.radarIntent || {};
-    const nextKey=JSON.stringify(intent);
-    if(nextKey!==intentKey){parseIntent(intent);intentKey=nextKey;comparedDistricts=[];selectedDistrict=null;}
+    if(nextKey!==intentKey){
+      const ai = await aiRequest;
+      if(request!==navigationEpoch||!started)return;
+      parseIntent(intent, ai);intentKey=nextKey;comparedDistricts=[];selectedDistrict=null;
+    }
     renderCriteria();rank();
     addLayers();setVisible(true);
     window.campusMatching?.deactivate();window.headhunter?.deactivate();window.recruitment?.deactivate();

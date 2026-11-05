@@ -28,6 +28,7 @@ from agent.audit_log import AuditLogError
 from agent.agent_service import OpenRouterError, agent_service
 from engine.gcis_live_verifier import verify_company_live
 from engine.gcis_company_events import get_company_events
+from engine.site_intent import parse_intent
 from etl import scheduler as gcis_daily_scheduler
 from sourcing import runs as sourcing_runs
 from sourcing import service as sourcing_service
@@ -542,6 +543,26 @@ def official_company_events(
     if not result.get("available"):
         _raise_official_tool_error(result)
     return result
+
+class SiteIntentCriterion(BaseModel):
+    id: str = Field(..., max_length=20)
+    label: str = Field("", max_length=20)
+    hint: str = Field("", max_length=120)
+
+
+class SiteIntentRequest(BaseModel):
+    text: str = Field(..., max_length=300, description="HR 在選址雷達輸入的需求")
+    preference: str = Field("", max_length=30)
+    industries: List[str] = Field(..., max_length=40, description="可選的產業（模型只能從這裡選）")
+    criteria: List[SiteIntentCriterion] = Field(..., max_length=10, description="可選的條件 id 與說明")
+    departments: List[str] = Field(default_factory=list, max_length=20, description="可選的相關科系")
+
+
+@app.post("/api/site-scan/intent")
+def site_scan_intent(req: SiteIntentRequest) -> Dict[str, Any]:
+    """選址需求文字解析（gpt-6-luna）；available=False 時前端改用關鍵字規則。"""
+    return parse_intent(req.text, req.preference, [i[:20] for i in req.industries],
+                        [c.model_dump() for c in req.criteria], [d[:20] for d in req.departments])
 
 @app.get("/api/official/wage-baseline")
 def official_wage_baseline(
