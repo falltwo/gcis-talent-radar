@@ -244,7 +244,9 @@
   }
 
   // Three-district report: what the open data can say about hiring in each place, nothing estimated.
+  // The ETL picks an inside point far from the edges, so the dot never lands outside or on a border.
   function centre(name) {
+    if (talent?.districts[name]?.label_point) return talent.districts[name].label_point;
     const [[w, s], [e, n]] = bounds(geo.features.find(f => f.properties.TOWNNAME === name));
     return [(w + e) / 2, (s + n) / 2];
   }
@@ -272,20 +274,20 @@
       const [box, head] = section(row.name);
       const tag = document.createElement('span');tag.className = 'report-level' + (row === order[0] ? ' is-easy' : '');tag.textContent = level(row);head.append(tag);
       const ratio = document.createElement('p');ratio.className = 'report-ratio';
-      ratio.textContent = row.ratio === null ? `${talent.radius_km} 公里內沒有大專相關科系` : `每位畢業生對應 ${row.ratio.toFixed(2)} 個職缺需求`;
-      box.append(bar('相關科系畢業生', row.graduates_nearby, maxGrad, '人', 'is-supply'), bar('製造類職缺需求', row.openings, maxOpen, '人', 'is-demand'), ratio);
+      ratio.textContent = row.ratio === null ? `區內和離區界 ${talent.radius_km} 公里內都沒有大專相關科系` : `每位畢業生對應 ${row.ratio.toFixed(2)} 個職缺需求・區內學校 ${row.graduates_in_district.toLocaleString()} 人`;
+      box.append(bar('相關科系畢業生（加權）', row.graduates_nearby, maxGrad, '人', 'is-supply'), bar('製造類職缺需求', row.openings, maxOpen, '人', 'is-demand'), ratio);
       return box;
     }));
-    $('report-supply-note').textContent = `畢業生：區中心 ${talent.radius_km} 公里內大專校院機械、電機等相關科系 ${talent.academic_year} 學年畢業生，不含高職。職缺：就業通 ${talent.jobs_snapshot} 快照的技術、製造、工程類需求人數。沒有各區求職者人數的資料，所以這不是求職求才比。`;
+    $('report-supply-note').textContent = `畢業生：大專校院機械、電機等相關科系 ${talent.academic_year} 學年畢業生，不含高職。區內的學校全數計入；區外的學校依離區界的距離打折，${talent.radius_km / 2} 公里算一半，${talent.radius_km} 公里以外不算。職缺：就業通 ${talent.jobs_snapshot} 快照的技術、製造、工程類需求人數。沒有各區求職者人數的資料，所以這不是求職求才比。`;
     $('report-schools').replaceChildren(...rows.map(row => {
       const [box] = section(row.name);
       const list = document.createElement('ul');list.className = 'report-school-list';
-      const top = row.schools.slice().sort((a, b) => b.graduates - a.graduates).slice(0, 2);
-      if (!top.length) {const li = document.createElement('li');li.textContent = `${talent.radius_km} 公里內沒有大專校院相關科系`;list.append(li);}
+      const top = row.schools.slice().sort((a, b) => b.graduates * b.weight - a.graduates * a.weight).slice(0, 2);
+      if (!top.length) {const li = document.createElement('li');li.textContent = `區內和離區界 ${talent.radius_km} 公里內沒有大專校院相關科系`;list.append(li);}
       top.forEach(school => {
         const li = document.createElement('li');li.innerHTML = '<b></b><small></small>';
         li.firstChild.textContent = short(school.name);
-        li.lastChild.textContent = `${school.district}・距 ${school.km} 公里・相關科系 ${school.graduates} 人・${school.top_departments.slice(0, 2).join('、')}`;
+        li.lastChild.textContent = `${school.km ? `${school.district}・離區界 ${school.km} 公里` : '在區內'}・相關科系 ${school.graduates} 人・${school.top_departments.slice(0, 2).join('、')}`;
         list.append(li);
       });
       box.append(list);return box;
@@ -300,10 +302,12 @@
     }));
     const advice = [];
     if (order.length) advice.push(`對照相關科系畢業生和職缺需求，${order[0].name}每位畢業生對應的職缺需求最少（${order[0].ratio.toFixed(2)}），新鮮人的招募壓力在三區中最低。`);
-    rows.filter(row => row.ratio === null).forEach(row => advice.push(`${row.name} ${talent.radius_km} 公里內沒有大專相關科系，新鮮人要從外區通勤，比較適合用刊登召募找有經驗的人。`));
+    rows.filter(row => row.ratio === null).forEach(row => advice.push(`${row.name}區內和附近都沒有大專相關科系，新鮮人要從外區通勤，比較適合用刊登召募找有經驗的人。`));
+    // A school counts as shared only when it is in one district and close (weight >= .5) to the other.
     three.forEach((a, i) => three.slice(i + 1).forEach(b => {
-      const both = talent.districts[a].schools.filter(x => talent.districts[b].schools.some(y => y.name === x.name)).map(x => short(x.name));
-      if (both.length) advice.push(`${a}和${b}附近有相同的學校（${both.slice(0, 2).join('、')}），選其中一區，另一區的學校也在通勤範圍內。`);
+      const own = (x, y) => talent.districts[x].schools.filter(s => s.km === 0 && talent.districts[y].schools.some(t => t.name === s.name && t.weight >= .5)).map(s => short(s.name));
+      const both = [...own(a, b), ...own(b, a)];
+      if (both.length) advice.push(`${a}和${b}距離近，${both.slice(0, 2).join('、')}在兩區的通勤範圍內，選其中一區也能接觸另一區的學校。`);
     }));
     const floors = rows.map(r => r.salary_floor_median).filter(Boolean);
     if (floors.length > 1) advice.push(new Set(floors).size === 1
@@ -363,7 +367,7 @@
   async function openReport() {
     try {
       if (!talent) {
-        const response = await fetch('/static/district-talent.json');
+        const response = await fetch('/static/district-talent.json?v=20261105-edge1');
         if (!response.ok) throw Error('talent');
         talent = await response.json();
       }

@@ -1,8 +1,10 @@
 """Per-district talent facts for the three-district report on the home page.
 
 Writes ui/static/district-talent.json from local processed files only:
-- university campuses within RADIUS_KM of each district's centre, with graduates of
-  manufacturing-related departments (MOE department statistics, latest academic year);
+- university campuses inside or within RADIUS_KM of each district's boundary, with graduates
+  of manufacturing-related departments (MOE department statistics, latest academic year).
+  A school inside the district counts in full; outside, its weight falls linearly to zero at
+  RADIUS_KM from the boundary, so neighbouring districts no longer get identical counts;
 - Taiwan Jobs postings in manufacturing-related job families: postings, requested
   workers and the median of the monthly salary floor employers posted.
 
@@ -32,21 +34,61 @@ def rows(name):
         return list(csv.DictReader(handle))
 
 
-def centres():
+def districts_geometry():
+    """Rings per district in a local km grid, plus a label point that always lies inside the district."""
     geo = json.loads((ROOT / "ui/static/taichung-districts.geojson").read_text(encoding="utf-8"))
     out = {}
     for feature in geo["features"]:
-        points = []
+        rings = []
         def walk(coords):
-            if isinstance(coords[0], (int, float)):
-                points.append(coords)
+            if isinstance(coords[0][0], (int, float)):
+                rings.append([tuple(point[:2]) for point in coords])
             else:
                 for item in coords:
                     walk(item)
         walk(feature["geometry"]["coordinates"])
-        xs, ys = [p[0] for p in points], [p[1] for p in points]
-        out[feature["properties"]["TOWNNAME"]] = ((min(xs) + max(xs)) / 2, (min(ys) + max(ys)) / 2)
+        out[feature["properties"]["TOWNNAME"]] = {"rings": rings, "label": label_point(rings)}
     return out
+
+
+def to_km(point):
+    return (point[0] * 111.32 * math.cos(math.radians(24.15)), point[1] * 110.57)
+
+
+def inside(point, rings):
+    x, y = point
+    hit = False
+    for ring in rings:  # even-odd over every ring handles holes and multipolygons
+        for (x1, y1), (x2, y2) in zip(ring, ring[1:] + ring[:1]):
+            if (y1 > y) != (y2 > y) and x < x1 + (y - y1) * (x2 - x1) / (y2 - y1):
+                hit = not hit
+    return hit
+
+
+def edge_km(point, rings):
+    px, py = to_km(point)
+    best = math.inf
+    for ring in rings:
+        for a, b in zip(ring, ring[1:] + ring[:1]):
+            (ax, ay), (bx, by) = to_km(a), to_km(b)
+            dx, dy = bx - ax, by - ay
+            t = 0 if not dx and not dy else max(0, min(1, ((px - ax) * dx + (py - ay) * dy) / (dx * dx + dy * dy)))
+            best = min(best, math.hypot(px - ax - t * dx, py - ay - t * dy))
+    return best
+
+
+def label_point(rings, steps=40):
+    # ponytail: grid search for the inside point farthest from the edge; polylabel if it ever needs to be exact.
+    xs = [x for ring in rings for x, _ in ring]; ys = [y for ring in rings for _, y in ring]
+    best, far = None, -1
+    for i in range(steps + 1):
+        for j in range(steps + 1):
+            point = (min(xs) + (max(xs) - min(xs)) * i / steps, min(ys) + (max(ys) - min(ys)) * j / steps)
+            if inside(point, rings):
+                distance = edge_km(point, rings)
+                if distance > far:
+                    best, far = point, distance
+    return [round(best[0], 5), round(best[1], 5)]
 
 
 def km(a, b):
@@ -88,15 +130,21 @@ def build():
             if row["salary_max"]:
                 item["ceilings"].append(float(row["salary_max"]))
     districts = {}
-    for name, centre in centres().items():
-        near = sorted(
-            ({**school, "km": round(km(centre, school["point"]), 1)} for school in schools.values()
-             if school["graduates"] and km(centre, school["point"]) <= RADIUS_KM),
-            key=lambda school: school["km"])
+    for name, shape in districts_geometry().items():
+        near = []
+        for school in schools.values():
+            if not school["graduates"]:
+                continue
+            distance = 0.0 if inside(school["point"], shape["rings"]) else edge_km(school["point"], shape["rings"])
+            if distance <= RADIUS_KM:
+                near.append({**school, "km": round(distance, 1), "weight": round(1 - distance / RADIUS_KM, 2)})
+        near.sort(key=lambda school: (school["km"], -school["graduates"]))
         job = jobs.get(name, {"postings": 0, "openings": 0, "salaries": [], "ceilings": []})
         districts[name] = {
-            "graduates_nearby": sum(school["graduates"] for school in near),
-            "schools": [{key: school[key] for key in ("name", "district", "km", "graduates", "top_departments")} for school in near],
+            "label_point": shape["label"],
+            "graduates_nearby": round(sum(school["graduates"] * school["weight"] for school in near)),
+            "graduates_in_district": sum(school["graduates"] for school in near if school["km"] == 0),
+            "schools": [{key: school[key] for key in ("name", "district", "km", "weight", "graduates", "top_departments")} for school in near],
             "postings": job["postings"], "openings": job["openings"],
             "salary_floor_median": round(statistics.median(job["salaries"])) if job["salaries"] else None,
             "salary_samples": len(job["salaries"]),
@@ -104,7 +152,7 @@ def build():
             "salary_ceiling_samples": len(job["ceilings"]),
         }
     return {
-        "academic_year": year, "radius_km": RADIUS_KM, "jobs_snapshot": snapshot,
+        "academic_year": year, "radius_km": RADIUS_KM, "distance": "school to district boundary; 0 when inside", "jobs_snapshot": snapshot,
         "department_rule": DEPT.pattern, "job_families": sorted(JOB_FAMILIES),
         "sources": {
             "graduates": "教育部大專校院各校科系別學生數（畢業生數）",
@@ -121,4 +169,6 @@ if __name__ == "__main__":
     sample = {k: data["districts"][k] for k in ("太平區", "大里區", "豐原區")}
     print(data["academic_year"], data["jobs_snapshot"])
     print(json.dumps(sample, ensure_ascii=False, indent=1))
-    assert data["districts"]["太平區"]["schools"], "太平區 should have 勤益 within range"
+    taiping = data["districts"]["太平區"]
+    assert taiping["schools"][0]["name"] == "國立勤益科技大學" and taiping["schools"][0]["km"] == 0, "勤益 sits inside 太平區"
+    assert taiping["graduates_nearby"] != data["districts"]["大里區"]["graduates_nearby"], "neighbours should differ once weighted"
