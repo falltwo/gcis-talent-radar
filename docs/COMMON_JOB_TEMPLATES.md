@@ -1,11 +1,15 @@
 # 常見職缺範本清單
 
-目前共35類，符合下列職稱或別名時使用本機範本，不呼叫搜尋模型。空格、全形字及英文大小寫會統一比對；未收錄的專業或複合職稱仍走網路搜尋。
+目前共39類，符合下列職稱或別名時使用本機範本，不呼叫搜尋模型。空格、全形字及英文大小寫會統一比對；未收錄的專業或複合職稱仍走網路搜尋。
 
 這是已整理的職業參考建議，並非本次即時搜尋。薪資、人數、班制與公司資訊仍以HR輸入及核准版本為準。醫事、駕駛及房仲等職位的專業資格與實際工作範圍，會列為HR待確認事項。
 
 | 範本 | 支援職稱／別名 | 職業參考來源 |
 |---|---|---|
+| 製程工程師 | 製程工程師、製程改善工程師、製造工程師、process engineer、manufacturing engineer | [O*NET：Manufacturing Engineers（製程方向參考）](https://www.onetonline.org/link/summary/17-2112.03) |
+| 生管管理師 | 生管管理師、生管人員、生管專員、生產管理師、生產計劃人員、生產計畫人員、production planner、production scheduler | [O*NET：Production, Planning, and Expediting Clerks（生產排程方向參考）](https://www.onetonline.org/link/summary/43-5061.00) |
+| 品管／品保工程師 | 品管／品保工程師、品管工程師、品保工程師、品質工程師、品質保證工程師、品質管理工程師、QC工程師、QA工程師、quality engineer、quality assurance engineer、quality control engineer | [O*NET：Industrial Engineers（品質工程方向參考）](https://www.onetonline.org/link/summary/17-2112.00) |
+| 廠長／生產主管 | 廠長／生產主管、廠長、工廠廠長、生產主管、製造主管、生產經理、製造經理、plant manager、production manager、manufacturing manager | [O*NET：Industrial Production Managers](https://www.onetonline.org/link/summary/11-3051.00) |
 | 會計 | 會計、會計人員、會計助理、記帳人員、accountant | [O*NET：Accountants and Auditors](https://www.onetonline.org/link/summary/13-2011.00) |
 | CNC操作員 | CNC操作員、CNC 操作員、cnc operator | [O*NET：Computer Numerically Controlled Tool Operators](https://www.onetonline.org/link/summary/51-9161.00) |
 | 測試員 | 測試員、測試人員、測試助理、測試工程師、tester、test engineer | [O*NET：Inspectors and Testers（一般測試流程參考）](https://www.onetonline.org/link/summary/51-9061.00) |
@@ -43,3 +47,5 @@
 | 數據工程師 | 數據工程師、資料工程師、data engineer | [O*NET：Database Architects（資料工程方向參考）](https://www.onetonline.org/link/summary/15-1243.00) |
 
 內場與外場、業務與業務助理、資訊維護與軟體開發、護理與其他醫事職類使用不同範本。「醫事人員」只提供職群層級建議，必須由HR確認實際專業。「測試員」先提供一般測試流程；需要軟體測試時可輸入「軟體測試工程師」。
+
+新增製造類範本的來源於2026-11-05查核。內容為本專案依O*NET職業說明整理的繁體中文招募建議，並非官方逐字翻譯、企業已核准條件或台灣法定資格標準。班制、時間、薪資及年資不由職業來源直接推定。

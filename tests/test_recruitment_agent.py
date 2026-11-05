@@ -132,3 +132,11 @@ def test_browser_model_execution_is_opt_in(client,monkeypatch):
     monkeypatch.setenv('RECRUITMENT_AGENT_DEMO_AI_ENABLED','0')
     result=client.post('/api/mock104/agent/browser/start',json={'run_id':run['run_id']})
     assert result.status_code==503
+
+def test_unconfirmed_proposals_can_only_fill_for_final_review(client):
+    data=prepare(client)
+    proposal={'job':data,'hr_confirmed':False,'auto_fill':True,'fill_only':True,'confirm_before_publish':True}
+    response=client.post('/api/mock104/agent/approve',json=proposal)
+    assert response.status_code==200,response.text
+    for override in [{'fill_only':False},{'confirm_before_publish':False},{'auto_fill':False}]:
+        assert client.post('/api/mock104/agent/approve',json={**proposal,**override}).status_code==422

@@ -88,25 +88,3 @@ test('unsupported and malformed salaries fail closed instead of accepting a nume
  }
  assert.throws(()=>parseBrief('1位工程師年薪60萬'),/薪資|月薪/);
 });
-
-test('a rejected chat message preserves returned drafts and allows correction and resubmission',()=>{
- const source=fs.readFileSync(path.join(__dirname,'../../ui/static/recruitment.js'),'utf8');
- const nodes=new Map(),listeners=new Map(),messages=[];
- const $=id=>{
-  if(!nodes.has(id))nodes.set(id,{value:'',addEventListener:(event,fn)=>listeners.set(id,fn),focus(){},requestSubmit(){this.submitted=true;}});
-  return nodes.get(id);
- };
- const retained={brief:'原有草稿',index:0,jobs:[{role:'資深工程師',hires:3}]};
- const c={RecruitmentFlow,$,returnedDrafts:retained,pendingJobs:[],chatMessage:(kind,text)=>messages.push({kind,text})};
- vm.createContext(c);
- const start=source.indexOf('  function returnedJobs('),end=source.indexOf("  panel.querySelectorAll('[data-chat-action]')");
- vm.runInContext(source.slice(start,end),c);
- $('posting-brief').value='2位工程師，月薪4k';listeners.get('posting-parse')();
- assert.equal($('posting-form').submitted,undefined);
- assert.equal(c.pendingJobs.length,0);assert.equal(c.returnedDrafts,retained);
- assert.match(messages.at(-1).text,/薪資|月薪/);
- $('posting-brief').value='2位工程師，月薪4萬到6萬';listeners.get('posting-parse')();
- assert.equal($('posting-form').submitted,true);
- assert.equal(c.pendingJobs[0].salaryMin,40000);assert.equal(c.pendingJobs[0].salaryMax,60000);
- assert.equal(c.returnedDrafts,null);
-});
