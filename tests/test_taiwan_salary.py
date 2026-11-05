@@ -31,11 +31,12 @@ def test_region_does_not_silently_change_city(monkeypatch):
 
 
 def test_live_source_falls_back_with_original_snapshot_date(monkeypatch):
+    snapshot_date=date(2025,12,15).isoformat()
     def fail(*a):raise requests.Timeout()
     monkeypatch.setattr(salary,'fetch_rows',fail)
-    monkeypatch.setattr(salary,'snapshot_rows',lambda *a:([row()], '2026-10-01','2026-10-01T12:00:00Z','snapshot',True))
+    monkeypatch.setattr(salary,'snapshot_rows',lambda *a:([row()], snapshot_date,snapshot_date+'T12:00:00Z','snapshot',True))
     result=salary.get_reference('前端工程師','大雅區')
-    assert result['mode']=='snapshot' and result['snapshot_date']=='2026-10-01'
+    assert result['mode']=='snapshot' and result['snapshot_date']==snapshot_date
     assert result['cap_reached'] is True
 
 
