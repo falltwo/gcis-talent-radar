@@ -24,10 +24,18 @@ def plan_request(ai, messages):
     confirmation=bool(re.fullmatch(r'\s*(?:都通用|都適用|兩個都適用|全部適用|對|是|沒錯|確認|好|可以)[。！!\s]*',users[-1]))
     candidate=users[-2] if confirmation and len(users)>1 else users[-1]
     if not re.search(r'[?？]|行情|平均|查詢|搜尋',candidate):
-        try:parse(candidate)
+        try:latest=parse(candidate)
         except ValueError:pass
         else:
             turns=[text for text in users if not re.search(r'[?？]|行情|平均|查詢|搜尋',text)]
+            prior_roles=None
+            prior=users[:-2] if confirmation else users[:-1]
+            for text in reversed(prior):
+                try:prior_roles={row['title'] for row in parse(text,include_salary=False)};break
+                except ValueError:continue
+            # A new role set is a new intake, not a salary update of previous jobs.
+            if prior_roles and (prior_roles!={row['title'] for row in latest} or re.search(r'設廠|開廠|另外招募|新招募',candidate)):
+                turns=[candidate]
             return {'action':'draft','query':'','reply':'','brief':'\n'.join(turns),'salary_turns':turns}
     if not ai.enabled:
         text=users[-1]

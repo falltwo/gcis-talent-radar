@@ -75,3 +75,20 @@ def test_active_requirements_survive_many_questions_and_service_restart(c,monkey
         changed=say(restarted,h,'月薪200000')
         assert changed['kind']=='batch'
         assert changed['batch']['items'][0]['salary_min']==200000
+
+
+def test_new_single_role_intake_does_not_inherit_old_multi_role_salary(c):
+    h=account(c)
+    say(c,h,'前端工程師與全端工程師各2位，月薪各5萬')
+    assert say(c,h,'月薪200000')['kind']=='clarify'
+    changed=say(c,h,'我要在南區設廠 招募品管員20位')
+    assert changed['kind']=='batch'
+    rows=changed['batch']['items']
+    assert len(rows)==1
+    assert (rows[0]['title'],rows[0]['quantity'],rows[0]['location'])==('品管員',20,'南區')
+    assert rows[0]['salary_min'] is None and rows[0]['salary_max'] is None
+    assert changed['context']['remembered_roles']==['品管員']
+    followup=say(c,h,'月薪45000')
+    assert followup['kind']=='batch'
+    assert len(followup['batch']['items'])==1
+    assert followup['batch']['items'][0]['salary_min']==45000

@@ -51,7 +51,9 @@ def parse(text,include_salary=True):
         if role_first and len(role_first)==len(list(re.finditer(rf'({NUM})\s*(?:個|位|名|人)',text))):
             candidates=[]
             for match in role_first:
-                title=re.sub(r'^(?:(?:請|幫我|我想|我要|招募|招聘|徵求|找)\s*)+','',match['title']).strip()
+                title=re.sub(r'^(?:我要|我想|我們要|我們想|要|想)?(?:在|於)[^，,。；;\n]{1,30}?(?:設廠|開廠|擴廠)\s*(?:招募|招聘|徵求|徵才)?\s*','',match['title']).strip()
+                title=re.sub(r'^(?:(?:我要|我想|我們要|我們想)?(?:在|於)[^，,。；;\n]{1,20}區\s*(?:招募|招聘|徵求|徵才))\s*','',title)
+                title=re.sub(r'^(?:(?:請|幫我|我想|我要|招募|招聘|徵求|找)\s*)+','',title).strip()
                 title=re.sub(r'(?:需要|招募|招聘)\s*$','',title).strip()
                 if title in {'各','都','全部'} or not valid_title(title):break
                 candidates.append({'title':title,'quantity':number(match['count'])})
@@ -72,4 +74,7 @@ def parse(text,include_salary=True):
     from .salary import verified_salary
     salaries=verified_salary(text,[i['title'] for i in result]) if include_salary else {}
     for item in result:item.update(salaries.get(item['title'],{}))
+    if len(result)==1:
+        location=re.search(r'(?:在|於|工作地點\s*[:：])\s*((?:臺中市|台中市)?[\u4e00-\u9fff]{1,4}區)',text)
+        if location:result[0]['location']=location[1]
     return result
