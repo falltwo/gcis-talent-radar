@@ -135,11 +135,27 @@ def test_summary_without_model_uses_page_facts_only():
 
 
 # ------------------------------------------------------------------ service
+def _page_key(url):
+    """搜尋結果頁去掉搜尋字（q、search 參數），只留網站、路徑與頁碼。"""
+    from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
+    parts = urlsplit(url)
+    params = parse_qsl(parts.query)
+    query = [(k, v) for k, v in params if k not in ("q", "search")]
+    if len(query) < len(params):
+        query.append(("_searched", "1"))  # 入口頁（沒有搜尋字）和搜尋結果頁要分開
+    return urlunsplit(parts._replace(query=urlencode(query)))
+
+
+class _Pages(dict):
+    def get(self, url, default=None):
+        return super().get(url) or super().get(_page_key(url), default)
+
+
 class FakeBrowser:
     """模擬搜尋結果頁與個人頁；記錄開過的網址。"""
 
     def __init__(self, pages, *, challenge_on=()):
-        self.pages = pages
+        self.pages = _Pages({**pages, **{_page_key(u): v for u, v in pages.items()}})
         self.challenge_on = set(challenge_on)
         self.current = "about:blank"
         self.history = []
@@ -490,8 +506,8 @@ def test_jev_types_the_search_that_rules_decided_without_model():
     kinds = _types(events)
     assert kinds[:5] == ["plan", "decision", "step:open_entry", "step:jev_type_text", "step:jev_press_enter"]
     search = next(e for e in events if e["type"] == "decision" and e["what"] == "search_text")
-    assert search["by"] == "rules" and "type:user language:python" in search["detail"]
-    assert browser.goals[0][1] == "type:user language:python"
+    assert search["by"] == "rules" and "type:user language:python location:Taichung" in search["detail"]
+    assert browser.goals[0][1] == "type:user language:python location:Taichung"
     assert "step:open_search" not in kinds and kinds.count("candidate") == 1
 
 
@@ -740,7 +756,8 @@ def test_stackoverflow_uses_api_only_and_filters_location(monkeypatch):
     cands = {e["candidate"]["name"]: e["candidate"] for e in events if e["type"] == "candidate"}
     assert calls == [["1", "2", "3"]]  # 一次批次查完
     assert set(cands) == {"TC Dev", "TP Dev"}
-    assert cands["TC Dev"]["fit"] == "部分符合" and cands["TP Dev"]["fit_reason"].startswith("在台灣其他城市")
+    assert cands["TC Dev"]["area"] == "primary" and cands["TC Dev"]["area_label"] == "台中"
+    assert cands["TP Dev"]["area"] == "taiwan" and cands["TP Dev"]["location_note"] == "在台灣其他地區（Taipei, Taiwan）"
     assert any(e["type"] == "notice" and "Stack Overflow" in e["message"] for e in events)
 
 
@@ -835,7 +852,7 @@ def test_orcid_uses_official_api_with_city_institutions(monkeypatch):
 
     def fake_orcid(path, params=None, timeout=20.0):
         if path == "expanded-search/":
-            seen["q"] = params["q"]
+            seen.setdefault("q", params["q"])  # 第一次是台中的機構；不夠時第二次擴大到台灣
             return {"expanded-result": [{"orcid-id": "0000-0001-2345-6789", "given-names": "Lin", "family-names": "Chen",
                                          "institution-name": ["Feng Chia University"]}]}
         return {"keywords": {"keyword": [{"content": "machine learning; computer vision"}]},
@@ -959,10 +976,11 @@ def test_sites_without_location_only_fill_the_gap_and_are_flagged():
     events, _ = _location_run(github_people=1)
     cands = [e["candidate"] for e in events if e["type"] == "candidate"]
     assert [c["site"] for c in cands] == ["github", "huggingface", "kaggle"]
-    assert cands[0]["location_note"] == ""
-    assert all("無法依地點篩選" in c["location_note"] and "台中" in c["location_note"] for c in cands[1:])
+    assert cands[0]["area"] == "primary" and cands[0]["area_label"] == "台中"
+    assert all(c["area"] == "unknown" and c["area_label"] == "無法確認是否在台灣" for c in cands[1:])
     notices = [e["message"] for e in events if e["type"] == "notice" and "補足" in e["message"]]
     assert len(notices) == 1 and "Hugging Face、Kaggle" in notices[0]
+    assert any(e["type"] == "notice" and "擴大到台灣其他地區" in e["message"] for e in events)
     assert {s["id"]: s["location_filter"] for s in catalog()}["github"] is True
 
 
@@ -1006,13 +1024,67 @@ def test_other_city_api_candidates_wait_for_city_sources(monkeypatch):
                                                  site_ids=["github", "stackoverflow"]),
                                  browser_factory=lambda: browser))
     cands = [e["candidate"] for e in events if e["type"] == "candidate"]
-    assert [c["name"] for c in cands] == ["TP Dev"] and cands[0]["fit"] == "部分符合" and "nearby" not in cands[0]
+    assert [c["name"] for c in cands] == ["TP Dev"] and cands[0]["area_label"] == "台灣其他地區"
 
 
 def test_github_search_keeps_rule_terms_when_model_gives_nothing(monkeypatch):
     monkeypatch.setenv("OPENROUTER_API_KEY", "test")
     monkeypatch.setattr(llm, "chat_json", lambda *a, **k: {"language": None, "keyword": None})
     text, source, _ = decider.search_text(SITES["github"], planner.rule_plan("找Python工程師"))
-    assert text == "type:user language:python" and source == "rules"
+    assert text == "type:user language:python location:Taichung" and source == "rules"
     empty = planner.Plan("找人", ["software"], SearchTerms((), None), True, "rules", [])
     assert decider.search_text(SITES["github"], empty)[0] == "type:user developer"
+
+
+def test_profile_location_decides_area_on_sites_without_location_search():
+    """不能依地點搜尋的網站：讀個人頁的所在地，台中照列、台灣以外略過、看不出來的排最後。"""
+    people = [("https://www.kaggle.com/far", "far"), ("https://www.kaggle.com/anon", "anon"),
+              ("https://www.kaggle.com/tc", "tc"), ("https://www.kaggle.com/tp", "tp")]
+    browser = HostBrowser(people)
+    browser.pages["https://www.kaggle.com/far"]["text"] = ["far", "Berlin, Germany", "machine learning"]
+    browser.pages["https://www.kaggle.com/tc"]["text"] = ["tc", "Taichung, Taiwan", "machine learning"]
+    browser.pages["https://www.kaggle.com/tp"]["text"] = ["tp", "台北市", "machine learning"]
+    prep = service.prepare("找機器學習工程師", max_candidates=3, site_ids=["kaggle"])
+    events = list(service.stream(prep, browser_factory=lambda: browser))
+    cands = [(e["candidate"]["name"], e["candidate"]["area"]) for e in events if e["type"] == "candidate"]
+    assert cands == [("tc", "primary"), ("tp", "taiwan"), ("anon", "unknown")]  # 看不出地點的排最後
+    skipped = [e for e in events if e["type"] == "candidate_skipped"]
+    assert skipped[0]["name"] == "far" and "不在台灣" in skipped[0]["reason"]
+    assert any(e["type"] == "step" and e["action"] == "hold" for e in events)
+    assert not any(e["type"] == "notice" and "擴大到台灣其他地區" in e["message"] for e in events)  # 根本沒有依地點搜尋過
+
+
+def test_outside_taiwan_is_rejected_and_no_location_defaults_to_taichung():
+    prep = service.prepare("找東京的 Python 工程師")
+    assert prep.final_event["type"] == "out_of_area" and "東京" in prep.final_event["reason"]
+    events = list(service.stream(prep, browser_factory=lambda: pytest.fail("不應開瀏覽器")))
+    assert [e["type"] for e in events] == ["out_of_area"]
+    plan = planner.rule_plan("找 Python 工程師").as_dict()
+    assert plan["location"] == "Taichung" and plan["search_area"] == {
+        "primary": "Taichung", "primary_label": "台中", "fallback": "Taiwan", "default": True}
+    assert planner.rule_plan("中國醫藥大學的 AI 研究員").outside_taiwan == ""  # 台灣的學校，不是國外
+    assert planner.rule_plan("後端工程師 大雅區").terms.location == "Taichung"
+    assert planner.rule_plan("Python engineer in New Taipei").terms.location == "New Taipei"
+    assert planner.rule_plan("找台灣的 Python 工程師").as_dict()["search_area"]["fallback"] is None
+
+
+def test_llm_location_must_be_in_taiwan(monkeypatch):
+    monkeypatch.setenv("OPENROUTER_API_KEY", "test")
+    answer = {"categories": ["software"], "skills": ["python"], "location": "outside_taiwan", "has_public_work": True}
+    monkeypatch.setattr(llm, "chat_json", lambda *a, **k: answer)
+    assert planner.plan("找矽谷附近的 Python 工程師").outside_taiwan
+    assert planner.plan("找台中或國外的 Python 工程師").outside_taiwan == ""  # 有寫台灣的地點就照台灣找
+    answer["location"] = "Paris"  # 清單外的值不採用
+    assert planner.plan("找 Python 工程師").terms.location == "Taichung"
+
+
+def test_github_ladder_keeps_skills_and_lets_the_area_widen(monkeypatch):
+    from sourcing.sites import github_ladder
+    assert github_ladder("Taichung", "rust", "backend") == [
+        "language:rust backend location:Taichung", "backend location:Taichung", "language:rust location:Taichung"]
+    assert github_ladder("Taichung", None, None) == ["location:Taichung"]  # 完全沒有技能時才只用地點
+    counts = {"language:rust location:Taichung": 3}
+    monkeypatch.setattr(apis, "github_user_count", lambda q: counts.get(q, 1))
+    plan = planner.rule_plan("找 Rust 工程師 在台中")
+    text, _, note = decider.search_text(SITES["github"], plan, need=10)
+    assert text == "type:user language:rust location:Taichung" and "人數最多" in note

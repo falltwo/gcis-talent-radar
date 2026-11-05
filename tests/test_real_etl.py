@@ -34,7 +34,9 @@ def test_gcis_missing_months_recovered_from_official_source():
     mfg = df[(df.industry == "製造業") & (df.metric == "new")].set_index("year_month")
     assert mfg.loc["2025-08", "companies"] == 91
     assert mfg.loc["2025-09", "companies"] == 75
-    assert (mfg.loc[["2025-08", "2025-09"], "quality_flag"] == "official_monthly_recovered").all()
+    # 平臺當時缺這兩個月，由官方月報補回；平臺後來公布了，就直接用平臺檔（數字相同，不再標補回）
+    assert mfg.loc[["2025-08", "2025-09"], "quality_flag"].fillna("observed").isin(
+        ["official_monthly_recovered", "observed"]).all()
     assert mfg.loc["2026-08", "companies"] == 75          # 組員交接文件記載值
     assert (mfg.loc["2010-12", "quality_flag"]) == "isolated_before_series"
 
