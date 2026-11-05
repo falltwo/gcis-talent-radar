@@ -105,3 +105,32 @@
 .campus-basket-info{display:grid;gap:6px;min-width:0}.campus-basket-department{font-size:12px;line-height:1.6;color:#5d708b}
 
 .campus-basket-location{font-size:11px;line-height:1.5;color:#718096}.campus-basket-department{font-weight:600;color:#304b70}
+/* Fixed card size: every school opens at the same width and height and scrolls inside.
+   popupAnchor's inline max-height can still lower it on short screens. */
+.campus-school-popup{width:310px;height:min(520px,calc(100svh - 210px))}
+@media(max-width:720px){.campus-school-popup{height:340px}}
+/* Drag handle: sticky bar with a grip, tinted on hover, shimmer once, blue while dragging. */
+.campus-popup-head{position:sticky;top:-15px;z-index:2;margin:-15px -15px 0;padding:10px 12px 10px 10px;background:#f6f9fd;border-bottom:1px solid #e1e9f3;border-radius:12px 12px 0 0;overflow:hidden;transition:background .2s ease,border-color .2s ease}
+.campus-popup-head::before{content:'';flex:none;width:12px;height:18px;color:#a3b3c8;background:radial-gradient(circle,currentColor 1.3px,transparent 1.7px) 0 0/6px 6px;transition:color .2s ease}
+.campus-popup-head .campus-source-badge{margin-right:auto}
+.campus-popup-head::after{content:'';position:absolute;inset:0;pointer-events:none;background:linear-gradient(100deg,transparent 30%,#ffffffcc 50%,transparent 70%);transform:translateX(-100%)}
+.campus-popup-head:hover{background:#eaf2fd;border-color:#bcd2ee}
+.campus-popup-head:hover::before{color:#285eaa}
+.campus-popup-head:hover::after{animation:campus-grip-shine .7s ease-out}
+.campus-school-popup.is-dragging .campus-popup-head{background:#dbe9fb;border-color:#7fa7da}
+.campus-school-popup.is-dragging .campus-popup-head::before{color:#1c4f94}
+.campus-school-popup.is-dragging{box-shadow:0 22px 48px #18385840,0 0 0 2px #6f9cd6}
+@keyframes campus-grip-shine{to{transform:translateX(100%)}}
+@media(prefers-reduced-motion:reduce){.campus-popup-head,.campus-popup-head::before{transition:none}.campus-popup-head:hover::after{animation:none}}
+/* Add-to-candidates sits beside the school name so it is visible without scrolling; wraps under long names. */
+.campus-title-row{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:6px 10px;margin:12px 0 3px}
+.campus-title-row h2{margin:0!important;flex:1 1 140px;line-height:1.3}
+.campus-school-popup .campus-add{flex:none;width:auto;min-height:42px;margin:0;padding:6px 15px;border-radius:999px;font-size:16px;font-weight:650;white-space:nowrap}
+.campus-school-popup .campus-add.is-added{background:#e7f6ee;color:#17693f;border:1px solid #9fd5b6}
+.campus-school-popup .campus-add.is-added:hover{animation:none;box-shadow:0 0 0 2px #9fd5b6}
+@keyframes campus-add-breathe{0%,100%{box-shadow:0 0 0 1px #2f8bff99,0 0 4px #2f8bff55}50%{box-shadow:0 0 0 3px #1e88ff,0 0 8px 2px #2f8bffb0}}
+/* Icon + label centred as one flex group; 2.4:1 width-to-height keeps the pill from looking stubby. */
+.campus-school-popup .campus-add{display:inline-flex;align-items:center;justify-content:center;gap:6px;line-height:1;padding:0 18px}
+.campus-add svg{flex:none;width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+/* Button stays on the name's row; long names wrap inside their own column instead. */
+.campus-title-row{flex-wrap:nowrap}.campus-title-row h2{flex:1 1 0;min-width:0}

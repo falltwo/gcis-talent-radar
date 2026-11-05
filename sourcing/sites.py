@@ -65,13 +65,18 @@ def github_query(location: Optional[str], language: Optional[str], keyword: Opti
 
 
 def github_ladder(location: Optional[str], language: Optional[str], keyword: Optional[str]) -> list[str]:
-    """由嚴到寬的搜尋條件：地點＋語言＋關鍵字 → 地點＋關鍵字 → 地點＋語言 → 只有地點。"""
-    combos = [(language, keyword), (None, keyword), (language, None), (None, None)]
+    """由嚴到寬的搜尋條件：地點＋語言＋關鍵字 → 地點＋關鍵字 → 地點＋語言。
+
+    不會放寬到「只有地點」：那樣會列出一堆不相關的人；人不夠時改由流程把地點擴大到台灣其他地區。
+    只有完全沒有語言與關鍵字時，才用「只有地點」。"""
+    combos = [(language, keyword), (None, keyword), (language, None)]
     out: list[str] = []
     for lang, kw in combos:
         q = github_query(location, lang, kw)
-        if q and q not in out:
+        if (lang or kw) and q not in out:
             out.append(q)
+    if not out and location:
+        out.append(github_query(location, None, None))
     return out
 
 

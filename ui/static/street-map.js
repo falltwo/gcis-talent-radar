@@ -158,6 +158,7 @@
     getMap(){return mapReady?map:null;},
     getLocation(){return currentLocation?{...currentLocation}:null;},
     popupAnchor(card,coordinates){return popupAnchor(card,map.project(coordinates));},
+    popupAnchorAt(card,point){return popupAnchor(card,point);},
     // Keeps the map and pin hidden behind the radar until the entrance has faded away.
     hold(){
       if(reduced)return;

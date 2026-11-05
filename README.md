@@ -89,6 +89,27 @@ python -m etl.run_real_etl --only taiwanjobs   # 只抓當天的就業通職缺�
 python -m forecast.run_real --series gcis --horizon 12 --step 3
 ```
 
+#### 每日更新經濟部商工資料
+
+```bash
+python -m etl.daily_refresh                    # 月報、清冊、稅籍有新的就下載；補每日 API 到昨天；重算並載入資料庫
+python -m etl.daily_refresh --max-calls 0      # 不限 API 次數（第一次補資料用；預設一次最多 3000 次）
+```
+
+- 月份清冊要等下個月才公布；清冊之後到昨天的部分，用商工平臺的每日 API（公司資料設立查詢、每日解散異動查詢、
+  公司資料異動查詢）補，逐家查所在地只留臺中市。清冊公布後該月以清冊為準。
+- 結果寫在 `data/processed/_daily_refresh.json`（每一步的結果、API 次數、資料更新到哪一天），
+  資料庫 `gcis_company_events` 存最近 24 個月的臺中市設立、解散、增資，`GET /api/official/company-events` 提供給前端。
+- 自動每天跑（三種擇一，共用鎖檔不會重複跑）：
+  - Windows：`powershell -ExecutionPolicy Bypass -File scriptsegister_daily_refresh_task.ps1`
+    登記工作排程器，每天 06:00 執行（`-Time`、`-Python` 可改；`-Remove` 取消）；沒開機會在開機後補跑。
+  - Linux／macOS：crontab 加 `0 6 * * * /path/to/gcis-talent-radar/scripts/daily_refresh.sh`。
+  - 伺服器內建：設 `GCIS_DAILY_REFRESH=1`，伺服器在背景每天跑一次（`GCIS_DAILY_REFRESH_HOUR`，預設 6 點）。
+    雲端免費方案閒置會休眠，休眠時不會跑，改用平台的排程工作（cron job）執行 `python -m etl.daily_refresh`。
+  - 執行紀錄在 `data/logs/daily_refresh.log`（排程腳本產生），每一步的結果在 `data/processed/_daily_refresh.json`。
+- 平臺規定系統介接 API 要先寄「資料介接使用告知書」登記伺服器的對外 IP，並有每日次數上限；
+  正式部署前請依[開發指引](https://data.gcis.nat.gov.tw/od/rule)申請。
+
 每次執行都會更新 `data/raw/_manifest.csv`（原始檔網址、時間、SHA-256）、`data/processed/_catalog.json` 和 `reports/DATA_QUALITY.md`。細節見 [docs/04-ETL.md](docs/04-ETL.md)。
 
 ### 測試
@@ -114,6 +135,7 @@ python -m pytest tests -q
 | `GET /api/demo/expansion` | 擴廠情境的四個官方數字 |
 | `GET /api/official/job-demand`、`company-trend`、`wage-baseline` | 三個官方資料工具 |
 | `GET /api/official/district-comparison` | 同一官方快照的多行政區比較 |
+| `GET /api/official/company-events` | 臺中市最近 N 天的公司設立、解散、增資（每日更新），可依行政區、行業大類篩選 |
 | `GET /api/comparison-options` | 行政區、中類、資料期別與規則版本 |
 | `POST /api/reports/expansion-comparison/resolve`、`POST /api/reports/expansion-comparison` | 確認來源期別並以冪等請求建立報告 |
 | `GET /api/reports/{id}`、`POST /api/reports/{id}/questions` | 讀取原報告與經主張驗證的追問 |

@@ -72,10 +72,22 @@ def fetch_lists():
             time.sleep(0.3)
 
 
-def fetch_tax_registry():
-    """稅籍檔 300 MB：只留統編、行業代號、設立日期（不留名稱、地址）"""
+TAX_MAX_AGE_DAYS = 30  # 稅籍每天更新；超過這麼多天就重新下載
+
+
+def tax_registry_fresh() -> bool:
     dest = TAX / "bgmopen1_industry.csv"
-    if dest.exists():
+    if not dest.exists():
+        return False
+    if "臺中行政區" not in pd.read_csv(dest, dtype=str, nrows=0, encoding="utf-8-sig").columns:
+        return False  # 舊版檔案沒有行政區欄
+    return (time.time() - dest.stat().st_mtime) / 86400 < TAX_MAX_AGE_DAYS
+
+
+def fetch_tax_registry(force: bool = False):
+    """稅籍檔 300 MB：只留統編、行業代號、設立日期，以及由地址推出的臺中行政區（不留名稱、地址）"""
+    dest = TAX / "bgmopen1_industry.csv"
+    if not force and tax_registry_fresh():
         return
     s = session()
     r = s.get(TAX_ZIP, timeout=600)
@@ -83,8 +95,12 @@ def fetch_tax_registry():
     with zipfile.ZipFile(io.BytesIO(r.content)) as z:
         name = next(n for n in z.namelist() if n.lower().endswith(".csv"))
         df = pd.read_csv(z.open(name), dtype=str, skiprows=[1], encoding="utf-8-sig",
-                         usecols=["統一編號", "總機構統一編號", "設立日期", "行業代號", "行業代號1", "行業代號2", "行業代號3"])
+                         usecols=["營業地址", "統一編號", "總機構統一編號", "設立日期", "行業代號", "行業代號1",
+                                  "行業代號2", "行業代號3"])
     df = df.dropna(subset=["統一編號"])
+    # 每日更新要知道哪些公司在臺中（變更登記只查臺中的公司）；只留行政區，地址不存
+    df["臺中行政區"] = df["營業地址"].str.extract(DISTRICT_RE)[0]
+    df = df.drop(columns=["營業地址"])
     TAX.mkdir(parents=True, exist_ok=True)
     df.to_csv(dest, index=False, encoding="utf-8-sig")
     _record("tax_registry", TAX_ZIP, dest, r.content)
@@ -145,15 +161,23 @@ def fetch_item_dgbas(items):
 
 
 # ------------------------------------------------------------------ 整理
-def load_lists():
+def load_lists(include_daily: bool = True):
+    """月份清冊＋每日 API 資料（etl/sources/gcis_daily.py）。已有清冊的月份以清冊為準，不用每日資料。"""
     frames = []
     for kind in LISTS:
-        for p in sorted((RAW / kind).glob("*.csv")):
+        monthly = sorted((RAW / kind).glob("*.csv"))
+        covered = {p.stem for p in monthly}
+        daily = sorted((RAW / kind / "daily").glob("*.csv")) if include_daily else []
+        for p in monthly + [d for d in daily if d.stem[:7] not in covered]:
             d = pd.read_csv(p, dtype=str, encoding="utf-8-sig")
-            d = d.rename(columns={"統一編號": "company_id", "公司所在地": "address", "資本額": "capital",
-                                  DATE_COL[kind]: "event_date"})
-            d["kind"], d["list_month"] = kind, p.stem
-            frames.append(d[["company_id", "address", "capital", "event_date", "kind", "list_month"]])
+            d = d.rename(columns={"統一編號": "company_id", "公司名稱": "company_name", "公司所在地": "address",
+                                  "資本額": "capital", DATE_COL[kind]: "event_date"})
+            if "company_name" not in d:
+                d["company_name"] = None
+            d["kind"], d["list_month"] = kind, p.stem[:7]
+            d["source"] = "daily_api" if p.parent.name == "daily" else "monthly_list"
+            frames.append(d[["company_id", "company_name", "address", "capital", "event_date", "kind", "list_month",
+                             "source"]])
     df = pd.concat(frames, ignore_index=True)
     df["capital"] = pd.to_numeric(df["capital"], errors="coerce")
     roc = df["event_date"].str.zfill(7)
@@ -163,14 +187,16 @@ def load_lists():
 
 
 def ids_needing_api(df):
-    tax = pd.read_csv(TAX / "bgmopen1_industry.csv", dtype=str, usecols=["統一編號"])
-    known = set(tax["統一編號"])
+    path = TAX / "bgmopen1_industry.csv"
+    known = set(pd.read_csv(path, dtype=str, usecols=["統一編號"])["統一編號"]) if path.exists() else set()
     sub = df[df.kind.isin(["setup", "dissolved"])].sort_values("list_month", ascending=False)
     return [i for i in sub["company_id"].drop_duplicates() if i not in known]
 
 
 def classify(df):
-    tax = pd.read_csv(TAX / "bgmopen1_industry.csv", dtype=str).drop_duplicates("統一編號")
+    path = TAX / "bgmopen1_industry.csv"
+    tax = (pd.read_csv(path, dtype=str).drop_duplicates("統一編號") if path.exists()
+           else pd.DataFrame(columns=["統一編號", "行業代號"]))
     code = dict(zip(tax["統一編號"], tax["行業代號"].fillna("").str[:2]))
     cache = _load_cache()
     item_map = json.loads(CACHE_ITEM.read_text(encoding="utf-8")) if CACHE_ITEM.exists() else {}
@@ -188,8 +214,9 @@ def classify(df):
     return pd.Series(ind, index=df.index), pd.Series(src, index=df.index)
 
 
-def transform():
-    df = load_lists()
+def build_events(df=None):
+    """臺中市公司事件：new（設立）／dissolved（解散）／capital_increase（增資），所有產業。"""
+    df = load_lists() if df is None else df
     df["industry_code"], df["industry_source"] = classify(df)
 
     # 增資：同統編依日期排序，資本額比前一筆高
@@ -197,12 +224,19 @@ def transform():
     df["prev_capital"] = df.groupby("company_id")["capital"].shift()
     df["capital_increase"] = (df.kind == "change") & df.prev_capital.notna() & (df.capital > df.prev_capital)
     df["capital_delta"] = np.where(df.capital_increase, df.capital - df.prev_capital, np.nan)
-
-    events = pd.concat([
+    roc = df["event_date"].str.zfill(7)
+    df["event_day"] = ((roc.str[:3].astype(float) + 1911).astype("Int64").astype(str) + "-" + roc.str[3:5] + "-"
+                       + roc.str[5:7])
+    return pd.concat([
         df[df.kind == "setup"].assign(event="new"),
         df[df.kind == "dissolved"].assign(event="dissolved"),
         df[df.capital_increase].assign(event="capital_increase"),
     ])
+
+
+def transform():
+    # 每月統計只用月份清冊：每日 API 只涵蓋清冊公布前的幾天，併進來會讓那個月看起來幾乎沒有事件
+    events = build_events(load_lists(include_daily=False))
     events["is_manufacturing"] = events["industry_code"].isin(MFG)
 
     # 每月分類涵蓋率（所有臺中事件中，已知產業別的比例）

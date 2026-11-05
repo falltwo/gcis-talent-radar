@@ -62,16 +62,20 @@ def _github_search(plan: Plan, need: int) -> tuple[str, str, str]:
     if not ladder:  # 沒有地點、也沒有語言或關鍵字
         return plan.terms.text(with_location=False) or "developer", source, ""
     tried: list[str] = []
+    counts: dict[str, int] = {}
     for query in ladder:
         count = apis.github_user_count(query)
         if count is None:  # 官方 API 暫時不能用（例如超過次數）：用中間寬度的條件
             pick = ladder[min(1, len(ladder) - 1)]
             return pick, source, "無法先確認結果數"
+        counts[query] = count
         tried.append(f"{query}（{count} 人）")
         if count >= need:
             note = "" if query == ladder[0] else "條件太多找不到人，已放寬：" + " → ".join(tried)
             return query, source, note
-    return ladder[-1], source, "已放寬到最寬的條件：" + " → ".join(tried)
+    # 都不夠：用人數最多的條件（仍保留技能），不夠的名額由流程擴大地點補
+    best = max(ladder, key=lambda q: counts[q])
+    return best, source, "這個地區符合的人不多，用人數最多的條件：" + " → ".join(tried)
 
 
 def search_text(site: Site, plan: Plan, *, need: int = 3) -> tuple[str, str, str]:
