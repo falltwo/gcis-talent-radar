@@ -108,7 +108,7 @@ function environment() {
     remove() {this.removed = true; this.onClose?.();}
   }
   class LngLatBounds {extend() {return this;}}
-  const window = {streetMap: {getMap: () => map, getLocation: () => location, closeCompany() {}, popupAnchor: () => 'bottom'}, radarFeatures: {select() {}}};
+  const window = {streetMap: {getMap: () => map, getLocation: () => location, closeCompany() {}, popupAnchor: () => 'bottom', popupAnchorAt: () => 'bottom'}, radarFeatures: {select() {}}};
   const fetch = (url, options = {}) => new Promise((resolve, reject) => {requests.push({url: String(url), options, resolve, reject});options.signal?.addEventListener('abort',()=>reject(Object.assign(Error('Aborted'),{name:'AbortError'})),{once:true});});
   const context = {document, window, maplibregl: {Marker, Popup, LngLatBounds}, fetch, console, URL, URLSearchParams, Intl, AbortController,
     matchMedia: () => ({matches: true}), performance: {now: () => 10000}, requestAnimationFrame: () => 1, cancelAnimationFrame() {}, setTimeout, clearTimeout,
