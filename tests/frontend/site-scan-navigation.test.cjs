@@ -95,3 +95,14 @@ test('transport only counts when the demand asks for it, and stability is an exi
  assert.match(podium(near),/交通便利：最近交流道 \d+\.\d 公里/);
  assert.doesNotMatch(podium(near),/Infinity|NaN|無資料/);
 });
+test('port, airport and high-speed rail have data and only count when the demand asks for them',async()=>{
+ const e=setup();e.window.radarIntent={text:'機械工廠，要靠近港口方便出口',preference:''};
+ const loading=e.window.siteScan.start();await e.resolveAll();await loading;await e.tick();
+ const rows=e.ids.get('scan-criteria').querySelectorAll('input');
+ assert.equal(rows.length,8,'four standing criteria plus transport, port, airport and high-speed rail');
+ assert.equal(rows.filter(input=>input.checked).length,5,'only the port is added to the standing four');
+ const podium=e.ids.get('scan-podium').querySelectorAll('small').map(small=>small.textContent).join('\n');
+ assert.match(podium,/靠近港口：到臺中港 \d+\.\d 公里/);
+ assert.doesNotMatch(podium,/靠近機場|靠近高鐵|無資料|NaN/);
+ assert.equal(e.ids.get('scan-gap').textContent,'','港口 is no longer reported as missing data');
+});
