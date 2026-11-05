@@ -32,7 +32,7 @@
   right.innerHTML = `
     <div class="scan-pane scan-report-only"><h3>3. 職缺開出的月薪</h3><div class="scan-body"><div id="report-salary"></div><p class="scan-note">雇主在就業通刊登的薪資，不是求職者的期望薪資。</p></div></div>
     <div class="scan-pane scan-report-only"><h3>4. 招募建議 <span>系統依上面數字產生，非 AI</span></h3><div class="scan-body"><ul class="report-advice" id="report-advice"></ul>
-      <div class="report-actions"><button type="button" id="report-back">← 回到排名</button><a id="report-full" target="_blank" rel="noopener">完整比較報告 ↗</a></div>
+      <div class="report-actions"><button type="button" id="report-back">← 回到排名</button></div>
       <p class="scan-note" id="report-source"></p></div></div>
     <div class="scan-pane scan-rank-only"><h3>商工資料推薦熱區 <span>Top 12</span></h3>
       <div class="scan-body"><ol class="scan-grid" id="scan-podium"></ol>
@@ -311,7 +311,6 @@
       : `起薪中位數最高的是${rows.find(r => r.salary_floor_median === Math.max(...floors)).name}（${Math.max(...floors).toLocaleString()} 元），在那裡招人起薪要開得比較高。`);
     advice.push('這只看新鮮人供給和公開職缺；沒有求職者人數、期望薪資和地價資料，最後仍要實地評估。');
     $('report-advice').replaceChildren(...advice.map(text => {const li = document.createElement('li');li.textContent = text;return li;}));
-    $('report-full').href = '/compare?' + new URLSearchParams({districts:three.join(',')});
     $('report-source').textContent = `資料：${talent.sources.graduates}；${talent.sources.campuses}；${talent.sources.jobs}。`;
   }
   let pulse = 0;
