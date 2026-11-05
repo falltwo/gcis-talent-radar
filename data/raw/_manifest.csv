@@ -934,3 +934,4 @@ gcis_list_change,https://data.gcis.nat.gov.tw/od/file?oid=9C895CAC-A846-4157-A06
 gcis_list_change,https://data.gcis.nat.gov.tw/od/file?oid=8E61C8B3-E268-4F74-8E9B-6834ABA1FF0B,data/raw/gcis_lists/change/2025-09.csv,2026-11-05T21:27:59,1836612,d772e2d6630b62c2f3fbd6711bffc8d45a78213659db11861bf3c2f60ead2e40
 gcis_list_change,https://data.gcis.nat.gov.tw/od/file?oid=5C63C391-0B2B-412D-B8F9-2472EAD9A09F,data/raw/gcis_lists/change/2025-08.csv,2026-11-05T21:28:00,1993942,badc920152a54440b7281150fec92eb7229819ce1fa95d54370960cd172e016e
 tax_registry,https://eip.fia.gov.tw/data/BGMOPEN1.zip,data/raw/tax_registry/bgmopen1_industry.csv,2026-11-05T21:28:11,66418882,800c451a5c3b80e78d6c7404e84eb04ea233af7b9ce0080968f26b4dabd77562
+tax_registry,https://eip.fia.gov.tw/data/BGMOPEN1.zip,data/raw/tax_registry/bgmopen1_industry.csv,2026-11-06T03:11:03,66418882,800c451a5c3b80e78d6c7404e84eb04ea233af7b9ce0080968f26b4dabd77562

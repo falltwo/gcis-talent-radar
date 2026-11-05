@@ -8,7 +8,7 @@
   const CRITERIA = [
     {id:'vitality', label:'市場活力', hint:'近一年（新設−解散）÷ 現有公司家數＝淨增率，全產業（名冊沒有行業欄）', unit:'%', better:1, words:['活力','成長','新創']},
     {id:'stability', label:'經營穩定', hint:'近一年解散 ÷ 現有公司家數＝退出率，越低越好', unit:'%', better:-1, words:['穩定','風險']},
-    {id:'cluster', label:'同業群聚', hint:'同業員工數（規模）與區位商數 LQ（集中度，>1 代表比全市集中）各占一半', unit:'人', better:1, words:['供應鏈','上下游','群聚','聚落']},
+    {id:'cluster', label:'同業群聚', hint:'同業員工數（規模）與區位商數 LQ（集中度，>1 代表比全市集中）各占一半；LQ 所需總數有缺值時僅依已公布規模', unit:'人', better:1, words:['供應鏈','上下游','群聚','聚落']},
     {id:'transport', label:'交通便利', hint:'區公所到最近國道或快速公路交流道的距離，越近越好（不含系統交流道）', unit:'公里', better:-1, words:['交流道','國道','交通','物流','運輸'], optional:true},
     {id:'port', label:'靠近港口', hint:'區公所到臺中港的距離，越近越好（出口、海運）', unit:'公里', better:-1, words:['港口','臺中港','台中港','海運','出口'], optional:true},
     {id:'airport', label:'靠近機場', hint:'區公所到臺中國際機場的距離，越近越好（空運）', unit:'公里', better:-1, words:['機場','空運'], optional:true},
@@ -122,21 +122,31 @@
     if (id === 'cluster') return clusterParts(name);
     if (stats.jobs.capped.includes(name)) return null;
     const postings = stats.jobs.metrics.manufacturing_postings[name];
-    return postings === undefined ? null : postings / factoryTotal(name) * 100;
+    return postings == null ? null : postings / factoryTotal(name) * 100;
   }
   // Cluster = size and specialisation, as the EU Cluster Observatory and US Cluster Mapping do: employees in the
   // industry, and the location quotient (its share of the district's factory jobs over its share city-wide).
-  const sumKnown = row => Object.values(row || {}).reduce((sum, count) => sum + (count ?? 0), 0);
+  // A suppressed cell is unknown, never zero. LQ requires complete district and city totals.
+  const completeTotal = row => {
+    const values = Object.values(row || {});
+    return values.length && values.every(v => Number.isFinite(v) && v >= 0)
+      ? values.reduce((sum, v) => sum + v, 0) : null;
+  };
   function clusterParts(name) {
-    const staff = stats.factories.employees?.[name];
+    const employees = stats.factories.employees, staff = employees?.[name];
     if (!staff) return null;
-    const total = sumKnown(staff);
-    if (!industry) return total ? {size:total, lq:null} : null;
+    const total = completeTotal(staff);
+    if (!industry) return total === null ? null : {size:total, lq:null};
     const size = staff[industry];
-    if (size === null || size === undefined || !total) return null;
-    const city = Object.values(stats.factories.employees), cityTotal = city.reduce((sum, row) => sum + sumKnown(row), 0);
-    const cityIndustry = city.reduce((sum, row) => sum + (row[industry] ?? 0), 0);
-    return {size, lq: cityIndustry ? (size / total) / (cityIndustry / cityTotal) : null};
+    if (!Number.isFinite(size) || size < 0) return null;
+    // Published industry size remains useful even when LQ cannot be computed.
+    const unknown = {size, lq:null};
+    if (total === null || total <= 0) return unknown;
+    const city = Object.keys(stats.factories.districts).map(district => employees[district]);
+    const totals = city.map(completeTotal), sizes = city.map(row => row?.[industry]);
+    if (totals.some(v => v === null) || sizes.some(v => !Number.isFinite(v) || v < 0)) return unknown;
+    const cityTotal = totals.reduce((sum, v) => sum + v, 0), cityIndustry = sizes.reduce((sum, v) => sum + v, 0);
+    return {size, lq: cityTotal > 0 && cityIndustry > 0 ? (size / total) / (cityIndustry / cityTotal) : null};
   }
   const minMax = values => {
     const known = Object.values(values).filter(v => v !== null && v !== undefined), low = Math.min(...known), high = Math.max(...known);
@@ -200,7 +210,7 @@
     if (c.id === 'airport') return `到機場 ${v.toFixed(1)} 公里`;
     if (c.id === 'rail') return `到高鐵站 ${v.toFixed(1)} 公里`;
     if (c.id === 'vitality') return `淨增 ${v >= 0 ? '+' : ''}${(v * 100).toFixed(1)}%`;
-    if (c.id === 'cluster') return `${v.size.toLocaleString()} 人${v.lq === null ? '' : `・LQ ${v.lq.toFixed(2)}`}`;
+    if (c.id === 'cluster') return `${v.size.toLocaleString()} 人${v.lq === null ? (industry ? '・LQ 無資料（僅依規模）' : '') : `・LQ ${v.lq.toFixed(2)}`}`;
     if (c.id === 'competition') return `每百家工廠 ${Math.round(v)} 筆`;
     return `${v.toLocaleString()} ${c.unit}`;
   }

@@ -9,7 +9,7 @@
   workspace.className = 'radar-workspace';
   workspace.setAttribute('aria-label', '產業人才雷達街區工作台');
   workspace.innerHTML = `
-    <nav class="primary-feature-nav" aria-label="主要功能">
+    <nav class="primary-feature-nav" aria-label="主要功能" hidden>
       <button type="button" class="primary-feature-button" data-feature="校園人才媒合"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m2 9 10-5 10 5-10 5L2 9Z"/><path d="M6 11v6c4 3 8 3 12 0v-6M22 9v7"/></svg><span>校園人才媒合</span></button>
       <button type="button" class="primary-feature-button" data-feature="刊登召募"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="6" width="16" height="15" rx="2"/><path d="M9 6V3h6v3M8 11h8M8 15h5M16 17v4M14 19h4"/></svg><span>刊登召募</span></button>
       <button type="button" class="primary-feature-button" data-feature="獵頭Agent"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10" cy="9" r="4"/><path d="M3 21v-2a7 7 0 0 1 11-5"/><circle cx="17" cy="17" r="4"/><path d="m20 20 2 2"/></svg><span>獵頭Agent</span></button>

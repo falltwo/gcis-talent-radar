@@ -12,11 +12,15 @@ or `python -m etl.daily_refresh` first so data/raw/tax_registry/bgmopen1_industr
 import csv
 import json
 import re
+import sys
 from collections import Counter
 from datetime import datetime
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+from config import TAICHUNG_DISTRICTS
+
 LISTS = ROOT / "data/raw/gcis_lists"
 OUT = ROOT / "ui/static/gcis-district-activity.json"
 TAX = ROOT / "data/raw/tax_registry/bgmopen1_industry.csv"
@@ -41,10 +45,13 @@ def count(kind: str, window: list[str], roads: dict | None = None) -> tuple[Coun
         if not (LISTS / kind / f"{month}.csv").exists():
             continue
         with open(LISTS / kind / f"{month}.csv", encoding="utf-8-sig", newline="") as handle:
-            for row in csv.DictReader(handle):
+            reader = csv.DictReader(handle)
+            if '公司所在地' not in (reader.fieldnames or []):
+                raise ValueError(f'{kind}/{month}: missing 公司所在地 column')
+            for row in reader:
                 total += 1
                 match = DISTRICT.match((row.get("公司所在地") or "").replace("台中市", "臺中市").strip())
-                if match:
+                if match and match.group(1) in TAICHUNG_DISTRICTS:
                     found[match.group(1)] += 1
                     if roads is not None:
                         rest = VILLAGE.sub("", (row.get("公司所在地") or "").replace("台中市", "臺中市").strip()[match.end():])
@@ -60,22 +67,32 @@ def companies() -> tuple[Counter, str]:
     """各區現有公司家數（稅籍組織別為公司、不含分公司，營業地址在該區）與稅籍檔日期。"""
     found = Counter()
     with open(TAX, encoding="utf-8-sig", newline="") as handle:
-        for row in csv.DictReader(handle):
+        reader = csv.DictReader(handle)
+        if not {'臺中行政區', '組織別名稱'}.issubset(reader.fieldnames or []):
+            raise ValueError(f'{TAX}: missing tax stock columns')
+        for row in reader:
             kind = row.get("組織別名稱") or ""
             # 清冊只算公司，分公司另外登記，不算進分母
-            if row.get("臺中行政區") and "公司" in kind and "分公司" not in kind:
+            if row.get("臺中行政區") in TAICHUNG_DISTRICTS and "公司" in kind and "分公司" not in kind:
                 found[row["臺中行政區"]] += 1
     if not found:
-        raise SystemExit(f"{TAX} 沒有組織別或臺中行政區欄；請先重新下載稅籍檔")
+        raise ValueError(f"{TAX} 沒有可用的公司存量；請先重新下載稅籍檔")
     return found, datetime.fromtimestamp(TAX.stat().st_mtime).date().isoformat()
 
 
 def build() -> dict:
-    latest = sorted(path.stem for path in (LISTS / "setup").glob("*.csv"))[-1]
+    available = {path.stem for kind in ('setup','dissolved') for path in (LISTS/kind).glob('*.csv')
+                 if re.fullmatch(r'\d{4}-(?:0[1-9]|1[0-2])', path.stem)}
+    if not available:
+        raise ValueError('No GCIS monthly setup/dissolution lists')
+    latest = max(available)
     window = months(latest, 12)
     roads: dict = {}
     setup, setup_total, setup_unparsed = count("setup", window, roads)
     dissolved, dissolved_total, dissolved_unparsed = count("dissolved", window)
+    for kind,total,unparsed in [('setup',setup_total,setup_unparsed),('dissolved',dissolved_total,dissolved_unparsed)]:
+        if total and unparsed/total >= .01:
+            raise ValueError(f'{kind}: too many unparsed addresses ({unparsed}/{total})')
     stock, stock_date = companies()
     names = sorted(set(setup) | set(dissolved))
     return {
@@ -97,6 +114,6 @@ def build() -> dict:
 
 if __name__ == "__main__":
     data = build()
-    OUT.write_text(json.dumps(data, ensure_ascii=False, indent=1), encoding="utf-8")
+    from etl.build_site_data import write_artifact
+    write_artifact(OUT,data)
     print(data["window"], data["missing_months"], data["coverage"], len(data["districts"]), "districts")
-    assert data["coverage"]["setup"]["unparsed"] / data["coverage"]["setup"]["rows"] < 0.01, "too many unparsed addresses"
