@@ -6,7 +6,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 
-function environment() {
+function environment(scripts = ['campus-camera.js','campus-insights.js','campus-matching.js']) {
   const ids = new Map(), events = new Map(), requests = [], markers = [], popups = [];
   class Element {
     constructor(tag = 'div') {
@@ -115,8 +115,8 @@ function environment() {
     sessionStorage: {getItem: () => null, setItem() {}, removeItem() {}}, localStorage: {getItem: () => null, setItem() {}, removeItem() {}},
   };
   vm.createContext(context);
-  for(const script of ['campus-camera.js','campus-insights.js','campus-matching.js'])vm.runInContext(fs.readFileSync(path.join(__dirname, '../ui/static/'+script), 'utf8'), context);
-  return {ids, requests, markers, popups, sources, layers, window, workspace, chat,
+  for(const script of scripts)vm.runInContext(fs.readFileSync(path.join(__dirname, '../ui/static/'+script), 'utf8'), context);
+  return {ids, requests, markers, popups, sources, layers, window, workspace, chat, context, map, document,
     event: (type, detail) => Promise.all((events.get(type) || []).map(fn => fn({type, detail}))),
     setLocation: value => {location = value;},
     liveMarkers: () => markers.filter(marker => !marker.removed),
@@ -270,4 +270,5 @@ const cases = {
     e.window.campusMatching.deactivate();
   },
 };
-(async () => {const name = process.argv[2]; assert.ok(cases[name], `Unknown case: ${name}`); await cases[name](); console.log(`PASS ${name}`);})().catch(error => {console.error(error); process.exitCode = 1;});
+module.exports = {environment};
+if(require.main === module)(async () => {const name = process.argv[2]; assert.ok(cases[name], `Unknown case: ${name}`); await cases[name](); console.log(`PASS ${name}`);})().catch(error => {console.error(error); process.exitCode = 1;});

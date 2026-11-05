@@ -2,15 +2,16 @@
 (() => {
   'use strict';
   window.createRadarEntrance = function createRadarEntrance(intro) {
-    const dialog = intro.querySelector('dialog');
     const scene = intro.querySelector('.radar-object');
-    const start = intro.querySelector('#radar-start');
+    const start = intro.querySelector('#radar-intent-text');
+    const intentForm = intro.querySelector('#radar-intent');
+    const intentError = intro.querySelector('#radar-intent-error');
+    const chips = [...intro.querySelectorAll('.radar-chip')];
     const motion = intro.querySelector('#radar-motion');
     const sweep = intro.querySelector('.radar-sweep');
     const ripples = [...intro.querySelectorAll('.radar-pulses i')];
     const shock = intro.querySelector('.radar-shock');
     const soundToggle = intro.querySelector('#radar-sound');
-    const submit = intro.querySelector('#intro-submit');
     const copy = intro.querySelector('.radar-invitation');
     const title = intro.querySelector('.radar-copy');
     const preference = matchMedia('(prefers-reduced-motion: reduce)');
@@ -37,8 +38,8 @@
       line.setAttribute('class',major?'major':'minor');scale.append(line);
     }
     let active = true, paused = preference.matches, clock = {angle:0}, previous=0;
-    let scan, reveal, departure, nextRipple, spin, launching=false;
-    let audio, master, echo, hum, soundOn=true;
+    let scan, reveal, departure, nextRipple, spin, sequence=[];
+    let audio, master, echo, soundOn=true;
     try { soundOn=localStorage.getItem('radar-sound')!=='off'; } catch {}
     // Browsers only allow audio after a gesture, so the graph is built on first interaction.
     function unlockAudio() {
@@ -94,37 +95,18 @@
       tone(now+.26,{from:1320,length:.2,peak:.07,wet:.35});
       tone(now+.36,{from:1760,length:.32,peak:.06,wet:.45});
     }
-    function playOpen() {
-      if(!soundOn||audio?.state!=='running')return;
-      const now=audio.currentTime;
-      burst(now,{length:.5,peak:.1,from:380,to:2600,q:1.2,attack:.2,wet:.25});
-      tone(now+.14,{from:880,to:1320,attack:.03,length:.26,peak:.022,wet:.5});
-      tone(now+.24,{from:1760,attack:.02,length:.3,peak:.014,wet:.6});
-    }
     function playTick() {
       if(!soundOn||audio?.state!=='running')return;
       burst(audio.currentTime,{length:.016,peak:.09,from:5200,q:6});
     }
-    function startHum() {
-      if(!soundOn||audio?.state!=='running'||hum||submit.disabled)return;
+    // Two short high pings: the target is locked.
+    function playLock() {
+      if(!soundOn||audio?.state!=='running')return;
       const now=audio.currentTime;
-      const osc=audio.createOscillator(), low=audio.createBiquadFilter(), gain=audio.createGain();
-      osc.type='sawtooth';osc.frequency.setValueAtTime(70,now);osc.frequency.exponentialRampToValueAtTime(210,now+.73);
-      low.type='lowpass';low.frequency.setValueAtTime(240,now);low.frequency.exponentialRampToValueAtTime(900,now+.73);
-      gain.gain.setValueAtTime(.001,now);gain.gain.exponentialRampToValueAtTime(.05,now+.6);gain.gain.exponentialRampToValueAtTime(.001,now+1.15);
-      osc.connect(low);low.connect(gain);gain.connect(master);
-      osc.onended=()=>{low.disconnect();gain.disconnect();hum=null;};
-      osc.start(now);osc.stop(now+1.16);
-      hum={osc,gain};
-    }
-    function stopHum() {
-      if(!hum)return;
-      const now=audio.currentTime;
-      hum.gain.gain.cancelScheduledValues(now);hum.gain.gain.setTargetAtTime(.0001,now,.03);
-      hum.osc.stop(now+.15);
+      tone(now,{type:'square',from:2600,length:.05,peak:.035,wet:.2});
+      tone(now+.08,{type:'square',from:3500,length:.09,peak:.04,wet:.35});
     }
     function playInitialize() {
-      stopHum();
       if(!soundOn||audio?.state!=='running')return;
       const now=audio.currentTime, end=now+2.33;
       const body=audio.createOscillator(), sub=audio.createOscillator(), rotor=audio.createOscillator();
@@ -196,32 +178,9 @@
         .to(title,{opacity:1,duration:preference.matches?0:1.8,ease:'power1.out'},preference.matches?0:1)
         .to(copy,{opacity:1,duration:preference.matches?0:1.1,ease:'power1.out'},preference.matches?0:2.3);
     }
-    function openDialog() {
-      if(!active||dialog.open)return;
-      intro.classList.add('choosing');
-      playOpen();
-      dialog.showModal();
-      intro.querySelector('#explore-dialog-title').focus({preventScroll:true});
-    }
-    function closeDialog() { if(dialog.open)dialog.close(); }
     function setSpin(timeScale,duration) {
       spin?.kill();
       spin=gs.to(scan,{timeScale,duration,ease:'power2.inOut'});
-    }
-    // Keyboard and assistive activations have no pointer position, so they burst from the radar centre.
-    function launch(x,y) {
-      if(!active||dialog.open||launching)return;
-      unlockAudio();playBoot();
-      if(!gs||paused)return openDialog();
-      launching=true;
-      const box=intro.getBoundingClientRect(), radar=scene.getBoundingClientRect();
-      const left=(x??radar.left+radar.width/2)-box.left, top=(y??radar.top+radar.height/2)-box.top;
-      const size=2*Math.hypot(Math.max(left,box.width-left),Math.max(top,box.height-top));
-      gs.set(shock,{left,top,width:size,height:size,xPercent:-50,yPercent:-50});
-      gs.fromTo(shock,{scale:.02},{scale:1,duration:.85,ease:'expo.out'});
-      gs.fromTo(shock,{opacity:1},{opacity:0,duration:.85,ease:'power2.in'});
-      setSpin(6,.45);
-      gs.delayedCall(.6,()=>{launching=false;openDialog();setSpin(1,1.4);});
     }
     intro.addEventListener('pointerdown',unlockAudio);
     soundToggle.addEventListener('click',()=>{
@@ -231,38 +190,21 @@
       if(audio)master.gain.setTargetAtTime(soundOn?1:0,audio.currentTime,.02);
       if(soundOn)playSonar();
     });
-    intro.addEventListener('click',event=>{
-      if(event.target.closest('dialog, .radar-motion'))return;
-      if(event.detail)launch(event.clientX,event.clientY);else launch();
-    });
-    // Tab retains normal focus navigation; modified shortcuts never activate the page.
-    document.addEventListener('keydown',event=>{
-      if(!active||intro.hidden||dialog.open||event.repeat||event.isComposing||event.ctrlKey||event.metaKey||event.altKey)return;
-      if(event.key.length!==1&&event.key!=='Enter')return;
-      if(event.target===motion||event.target===soundToggle)return;
-      event.preventDefault();event.stopImmediatePropagation();launch();
-    },true);
-    intro.querySelector('#explore-close').addEventListener('click',closeDialog);
-    // Picker options sit inside the select; their pick is covered by the change event.
-    dialog.addEventListener('pointerdown',({target})=>{
-      if(target.closest('select:not(:disabled)')&&!target.closest('option'))playTick();
-    });
-    submit.addEventListener('pointerenter',event=>{if(event.pointerType==='mouse')startHum();});
-    submit.addEventListener('pointerleave',stopHum);
-    dialog.addEventListener('change',({target})=>{
-      playTick();
-      target.classList.remove('confirmed');
-      void target.offsetWidth; // Restart the flash when the same field changes again.
-      target.classList.add('confirmed');
-    });
-    dialog.addEventListener('close',()=>{
-      intro.classList.remove('choosing');
-      if(active)start.focus({preventScroll:true});
-    });
-    dialog.addEventListener('click',event=>{
-      if(event.target!==dialog)return;
-      const box=dialog.getBoundingClientRect();
-      if(event.clientX<box.left||event.clientX>box.right||event.clientY<box.top||event.clientY>box.bottom)closeDialog();
+    // ponytail: one preference at a time, matching the narrative draft; switch to multi-select if the team decides so.
+    chips.forEach(chip=>chip.addEventListener('click',()=>{
+      const on=chip.getAttribute('aria-pressed')!=='true';
+      chips.forEach(other=>other.setAttribute('aria-pressed',String(other===chip&&on)));
+      unlockAudio();playTick();intentError.textContent='';
+    }));
+    start.addEventListener('input',()=>{intentError.textContent='';});
+    intentForm.addEventListener('submit',event=>{
+      event.preventDefault();
+      const text=start.value.trim(), preference=chips.find(chip=>chip.getAttribute('aria-pressed')==='true')?.textContent||'';
+      if(!text&&!preference){intentError.textContent='請描述需求，或選一個偏好';start.focus();return;}
+      // Kept for the analysis steps that come after the location picker.
+      window.radarIntent={text,preference};
+      unlockAudio();playBoot();
+      intro.dispatchEvent(new CustomEvent('radar:analyze'));
     });
     motion.addEventListener('click',()=>{
       paused=!paused;scan?.paused(paused);
@@ -278,24 +220,40 @@
     });
     startScan();syncRipples();syncSound();revealScene();
     return {
+      // Speed up and lock one target, then a white burst turns the black radar into the light map.
       leave(done) {
+        if(!active)return;
         active=false;reveal?.kill();playInitialize();
-        const complete=()=>{intro.hidden=true;scan?.pause();syncRipples();gs?.killTweensOf(targetParts);gs?.set(targetParts,{opacity:0});done();};
-        if(!gs||preference.matches){dialog.close();return complete();}
-        // inert blocks a second submit while the window is shrinking.
-        dialog.inert=true;dialog.classList.add('closing');
-        gs.delayedCall(.49,()=>{dialog.close();dialog.classList.remove('closing');dialog.inert=false;});
-        if(!paused){
-          setSpin(7.9,.89);
-          gs.killTweensOf(targetParts);gs.set(targetParts,{opacity:0});
-          gs.fromTo(targets.flatMap(target=>[target.light,target.lock]),{opacity:0,scale:1},{opacity:1,duration:.124,repeat:9,yoyo:true,ease:'none',stagger:.053});
-        }
-        departure=gs.to(intro,{opacity:0,delay:paused?.36:.89,duration:1.07,ease:'power2.inOut',onComplete:complete});
+        const complete=()=>{intro.hidden=true;scan?.pause();syncRipples();gs?.killTweensOf(targetParts);gs?.set(targetParts,{opacity:0});};
+        if(!gs||preference.matches||paused){complete();return done();}
+        const locked=targets[0], at=(time,fn)=>sequence.push(gs.delayedCall(time,fn));
+        intro.classList.add('locking');
+        setSpin(1.75,.4);
+        gs.killTweensOf(targetParts);gs.set(targetParts,{opacity:0});
+        gs.fromTo([locked.light,locked.lock],{opacity:0},{opacity:1,duration:.07,repeat:10,yoyo:true,ease:'none'});
+        at(.8,()=>{
+          playLock();
+          gs.fromTo(locked.lock,{opacity:1,scale:1.7},{scale:1,duration:.2,ease:'back.out(3)'});
+        });
+        at(1.3,()=>{
+          intro.classList.remove('locking');
+          const box=intro.getBoundingClientRect(), radar=scene.getBoundingClientRect();
+          const left=radar.left+radar.width/2-box.left, top=radar.top+radar.height/2-box.top;
+          const size=2*Math.hypot(Math.max(left,box.width-left),Math.max(top,box.height-top));
+          shock.classList.add('is-white');
+          gs.set(shock,{left,top,width:size,height:size,xPercent:-50,yPercent:-50});
+          gs.fromTo(shock,{scale:.02,opacity:1},{scale:1,duration:.6,ease:'expo.out'});
+          gs.to(intro,{backgroundColor:'#f3f5f0',duration:.6,ease:'power1.inOut'});
+          gs.to([scene,copy,title,motion,soundToggle],{opacity:0,duration:.3});
+        });
+        departure=gs.to(intro,{opacity:0,delay:1.9,duration:.5,ease:'power2.out',onStart:done,onComplete:complete});
       },
       show() {
-        departure?.kill();active=true;intro.hidden=false;intro.inert=false;
+        departure?.kill();sequence.forEach(call=>call.kill());sequence=[];
+        active=true;intro.hidden=false;intro.inert=false;intro.classList.remove('locking');shock.classList.remove('is-white');
+        gs?.set(shock,{opacity:0});gs?.set(intro,{clearProps:'backgroundColor'});gs?.set([motion,soundToggle],{clearProps:'opacity'});
         if(gs)gs.set(intro,{opacity:1});else intro.style.opacity='1';
-        intro.classList.remove('leaving','choosing');
+        intro.classList.remove('leaving');
         spin?.kill();scan?.timeScale(1).paused(paused);syncRipples();revealScene();start.focus({preventScroll:true});
       },
     };

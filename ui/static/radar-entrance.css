@@ -41,48 +41,6 @@
 .radar-motion{position:absolute;right:max(24px,env(safe-area-inset-right));bottom:max(20px,env(safe-area-inset-bottom));background:transparent!important;border:1px solid #9badc329;border-radius:6px;color:#8595ab;min-width:92px;min-height:44px;padding:8px 12px;font-size:11px;font-weight:400;z-index:2;touch-action:manipulation}
 .radar-motion:hover{color:#d1dff1;border-color:#a6bfd359}
 .radar-sound{right:calc(max(24px,env(safe-area-inset-right)) + 102px)}
-.radar-intro.choosing .radar-invitation{visibility:hidden}
-.explore-dialog{position:fixed;inset:0;margin:auto;width:min(calc(100vw - 40px),460px);max-height:calc(100svh - 40px);overflow:auto;padding:38px 28px 26px;border:1px solid #a0b8d35c;border-radius:17px;background:#253244d9;-webkit-backdrop-filter:blur(14px) saturate(1.2);backdrop-filter:blur(14px) saturate(1.2);color:#f2f6ff;box-shadow:0 30px 120px #000b;overscroll-behavior:contain;opacity:1;transform:none;color-scheme:dark}
-.explore-dialog:before{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;background:linear-gradient(115deg,transparent 40%,#ffffff24 50%,transparent 60%) 130% 0/250% 100% no-repeat,linear-gradient(115deg,#ffffff12,transparent 38%)}
-.explore-dialog[open]:before{animation:explore-dialog-sheen .75s .35s ease-out both}
-.explore-dialog.closing{animation:explore-dialog-out .49s ease-in both}
-.explore-dialog::backdrop{background:#0009}
-.explore-dialog[open]{animation:explore-dialog-in .5s cubic-bezier(.2,.8,.2,1) both}
-#explore-close{position:absolute;right:8px;top:8px;width:44px;height:44px;padding:0;min-height:44px;font-size:24px;font-weight:300;background:transparent;border:0;color:#c2d0e3;line-height:1}
-#explore-close:hover{background:#ffffff08;color:#edf4ff}
-.explore-dialog h2{font-size:23px;font-weight:600;line-height:1.45;letter-spacing:-.03em;margin:0 15px 10px 0;text-wrap:balance}
-.explore-dialog>p{font-size:13px;line-height:1.8;color:#c0cde0;margin:0 0 26px;text-wrap:pretty}
-.explore-dialog .location-fields{grid-template-columns:1fr 1.45fr;gap:12px}
-.explore-dialog label{font-size:12px;font-weight:500;color:#d0dbee;margin-bottom:8px}
-.road-spinner{position:relative;display:inline-block;visibility:hidden;width:11px;height:11px;margin-left:7px;vertical-align:-1px;border:1.5px solid transparent;border-top-color:#a9d8ff;border-right-color:#a9d8ff66;border-radius:50%;filter:drop-shadow(0 0 3px #5aa9ff99);animation:road-spin .8s linear infinite}
-.road-spinner:after{content:"";position:absolute;inset:1.5px;border:1px solid transparent;border-bottom-color:#8cc6ff;border-radius:50%;animation:road-spin .55s linear infinite reverse}
-.roads-loading .road-spinner{visibility:visible}
-.explore-dialog select{border:1px solid #64758c;border-radius:8px;background:#35455c;color:#f2f6ff;min-height:48px;padding:10px;font-size:14px;width:100%;transition:border-color .12s ease-out,box-shadow .12s ease-out}
-.explore-dialog select:disabled{color:#8090aa}
-.explore-dialog select:focus{border-color:#8cc6ff;box-shadow:0 0 0 1px #8cc6ff66,0 0 18px #5aa9ff66,0 0 36px #5aa9ff26}
-.explore-dialog select.confirmed{animation:select-confirm .62s linear}
-@supports(appearance:base-select){
- .explore-dialog select,.explore-dialog select::picker(select){appearance:base-select}
- .explore-dialog select{display:flex;align-items:center;justify-content:space-between}
- .explore-dialog select::picker(select){margin-top:6px;max-height:min(280px,50svh);padding:4px;border:1px solid #8cc6ff73;border-radius:8px;background:#1d2a3b;color:#f2f6ff}
- .explore-dialog select:open::picker(select){animation:select-picker-glow .45s ease-out both}
- .explore-dialog option{padding:9px 10px;border-radius:5px;font-size:14px;min-height:38px}
- .explore-dialog option:hover,.explore-dialog option:focus{background:#35506f;outline:none}
- .explore-dialog option:checked{color:#a9d8ff;background:transparent}
-}
-#intro-submit{position:relative;overflow:hidden;isolation:isolate;width:100%;margin-top:22px;background:#cee1ff;border:1px solid #cee1ff;color:#112136;min-height:48px;border-radius:8px;font-weight:650;font-size:14px}
-#intro-submit:before{content:"";position:absolute;inset:0;z-index:-1;background:linear-gradient(105deg,transparent 18%,#6db6ff 46%,#9fd2ff 54%,transparent 82%);transform:translateX(-120%)}
-#intro-submit:not(:disabled):hover:before,#intro-submit:focus-visible:before{transform:translateX(120%);transition:transform .73s cubic-bezier(.3,.7,.3,1)}
-#intro-submit:hover{background:#d0e4ff}#intro-submit:disabled{opacity:.4;cursor:wait}
-#intro-note{font-size:10px;line-height:1.85;color:#b1c0d6;margin:16px 0 0;text-wrap:pretty}
-.explore-dialog button:focus-visible,.explore-dialog select:focus-visible,.radar-motion:focus-visible{outline:2px solid #93c1ff;outline-offset:4px}
-#explore-dialog-title:focus{outline:none}
-@keyframes explore-dialog-in{0%{opacity:.4;transform:scale(.03,.006)}45%{opacity:1;transform:scale(1,.006)}100%{opacity:1;transform:scale(1)}}
-@keyframes road-spin{to{transform:rotate(360deg)}}
-@keyframes explore-dialog-out{to{opacity:0;transform:scale(.82)}}
-@keyframes explore-dialog-sheen{from{background-position:130% 0,0 0}to{background-position:-30% 0,0 0}}
-@keyframes select-confirm{0%,50%{color:#ffffff;text-shadow:0 0 10px #a9d8ff}25%,75%{color:#7f9dbd;text-shadow:none}100%{color:#f2f6ff;text-shadow:none}}
-@keyframes select-picker-glow{from{box-shadow:0 0 0 1px #a9d8ffa6,0 0 34px #5aa9ffa6}to{box-shadow:0 0 0 1px #8cc6ff40,0 0 18px #5aa9ff4d,0 18px 44px #0009}}
 @media(max-width:720px){
  .radar-intro{--radar-size:min(92vw,56.6svh,460px);--radar-y:43%}
  .radar-object{left:50%}
@@ -94,9 +52,31 @@
  .radar-invitation span{font-size:12px}
  .radar-motion{right:max(16px,env(safe-area-inset-right));bottom:max(16px,env(safe-area-inset-bottom))}
  .radar-sound{right:calc(max(16px,env(safe-area-inset-right)) + 102px)}
- .explore-dialog{padding:38px 22px 24px}.explore-dialog h2{font-size:21px}
 }
-@media(max-width:360px){.explore-dialog .location-fields{grid-template-columns:1fr}.explore-dialog>p{margin-bottom:18px}}
 @media(max-height:500px) and (max-width:720px){.radar-intro{--radar-size:min(70vw,45svh);--radar-y:50%}.radar-copy{top:15px}.radar-tagline{margin-top:3px}.radar-invitation{top:calc(var(--radar-y) + var(--radar-size) / 2 + 12px)}.radar-invitation small{display:none}}
 @media(max-height:500px) and (min-width:721px){.radar-intro{--radar-size:min(53vw,72svh);--radar-y:48%}.radar-copy{top:calc(var(--radar-y) - var(--radar-size) / 2 - 40px)}.radar-intro .radar-title{font-size:18.4px}.radar-invitation{top:calc(var(--radar-y) + var(--radar-size) / 2 + 15px)}.radar-tagline{margin-top:12px}.radar-invitation small{display:none}}
-@media(prefers-reduced-motion:reduce){.radar-object,.radar-invitation,.radar-copy{opacity:1}.explore-dialog[open],.explore-dialog[open]:before,.explore-dialog select.confirmed{animation:none}.radar-invitation{transition:none}#intro-submit:before{display:none}.road-spinner,.road-spinner:after{animation:none}}
+@media(prefers-reduced-motion:reduce){.radar-object,.radar-invitation,.radar-copy{opacity:1}.radar-invitation{transition:none}}
+/* Intent input under the radar: replaces the old "click anywhere" invitation. */
+.radar-intro{--radar-size:min(60vmin,500px);--radar-y:41%}
+.radar-intent{left:50%;right:auto;width:min(600px,calc(100% - 40px));transform:translateX(-50%);top:calc(var(--radar-y) + var(--radar-size) / 2 + 22px);pointer-events:auto;text-align:left;z-index:3}
+.radar-intent-label{display:block;font-size:12px;letter-spacing:.12em;color:#8ea3c0;margin:0 0 8px 4px}
+.radar-intent-box{display:flex;align-items:center;gap:6px;padding:6px;border:1px solid #8cb8ff3d;border-radius:14px;background:#0b1424b8;-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);box-shadow:0 0 0 1px #00000080,0 0 28px #4f8fe024;transition:border-color .2s,box-shadow .2s}
+.radar-intent-box:focus-within{border-color:#8cc0ffa6;box-shadow:0 0 0 1px #00000080,0 0 34px #5d9cf04d}
+.radar-intent-box input{flex:1 1 auto;min-width:0;height:44px;border:0;background:transparent;color:#eef4ff;font-size:15px;padding:0 10px;outline:0;box-shadow:none}
+.radar-intent-box input::placeholder{color:#7487a3}
+#radar-start{flex:none;display:inline-flex;align-items:center;gap:8px;height:44px;min-height:44px;padding:0 18px;border:0;border-radius:10px;background:#2f6fd0;color:#fff;font-size:14px;font-weight:500;letter-spacing:.04em;cursor:pointer;transition:background .2s,box-shadow .2s}
+#radar-start:hover{background:#3b80e6;box-shadow:0 0 18px #4d93ff66}
+#radar-start svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+#radar-start:focus-visible,.radar-chip:focus-visible{outline:2px solid #93c1ff;outline-offset:3px}
+.radar-chips{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin-top:12px}
+.radar-chip{min-height:34px;padding:0 15px;border:1px solid #9bb6db40;border-radius:999px;background:#0e1828a6;color:#a9bad2;font-size:13px;font-weight:400;cursor:pointer;transition:color .2s,border-color .2s,background .2s}
+.radar-chip:hover{color:#e2ecfb;border-color:#9bc2f580}
+.radar-chip[aria-pressed=true]{color:#fff;border-color:#6aa8ff;background:#1f4f94b3;box-shadow:0 0 14px #4d93ff40}
+.radar-intent-error{min-height:18px;margin:8px 0 0;text-align:center;font-size:12px;color:#ff9b8f}
+@media(max-width:720px){.radar-intro{--radar-size:min(78vw,44svh,400px);--radar-y:36%}.radar-intent{top:calc(var(--radar-y) + var(--radar-size) / 2 + 16px)}.radar-intent-box{flex-wrap:wrap}.radar-intent-box input{flex-basis:100%}#radar-start{width:100%;justify-content:center}}
+@media(max-height:500px){.radar-intro{--radar-size:min(40vw,46svh);--radar-y:30%}.radar-intent{top:calc(var(--radar-y) + var(--radar-size) / 2 + 8px)}.radar-intent-label{display:none}}
+.radar-motion:focus-visible{outline:2px solid #93c1ff;outline-offset:4px}
+/* Step 2: the dial shakes while the sweep speeds up, then a white burst clears to the light map. */
+.radar-intro.locking .radar-grid,.radar-intro.locking .radar-pulses{animation:radar-jitter .07s steps(2) infinite}
+@keyframes radar-jitter{0%{transform:translate(.8px,-.6px)}50%{transform:translate(-.7px,.8px)}100%{transform:translate(.5px,.4px)}}
+.radar-shock.is-white{background:radial-gradient(closest-side,#fff 0,#fff 72%,#ffffffb3 90%,#fff0 100%);-webkit-mask-image:none;mask-image:none;z-index:4}

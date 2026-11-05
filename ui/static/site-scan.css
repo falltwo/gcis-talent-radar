@@ -1,0 +1,155 @@
+/* Step 3 site scan: glass panels slide in from both sides over the city overview. */
+.scan-side{--text:#1e293b;--muted:#5b6b80;--line:rgba(15,23,42,.08);--blue:#2563eb;--orange:#ea580c;position:absolute;top:12px;bottom:12px;z-index:6;display:flex;flex-direction:column;gap:10px;visibility:hidden;opacity:0;transition:transform .35s ease-in,opacity .25s,visibility 0s .35s}
+.scan-left{left:12px;width:300px;transform:translateX(-110%)}
+.scan-right{right:12px;width:420px;transform:translateX(110%)}
+.scan-active .scan-side{visibility:visible;opacity:1;transform:none;transition:transform .55s cubic-bezier(.16,1,.3,1),opacity .35s ease-out,visibility 0s}
+.scan-active .scan-right{transition-delay:.12s}
+.scan-active .city-topbar,.scan-active .map-toolbar,.scan-active .city-bottom,.scan-active .district-toggle,.scan-active .district-panel,.scan-active .map-hud-coords,.scan-active .maplibregl-ctrl-top-right,.scan-active .sidebar-toggle,.scan-active .map-status-bar{visibility:hidden}
+.scan-pane{display:flex;flex-direction:column;min-height:0;border:1px solid var(--line);border-radius:12px;background:rgba(255,255,255,.8);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);box-shadow:0 10px 30px rgba(15,23,42,.1);color:var(--text)}
+.scan-right .scan-pane{flex:1}
+.scan-pane h3{display:flex;align-items:baseline;gap:8px;margin:0;padding:10px 14px;border-bottom:1px solid var(--line);font-size:13px;font-weight:600;color:#334155}
+.scan-pane h3 span{font-size:11px;font-weight:400;color:var(--muted)}
+.scan-body{padding:12px 14px;overflow:auto;min-height:0}
+.scan-tags{display:flex;flex-wrap:wrap;gap:6px}
+.scan-tag{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border:1px solid #bfd3f2;border-radius:999px;background:#eef4fd;font-size:12px;color:#1d4ed8}
+.scan-tag small{font-size:10px;color:#64748b}
+.scan-tag b{font-weight:600}
+.scan-note{margin:10px 0 0;font-size:11px;line-height:1.6;color:var(--muted)}
+.scan-note:empty{display:none}
+#scan-gap{color:#b45309}
+.scan-criterion{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:10px;padding:8px 2px;border-bottom:1px solid var(--line);cursor:pointer}
+.scan-criterion:last-child{border-bottom:0}
+.scan-criterion input{width:18px;height:18px;margin:0;accent-color:var(--blue)}
+.scan-criterion b{display:block;font-size:13px;font-weight:600}
+.scan-criterion small{display:block;font-size:11px;color:var(--muted);margin-top:2px}
+.scan-criterion em{font-style:normal;font-size:11px;color:var(--orange);font-weight:600;white-space:nowrap}
+.scan-close{flex:none;min-height:40px;border:1px solid var(--line);border-radius:10px;background:rgba(255,255,255,.85);color:#334155;font-size:13px;cursor:pointer}
+.scan-close:hover{background:#fff}
+.scan-grid{display:grid;grid-template-columns:repeat(3,1fr);grid-auto-rows:1fr;gap:8px;margin:0;padding:0;list-style:none}
+.scan-card{opacity:0;transform:translateY(18px)}
+.cards-in .scan-card{animation:scan-card-in .45s cubic-bezier(.16,1,.3,1) var(--delay) both}
+@keyframes scan-card-in{from{opacity:0;transform:translateY(18px) scale(.96)}to{opacity:1;transform:none}}
+.scan-card button{display:grid;grid-template-columns:auto 1fr;grid-template-areas:"rank score" "name name" "why why";align-items:baseline;gap:2px 6px;width:100%;height:100%;min-height:84px;padding:9px 10px;border:1px solid var(--line);border-radius:10px;background:rgba(255,255,255,.9);color:var(--text);text-align:left;cursor:pointer;transition:border-color .2s,box-shadow .2s}
+.scan-card button:hover{border-color:#93b8ef;box-shadow:0 4px 14px rgba(37,99,235,.12)}
+.scan-card button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+.scan-rank{grid-area:rank;font-size:11px;color:var(--muted)}
+.scan-score{grid-area:score;justify-self:end;font-size:18px;font-weight:700;color:var(--blue);font-variant-numeric:tabular-nums}
+.scan-card strong{grid-area:name;font-size:15px;font-weight:700}
+.scan-card small{grid-area:why;font-size:10.5px;line-height:1.4;color:var(--muted)}
+.scan-card.is-top button{border-color:#fdba74;background:#fff7ed}
+.scan-card.is-top .scan-score{color:var(--orange)}
+.scan-status{position:absolute;left:50%;bottom:20px;z-index:6;transform:translateX(-50%);margin:0;padding:6px 14px;border-radius:999px;background:rgba(15,23,42,.72);color:#fff;font-size:12px;pointer-events:none;opacity:0;transition:opacity .3s}
+.scan-active .scan-status:not(:empty){opacity:1}
+@media(max-width:1100px){.scan-right{width:360px}.scan-left{width:260px}}
+@media(max-width:960px){.scan-left{top:12px;bottom:auto;left:12px;right:12px;width:auto;max-height:38%}.scan-left .scan-pane:nth-child(2){display:none}.scan-right{top:auto;bottom:12px;left:12px;right:12px;width:auto;height:44%}.scan-grid{grid-template-columns:repeat(2,1fr)}.scan-status{bottom:auto;top:42%}}
+@media(prefers-reduced-motion:reduce){.scan-side,.scan-active .scan-side{transition:none}.cards-in .scan-card{animation:none;opacity:1;transform:none}}
+/* Top three get full-width cards with every criterion; the rest stay compact. */
+.scan-card.is-podium{grid-column:1/-1}
+.scan-card.is-podium button{grid-template-columns:auto auto 1fr;grid-template-areas:"rank name score" "why why why";min-height:0;padding:10px 12px}
+.scan-card.is-podium strong{font-size:16px}
+.scan-card.is-podium small{white-space:pre-line;font-size:11px}
+.scan-card:not(.is-podium) button{min-height:64px}
+.scan-compare{display:block;margin-top:10px;padding:10px 12px;border-radius:10px;background:var(--blue);color:#fff;font-size:13px;font-weight:600;text-align:center;text-decoration:none}
+.scan-compare:hover{background:#1d4ed8}
+.scan-compare:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+.scan-check{margin-top:10px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:rgba(255,255,255,.75);font-size:12px}
+.scan-check summary{cursor:pointer;line-height:1.6}
+.scan-check summary b{display:block;font-size:12px}
+.scan-check summary span{color:var(--muted)}
+.scan-check ul{margin:6px 0 0;padding-left:18px;color:var(--muted);line-height:1.7}
+.scan-rest{margin-top:12px}
+/* Spacing fixes: roomier close button, air under the weight check, scale bar clear of the attribution strip. */
+.scan-close{min-height:46px;padding:10px 14px;line-height:1.5}
+.scan-check{margin-bottom:12px}
+.scan-check+.scan-rest{margin-top:0}
+.scan-active .maplibregl-ctrl-bottom-left{bottom:10px}
+/* Three-district report: the same panels swap content; a swap slides both out and back in. */
+.scan-report-only{display:none}
+.scan-report .scan-report-only{display:flex}
+.scan-report .scan-rank-only{display:none}
+.scan-report .scan-right{gap:10px}
+.scan-report .scan-right .scan-pane{flex:0 0 auto}
+.scan-left,.scan-right{overflow:auto}
+.scan-swap .scan-left{transform:translateX(-110%);transition:transform .3s ease-in}
+.scan-swap .scan-right{transform:translateX(110%);transition:transform .3s ease-in}
+.report-district{padding:8px 0;border-bottom:1px solid var(--line)}
+.report-district:last-child{border-bottom:0}
+.report-district h4{display:flex;align-items:center;gap:8px;margin:0 0 6px;font-size:14px;font-weight:700}
+.report-level{padding:1px 8px;border-radius:999px;background:#f1f5f9;color:#475569;font-size:11px;font-weight:500}
+.report-level.is-easy{background:#dcfce7;color:#166534}
+.report-bar{display:grid;grid-template-columns:96px 1fr auto;align-items:center;gap:8px;margin:4px 0;font-size:11px;color:var(--muted)}
+.report-bar i{height:8px;border-radius:4px;background:rgba(15,23,42,.06);overflow:hidden}
+.report-bar b{display:block;height:100%;border-radius:4px;transition:width .6s cubic-bezier(.16,1,.3,1)}
+.report-bar em{font-style:normal;color:var(--text);font-variant-numeric:tabular-nums;white-space:nowrap}
+.is-supply b{background:#2563eb}.is-demand b{background:#f97316}.is-pay b{background:#0d9488}.is-pay-high b{background:#5eead4}
+.report-ratio{margin:4px 0 0;font-size:12px;color:var(--text)}
+.report-school-list{margin:0;padding:0;list-style:none}
+.report-school-list li{margin:4px 0;font-size:12px}
+.report-school-list b{display:block;font-weight:600}
+.report-school-list small{color:var(--muted);font-size:11px}
+.report-advice{margin:0;padding-left:18px;font-size:12.5px;line-height:1.7;color:var(--text)}
+.report-advice li+li{margin-top:4px}
+.report-actions{display:flex;gap:8px;margin-top:12px}
+.report-actions button,.report-actions a{flex:1;display:flex;align-items:center;justify-content:center;min-height:40px;border:1px solid var(--line);border-radius:10px;background:#fff;color:#334155;font-size:13px;text-decoration:none;cursor:pointer}
+.report-actions a{background:var(--blue);border-color:var(--blue);color:#fff}
+.scan-compare{width:100%;border:0;cursor:pointer}
+@media(prefers-reduced-motion:reduce){.scan-swap .scan-left,.scan-swap .scan-right{transition:none}}
+/* The street pin marks the default location, not a scan result, so it waits until the user returns to the street map. */
+.scan-active .real-map-pin{visibility:hidden;pointer-events:none}
+/* Pick button: the one strong call to action in the report. */
+.report-pick{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;min-height:42px;margin-top:10px;border:0;border-radius:10px;background:#ea580c;color:#fff;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 0 0 0 rgba(234,88,12,.45);animation:pick-glow 2.4s ease-out infinite;transition:background .2s}
+.report-pick:hover{background:#c2410c}
+.report-pick:focus-visible{outline:2px solid #ea580c;outline-offset:3px}
+.report-pick svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2}
+@keyframes pick-glow{0%{box-shadow:0 0 0 0 rgba(234,88,12,.45)}70%,100%{box-shadow:0 0 0 10px rgba(234,88,12,0)}}
+/* Hiring plan card on the street map after a pick. */
+.hire-plan{position:absolute;top:96px;right:16px;z-index:7;width:340px;max-height:calc(100% - 140px);overflow:auto;padding:14px;border:1px solid rgba(15,23,42,.08);border-radius:14px;background:rgba(255,255,255,.92);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);box-shadow:0 12px 32px rgba(15,23,42,.14);color:#1e293b;animation:plan-in .45s cubic-bezier(.16,1,.3,1)}
+.hire-plan[hidden]{display:none}
+@keyframes plan-in{from{opacity:0;transform:translateX(24px)}to{opacity:1;transform:none}}
+.hire-plan header{display:flex;justify-content:space-between;gap:10px}
+.hire-plan small{font-size:11px;color:#64748b}
+.hire-plan h3{margin:2px 0;font-size:20px;font-weight:700;color:#c2410c}
+.hire-plan header p{margin:0;font-size:12px;color:#475569}
+#hire-plan-close{flex:none;width:36px;height:36px;min-height:36px;padding:0;border:0;border-radius:8px;background:transparent;color:#64748b;font-size:22px;cursor:pointer}
+#hire-plan-close:hover{background:rgba(15,23,42,.06)}
+.hire-plan-lead{margin:10px 0 8px;font-size:12px;color:#334155}
+.hire-plan ol{margin:0;padding:0;list-style:none}
+.hire-plan li{display:grid;grid-template-columns:1fr auto;align-items:center;gap:10px;padding:10px 0;border-top:1px solid rgba(15,23,42,.08)}
+.hire-plan li b{font-size:14px}
+.hire-plan li span{margin-left:6px;padding:1px 7px;border-radius:999px;background:#fff7ed;color:#c2410c;font-size:11px;font-weight:600}
+.hire-plan li span:empty{display:none}
+.hire-plan li small{display:block;margin-top:2px;line-height:1.5}
+.hire-plan li button{min-height:36px;padding:0 12px;border:1px solid #2563eb;border-radius:8px;background:#fff;color:#2563eb;font-size:12px;font-weight:600;white-space:nowrap;cursor:pointer}
+.hire-plan li:first-child button{background:#2563eb;color:#fff}
+@media(max-width:720px){.hire-plan{top:auto;bottom:16px;left:12px;right:12px;width:auto}}
+@media(prefers-reduced-motion:reduce){.report-pick,.hire-plan{animation:none}}
+/* Channel allocation bay: slides in over 0.4s, then the three cards rise one after another. */
+.hire-plan{animation-duration:.4s}
+.hire-plan h3{font-size:18px}
+.hire-cards{display:grid;gap:10px}
+.hire-plan li.hire-card{display:flex;flex-direction:column;align-items:stretch;gap:2px;padding:12px 14px;border:1px solid rgba(37,99,235,.18);border-radius:12px;background:linear-gradient(180deg,#fff,#f5f9ff);box-shadow:inset 0 1px 0 #fff,0 4px 14px rgba(37,99,235,.08);opacity:0;animation:hire-card-in .45s cubic-bezier(.16,1,.3,1) var(--delay) both}
+.hire-plan li.hire-card.is-first{border-color:rgba(234,88,12,.45);background:linear-gradient(180deg,#fff,#fff6ee);box-shadow:inset 0 1px 0 #fff,0 0 0 3px rgba(234,88,12,.08),0 6px 18px rgba(234,88,12,.12)}
+@keyframes hire-card-in{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+.hire-card header{display:flex;align-items:center;justify-content:space-between}
+.hire-card header b{font-size:14px}
+.hire-plan .hire-card header span{margin:0;padding:1px 8px;border-radius:999px;background:#eef4fd;color:#1d4ed8;font-size:11px;font-weight:600}
+.hire-plan .hire-card.is-first header span{background:#ffedd5;color:#c2410c}
+.hire-card strong{margin-top:4px;font-size:24px;font-weight:700;color:#1e3a8a;font-variant-numeric:tabular-nums;line-height:1.2}
+.hire-card.is-first strong{color:#c2410c}
+.hire-card p{margin:0;font-size:12px;color:#475569}
+.hire-plan .hire-card small{margin-top:4px;font-size:11.5px;color:#64748b}
+.hire-plan .hire-card button{align-self:flex-start;margin-top:8px}
+.hire-plan .hire-card.is-first button{background:#ea580c;border-color:#ea580c;color:#fff}
+.hire-plan li.hire-card:first-child button{background:#ea580c;border-color:#ea580c;color:#fff}
+.hire-plan li.hire-card:not(.is-first) button{background:#fff;color:#2563eb}
+@media(prefers-reduced-motion:reduce){.hire-plan li.hire-card{animation:none;opacity:1}}
+.hire-card em{margin-top:4px;font-style:normal;font-size:11px;color:#2563eb}
+
+/* Previous-step controls stay visible while the analysis panels scroll. */
+.scan-navigation{position:sticky;top:0;z-index:2;display:flex;flex-direction:column;gap:7px;flex:none;padding:12px;border:1px solid #c7d5e8;border-radius:12px;background:#fff;box-shadow:0 4px 16px #18385814}
+.scan-navigation button,.scan-previous,.scan-feature-back{min-height:44px;padding:10px 14px;border:1px solid #b9cce8;border-radius:9px;background:#fff;color:#234d87;font-size:14px;font-weight:650;text-align:left;cursor:pointer}
+.scan-navigation span{font-size:12px;color:#64748b}.scan-previous{margin-top:12px;flex:none}.scan-feature-back{position:absolute;top:12px;left:50%;transform:translateX(-50%);z-index:35;box-shadow:0 6px 24px #1e293b26}.scan-feature-back[hidden]{display:none}
+.scan-navigation button:focus-visible,.scan-previous:focus-visible,.scan-feature-back:focus-visible{outline:3px solid #2563eb;outline-offset:3px}
+@media(max-width:960px){.scan-left{max-height:42%}.scan-feature-back{top:8px;max-width:90%;white-space:nowrap}}
+
+.hire-plan>.scan-previous{position:sticky;top:0;z-index:2;width:100%;margin:0 0 12px;background:#fff}

@@ -86,7 +86,6 @@
   intro.innerHTML = `
     <div class="intro-inner">
       <div class="radar-copy"><h1 class="radar-title">產業人才雷達</h1></div>
-      <button id="radar-start" class="radar-launch" type="button" aria-label="開始探索，選擇臺中市行政區與道路"></button>
         <div class="radar-object" aria-hidden="true">
           <div class="radar-aura"></div>
           <div class="radar-disc">
@@ -94,21 +93,19 @@
             <div class="radar-pulses"><i></i><i></i><i></i></div><div class="radar-sweep"></div><div class="radar-targets"></div><i class="radar-center"></i>
           </div>
         </div>
-        <div class="radar-invitation"><span>點擊任意處，開始探索</span><small>或按任意一般按鍵</small></div>
+        <form class="radar-invitation radar-intent" id="radar-intent" novalidate>
+          <label class="radar-intent-label" for="radar-intent-text">描述你的選址需求</label>
+          <div class="radar-intent-box"><input id="radar-intent-text" name="intent" type="text" autocomplete="off" maxlength="200" placeholder="例如：設精密機械加工廠，要供應鏈完整、離交流道近" aria-describedby="radar-intent-error"><button id="radar-start" type="submit"><span>啟動選址雷達</span><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8h9M8.5 4l4 4-4 4"/></svg></button></div>
+          <div class="radar-chips" role="group" aria-label="快捷偏好，可選一個">
+            <button type="button" class="radar-chip" aria-pressed="false">上下游群聚優先</button><button type="button" class="radar-chip" aria-pressed="false">靠近交通樞紐</button><button type="button" class="radar-chip" aria-pressed="false">避開激烈競爭</button>
+          </div>
+          <p class="radar-intent-error" id="radar-intent-error" role="alert"></p>
+        </form>
         <div class="radar-shock" aria-hidden="true"></div>
       <button id="radar-sound" class="radar-motion radar-sound" type="button" aria-pressed="true">音效：開</button>
       <button id="radar-motion" class="radar-motion" type="button" aria-pressed="false">暫停動態</button>
     </div>
-    <dialog class="explore-dialog" aria-labelledby="explore-dialog-title" aria-describedby="explore-dialog-description">
-      <button id="explore-close" type="button" aria-label="關閉地點選擇，回到雷達">×</button>
-      <h2 id="explore-dialog-title" tabindex="-1">你想從哪裡開始探索？</h2>
-      <p id="explore-dialog-description">選一個地點，看看周邊的產業與招募環境。</p>
-      <form class="explore-form roads-loading" id="intro-location">
-        <div class="location-fields"><div><label for="intro-district">臺中市行政區</label><select id="intro-district" name="district" autocomplete="off">${options}</select></div><div><label for="intro-road">道路／街道<i class="road-spinner" aria-hidden="true"></i></label><select id="intro-road" name="road" autocomplete="off" required disabled><option value="">讀取道路中…</option></select></div></div>
-        <button id="intro-submit" type="submit" disabled>探索這個地點</button>
-        <p id="intro-note" role="status">道路選項來自公司登記地址；定位與地圖資料來自 OpenStreetMap。</p>
-      </form>
-    </dialog>`;
+`;
   document.body.append(intro);
   workspace.inert = true;
   $('expansion').inert = true;
@@ -131,24 +128,15 @@
     for (const road of roads) select.add(new Option(road, road));
     if (roads.includes(preferred)) select.value = preferred;
     select.disabled = !roads.length;
-    $(prefix === 'intro' ? 'intro-submit' : 'city-update').disabled = !roads.length;
+    $('city-update').disabled = !roads.length;
   }
-  ['intro','city'].forEach(prefix => $(prefix + '-district').addEventListener('change', () => fillRoads(prefix)));
-  // Roads are already in memory, so this ring is only a visual cue and never delays the select.
-  let spinnerTimer;
-  $('intro-district').addEventListener('change', () => {
-    if (!Object.keys(roadIndex).length) return;
-    $('intro-location').classList.add('roads-loading');
-    clearTimeout(spinnerTimer);
-    spinnerTimer = setTimeout(() => $('intro-location').classList.remove('roads-loading'), 450);
-  });
+  $('city-district').addEventListener('change', () => fillRoads('city'));
   fetch('/static/road-index.json').then(response => {if (!response.ok) throw Error('道路資料讀取失敗'); return response.json();}).then(data => {
     roadIndex = data.districts;
-    fillRoads('intro', '中清路三段'); fillRoads('city', '中清路三段');
+    fillRoads('city', '中清路三段');
   }).catch(() => {
-    $('intro-note').textContent = '道路資料讀取失敗，請重新整理頁面後再試。';
     $('road-note').textContent = '道路資料讀取失敗，請重新整理頁面後再試。';
-  }).finally(() => $('intro-location').classList.remove('roads-loading'));
+  });
   function selectLocation(district,road) {
     selected={district,road};
     $('city-district').value=district;fillRoads('city',road);
@@ -166,14 +154,15 @@
     requestAnimationFrame(()=>requestAnimationFrame(()=>$('city-stage').classList.add('city-ready')));
     $('query-form').requestSubmit();
   }
-  $('intro-location').addEventListener('submit',e=>{
-    e.preventDefault();if(!$('intro-road').value)return;
+  // ponytail: the map opens on the sidebar's default location until step 3 picks a district from the intent.
+  intro.addEventListener('radar:analyze',()=>{
     window.streetMap.hold();
-    selectLocation($('intro-district').value,$('intro-road').value);
+    selectLocation($('city-district').value,$('city-road').value||'中清路三段');
     entrance.leave(()=>{
       window.streetMap.reveal();
       intro.inert=true;workspace.inert=false;$('expansion').inert=false;
       document.body.style.overflow='';$('city-heading').focus({preventScroll:true});
+      document.dispatchEvent(new CustomEvent('radar:revealed'));
     });
   });
   // Busy follows the real geocoding request; the minimum only keeps a cached answer visible.
@@ -196,8 +185,8 @@
   });
   $('replay-intro').addEventListener('click',()=>{
     window.campusMatching?.deactivate();window.headhunter?.deactivate();window.recruitment?.deactivate();
+    if(document.querySelector('.scan-active'))window.siteScan?.stop();
     entrance.show();
-    $('intro-district').value=selected.district;fillRoads('intro',selected.road);
     workspace.inert=true;$('expansion').inert=true;document.body.style.overflow='hidden';
   });
   // Keep the existing expansion form and the workspace location in sync.
