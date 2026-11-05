@@ -88,7 +88,8 @@
   .card .name { font-weight: 700; font-size: 16px; }
   .card .site { font-size: 12px; color: var(--muted); white-space: nowrap; }
   .card .headline, .card .reason { color: var(--muted); font-size: 14px; }
-  .card .loc-note { align-self: flex-start; font-size: 13px; padding: 2px 10px; border-radius: 8px; background: var(--warn-soft); color: var(--warn); }
+  .card .area { align-self: flex-start; font-size: 13px; padding: 2px 10px; border-radius: 8px; background: var(--ok-soft); color: var(--ok); }
+  .card .area.taiwan, .card .area.unknown { background: var(--warn-soft); color: var(--warn); }
   .fit { align-self: flex-start; font-size: 12px; font-weight: 700; padding: 2px 10px; border-radius: 999px; }
   .fit.yes { background: var(--ok-soft); color: var(--ok); }
   .fit.part { background: var(--warn-soft); color: var(--warn); }
@@ -243,7 +244,7 @@ function renderCandidate(c) {
     <span class="fit ${fitClass}">${esc(c.fit || "未判斷")}</span>
     ${c.headline ? `<div class="headline">${esc(c.headline)}</div>` : ""}
     ${c.location ? `<div class="headline">地點：${esc(c.location)}</div>` : ""}
-    ${c.location_note ? `<div class="loc-note">📍 ${esc(c.location_note)}</div>` : ""}
+    ${c.area_label ? `<div class="area ${esc(c.area)}">📍 ${esc(c.area_label)}${c.location_note ? "：" + esc(c.location_note) : ""}</div>` : ""}
     ${skills ? `<div>${skills}</div>` : ""}
     ${c.summary ? `<div>${esc(c.summary)}</div>` : ""}
     ${c.fit_reason ? `<div class="reason">判斷根據：${esc(c.fit_reason)}</div>` : ""}
@@ -315,6 +316,10 @@ function handle(ev) {
       banner(ev.advice || "這類職缺網路上少有公開作品，建議改用其他管道。");
       finish("<b>結束</b>");
       break;
+    case "out_of_area":
+      banner(ev.reason, "bad");
+      finish("<b>只找台灣的人才</b>");
+      break;
     case "error":
       banner(ev.reason, "bad");
       finish("<b>發生錯誤</b>");
@@ -335,7 +340,7 @@ function handle(ev) {
 }
 
 const EVENT_TYPES = ["plan", "decision", "step", "frame", "candidate", "candidate_skipped", "site_skipped",
-                     "site_error", "notice", "rejected", "no_public_work", "error", "done"];
+                     "site_error", "notice", "rejected", "no_public_work", "out_of_area", "error", "done"];
 let source = null, runId = null;
 
 /** 前端接法：POST 建立任務 → EventSource 訂閱 events_url → 停止時 DELETE。 */

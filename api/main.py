@@ -98,7 +98,7 @@ class SourcingRunRequest(BaseModel):
 
 class SourcingRunCreated(BaseModel):
     run_id: str
-    status: str = Field(..., description="running | done | error | cancelled | rejected | no_public_work")
+    status: str = Field(..., description="running | done | error | cancelled | rejected | no_public_work | out_of_area")
     events_url: str = Field(..., description="GET 這個網址取得 SSE 事件，可直接用 EventSource")
     snapshot_url: str
     message: Optional[str] = Field(None, description="被拒絕或沒有公開作品時的原因")
