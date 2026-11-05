@@ -12,11 +12,37 @@ class JobSuggestion(ModelOutput):
     trainable_skills:list[str]=Field(max_length=5)
 
 
+class EmployerName(ModelOutput):
+    company_name:str=Field(max_length=120)
+    evidence:str=Field(max_length=1000)
+
+
+def employer_name(ai,text,fallback):
+    """Use the HR's employer label; do not rename the authenticated demo tenant."""
+    labels=list(re.finditer(r'(?:公司|企業)(?:名稱|名)?\s*(?:改成|改為|更名為|是|為|[:：])\s*([^\n，,；;。]+)',text))
+    if labels:
+        value=labels[-1][1].strip().strip('「」『』"\'')
+        value=re.split(r'\s+(?=職稱|職位|地點|地址|月薪|薪資|招募|工作內容|任職條件)',value)[0].strip()
+        if not value or len(value)>120:raise ValueError('請提供完整公司名稱（最多120字）。')
+        return value
+    if ai.enabled and re.search(r'公司|企業|工作室|商行',text):
+        result=ai.structured(EmployerName,
+            '只擷取使用者明確指定的本次招募企業名稱，不是客戶、前雇主或範例。對話按時間排列，後續更名覆蓋舊名。'
+            'company_name與evidence必須逐字引用原文，evidence須包含company_name。未指定則兩者空字串。不能使用示範公司或推測名稱。',
+            {'user_requirements':text})
+        if result.company_name:
+            if not result.evidence or result.evidence not in text or result.company_name not in result.evidence:
+                raise ValueError('公司名稱無法與原始需求核對，請以「公司名稱：…」指定。')
+            return result.company_name
+    return fallback
+
+
 def prepare_execution(ai,batch,company,district):
     from recruitment.job_research import find_template,history_for,draft_job,explicit_conditions
     from api.mock104 import JobForm
     original=batch['original_text'];items=batch['items']
     if not 1<=len(items)<=20:raise ValueError('每次最多處理20個職位，請分批提出需求。')
+    company=employer_name(ai,original,company)
     results=[]
     for item in items:
         from .parser import valid_title

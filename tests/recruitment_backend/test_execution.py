@@ -6,6 +6,7 @@ def salary_source_offline(monkeypatch):
 
 from types import SimpleNamespace
 from recruitment.backend.execution import prepare_execution
+from test_api import c,account
 
 
 def test_template_defaults_and_explicit_values_stay_per_role():
@@ -55,3 +56,34 @@ def test_named_employer_salaries_and_content_take_priority_over_templates():
     assert jobs[0]['required_skills']==['python','postgresql']
     assert jobs[0]['district']=='臺中市西屯區'
     assert [j['headcount'] for j in jobs]==[10,2]
+
+
+@pytest.mark.parametrize('text,name',[
+    ('前端工程師1位 月薪4萬 公司名稱是大安有限公司','大安有限公司'),
+    ('公司名稱：大安有限公司，前端工程師1位','大安有限公司'),
+    ('企業名稱：星河科技 職稱：前端工程師','星河科技'),
+    ('公司名稱是舊公司\n公司名稱改成大安有限公司','大安有限公司'),
+])
+def test_explicit_employer_name_overrides_demo_for_all_roles(text,name):
+    batch={'original_text':text,'items':[{'title':'前端工程師','quantity':1},{'title':'全端工程師','quantity':2}]}
+    prepared=prepare_execution(SimpleNamespace(enabled=False),batch,'本機示範公司','大雅區')
+    assert [p['job']['company_name'] for p in prepared]==[name,name]
+
+
+def test_execution_api_passes_employer_name_to_actual_form_without_renaming_tenant(c):
+    h=account(c)
+    created=c.post('/batches',headers=h,json={'message':'1位前端工程師，月薪4萬，公司名稱是大安有限公司'})
+    assert created.status_code==201,created.text
+    prepared=c.post('/execution/prepare',headers=h,json={'batch_id':created.json()['id'],'district':'大雅區'})
+    assert prepared.status_code==200,prepared.text
+    job=prepared.json()['jobs'][0]['job']
+    assert job['company_name']=='大安有限公司'
+    assert job['salary_min']==job['salary_max']==40000
+    assert c.get('/auth/me',headers=h).json()['company_name']!='大安有限公司'
+
+
+def test_model_company_name_must_have_original_user_evidence():
+    from recruitment.backend.execution import employer_name,EmployerName
+    ai=SimpleNamespace(enabled=True,structured=lambda *a:EmployerName(company_name='憑空公司',evidence='不存在原文'))
+    with pytest.raises(ValueError,match='原始需求'):
+        employer_name(ai,'我們是大安有限公司，找工程師','本機示範公司')
