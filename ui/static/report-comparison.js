@@ -165,6 +165,9 @@
         $('hiring-end').value = defaults.hiring_end_month || '';
         const months = list(catalog.observation_months).filter(m => monthNumber(m) !== null).sort();
         if (months.length) $('observation-month').value = months[months.length - 1];
+        // The home page's site scan links here with its top three districts.
+        const picked = (new URLSearchParams(window.location.search).get('districts') || '').split(',').filter(d => catalog.districts.includes(d)).slice(0, 3);
+        if (picked.length >= 2) [1,2,3].forEach(i => { $(`district-${i}`).value = picked[i - 1] || ''; });
         const from = new URLSearchParams(window.location.search).get('from');
         if (from) {
           try { const old = await request(`/api/reports/${encodeURIComponent(from)}`); restoreScenario(old.scenario); }

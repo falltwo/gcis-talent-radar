@@ -6,10 +6,10 @@
   // ponytail: keyword rules stand in for the AI parser; first match wins. Swap for the real parser when it exists.
   const INDUSTRY_WORDS = [['機械','機械設備業'],['金屬','金屬製品業'],['加工','金屬製品業'],['塑膠','塑膠製品業'],['半導體','電子零組件業'],['電子','電子零組件業'],['光學','電腦電子產品及光學製品業'],['食品','食品及飼品業'],['飲料','飲料及菸草業'],['汽車','汽車及其零件業'],['自行車','其他運輸工具及其零件業'],['家具','家具業'],['紡織','紡織業'],['成衣','成衣及服飾品業'],['化學','其他化學製品業'],['橡膠','橡膠製品業'],['印刷','印刷及資料儲存媒體複製業']];
   const CRITERIA = [
-    {id:'vitality', label:'市場活力', hint:'近一年新設減解散', unit:'家', better:1, words:['活力','成長','新創']},
+    {id:'vitality', label:'市場活力', hint:'全產業公司近一年新設減解散（名冊沒有行業欄）', unit:'家', better:1, words:['活力','成長','新創']},
     {id:'stability', label:'經營穩定', hint:'解散家數 ÷ 新設家數，越低越好', unit:'', better:-1, words:['穩定','風險']},
     {id:'cluster', label:'同業群聚', hint:'同業工廠家數', unit:'家', better:1, words:['供應鏈','上下游','群聚','聚落']},
-    {id:'competition', label:'避開競爭', hint:'每百家工廠的製造類職缺，越少越好', unit:'筆', better:-1, words:['競爭','搶人']},
+    {id:'competition', label:'避開競爭', hint:'每百家工廠的製造類職缺，越少越好（職缺與工廠年份不同）', unit:'筆', better:-1, words:['競爭','搶人']},
   ];
   // ponytail: fixed gate; districts with few factories are not realistic sites and would win "low competition" by default.
   const MIN_FACTORIES = 100, MIN_SETUPS = 30;
@@ -29,7 +29,10 @@
   right.className = 'scan-side scan-right';right.setAttribute('aria-label','推薦建廠熱區');right.inert = true;
   right.innerHTML = `
     <div class="scan-pane"><h3>商工資料推薦熱區 <span>Top 12</span></h3>
-      <div class="scan-body"><ol class="scan-grid" id="scan-grid"></ol>
+      <div class="scan-body"><ol class="scan-grid" id="scan-podium"></ol>
+      <a class="scan-compare" id="scan-compare" target="_blank" rel="noopener">比較前三區的人才 ↗</a>
+      <details class="scan-check"><summary><b>換權重會換答案嗎？</b><span id="scan-check-summary"></span></summary><ul id="scan-check-list"></ul></details>
+      <ol class="scan-grid scan-rest" id="scan-grid" start="4"></ol>
       <p class="scan-note" id="scan-source"></p></div></div>`;
   stage.append(left, right);
   const status = document.createElement('p');
@@ -90,16 +93,32 @@
         return [name, c.better > 0 ? share : 1 - share];
       }));
     }
-    ranking = names.map(name => {
+    lastScaled = scaled;lastRaw = raw;
+    ranking = scoreWith(checked, boosted);
+  }
+  let lastScaled, lastRaw;
+  function scoreWith(use, heavy) {
+    return candidates.map(name => {
+      const scaled = lastScaled, raw = lastRaw;
       let sum = 0, weight = 0, best = null;
       for (const c of CRITERIA) {
-        if (!checked[c.id] || scaled[c.id][name] === null) continue;
-        const w = boosted[c.id] ? 2 : 1;
+        if (!use[c.id] || scaled[c.id][name] === null) continue;
+        const w = heavy[c.id] ? 2 : 1;
         sum += w * scaled[c.id][name];weight += w;
         if (!best || scaled[c.id][name] > scaled[best.id][name]) best = c;
       }
       return {name, score: weight ? sum / weight : null, best, raw: Object.fromEntries(CRITERIA.map(c => [c.id, raw[c.id][name]]))};
     }).sort((a, b) => (b.score ?? -1) - (a.score ?? -1));
+  }
+  // Sensitivity check: rerun with no extra weight and with each checked criterion doubled on its own.
+  function sensitivity() {
+    const used = CRITERIA.filter(c => checked[c.id]);
+    const none = Object.fromEntries(CRITERIA.map(c => [c.id, false]));
+    const runs = [{label:'不加重任何一項', heavy:none}, ...used.map(c => ({label:`加重${c.label}`, heavy:{...none, [c.id]:true}}))];
+    return runs.map(run => {
+      const list = scoreWith(checked, run.heavy);
+      return {...run, first:list[0]?.name, top3:list.slice(0, 3).map(item => item.name)};
+    });
   }
   function describe(c, v) {
     if (v === null || v === undefined) return '無資料';
@@ -127,17 +146,34 @@
   }
   function renderCards() {
     const top = ranking.slice(0, 12);
-    $('scan-grid').replaceChildren(...top.map((item, index) => {
-      const card = document.createElement('li');card.className = 'scan-card' + (index === 0 ? ' is-top' : '');
+    const cards = top.map((item, index) => {
+      const card = document.createElement('li');card.className = 'scan-card' + (index === 0 ? ' is-top' : '') + (index < 3 ? ' is-podium' : '');
       card.style.setProperty('--delay', (reduced ? 0 : index * 60) + 'ms');
       card.innerHTML = '<button type="button"><span class="scan-rank"></span><strong></strong><span class="scan-score"></span><small></small></button>';
       card.querySelector('.scan-rank').textContent = '#' + (index + 1);
       card.querySelector('strong').textContent = item.name;
       card.querySelector('.scan-score').textContent = item.score === null ? '—' : Math.round(item.score * 100);
-      card.querySelector('small').textContent = item.best ? `${item.best.label} ${describe(item.best, item.raw[item.best.id])}` : '';
+      card.querySelector('small').textContent = index < 3
+        ? CRITERIA.filter(c => checked[c.id]).map(c => `${c.label}：${describe(c, item.raw[c.id])}`).join('\n')
+        : item.best ? `${item.best.label} ${describe(item.best, item.raw[item.best.id])}` : '';
       card.querySelector('button').setAttribute('aria-label', `第 ${index + 1} 名 ${item.name}，相對分數 ${card.querySelector('.scan-score').textContent}`);
       card.querySelector('button').addEventListener('click', () => focusDistrict(item.name));
       return card;
+    });
+    $('scan-podium').replaceChildren(...cards.slice(0, 3));
+    $('scan-grid').replaceChildren(...cards.slice(3));
+    const three = top.slice(0, 3).map(item => item.name);
+    $('scan-compare').href = '/compare?' + new URLSearchParams({districts:three.join(',')});
+    $('scan-compare').textContent = `比較${three.join('、')}的人才 ↗`;
+    const runs = sensitivity(), firsts = [...new Set(runs.map(run => run.first))];
+    const sameTop3 = runs.every(run => run.top3.slice().sort().join() === three.slice().sort().join());
+    $('scan-check-summary').textContent = firsts.length === 1
+      ? `不管加重哪一項，第一名都是${firsts[0]}。${sameTop3 ? '前三名也都一樣。' : '前三名會有變動。'}`
+      : `第一名會隨權重改變：${runs.filter(run => run.first !== ranking[0]?.name).map(run => `${run.label} → ${run.first}`).join('；')}。`;
+    $('scan-check-list').replaceChildren(...runs.map(run => {
+      const row = document.createElement('li');
+      row.textContent = `${run.label}：${run.top3.join('、')}`;
+      return row;
     }));
     $('scan-source').textContent = `分數 0–100 是 ${candidates.length} 個候選區互相比較的相對值，不是預測或匹配率；製造業工廠不到 ${MIN_FACTORIES} 家的 ${geo.features.length - candidates.length} 區不列入。資料：商工登記 ${activity.window.join(' 至 ')}${activity.missing_months.length ? `（缺 ${activity.missing_months.join('、')}）` : ''}、工廠校正 ${stats.factories.year} 年、就業通職缺 ${stats.jobs.snapshot_date}。`;
   }

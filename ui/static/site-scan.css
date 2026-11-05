@@ -43,3 +43,18 @@
 @media(max-width:1100px){.scan-right{width:360px}.scan-left{width:260px}}
 @media(max-width:960px){.scan-left{top:12px;bottom:auto;left:12px;right:12px;width:auto;max-height:38%}.scan-left .scan-pane:nth-child(2){display:none}.scan-right{top:auto;bottom:12px;left:12px;right:12px;width:auto;height:44%}.scan-grid{grid-template-columns:repeat(2,1fr)}.scan-status{bottom:auto;top:42%}}
 @media(prefers-reduced-motion:reduce){.scan-side,.scan-active .scan-side{transition:none}.cards-in .scan-card{animation:none;opacity:1;transform:none}}
+/* Top three get full-width cards with every criterion; the rest stay compact. */
+.scan-card.is-podium{grid-column:1/-1}
+.scan-card.is-podium button{grid-template-columns:auto auto 1fr;grid-template-areas:"rank name score" "why why why";min-height:0;padding:10px 12px}
+.scan-card.is-podium strong{font-size:16px}
+.scan-card.is-podium small{white-space:pre-line;font-size:11px}
+.scan-card:not(.is-podium) button{min-height:64px}
+.scan-compare{display:block;margin-top:10px;padding:10px 12px;border-radius:10px;background:var(--blue);color:#fff;font-size:13px;font-weight:600;text-align:center;text-decoration:none}
+.scan-compare:hover{background:#1d4ed8}
+.scan-compare:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+.scan-check{margin-top:10px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:rgba(255,255,255,.75);font-size:12px}
+.scan-check summary{cursor:pointer;line-height:1.6}
+.scan-check summary b{display:block;font-size:12px}
+.scan-check summary span{color:var(--muted)}
+.scan-check ul{margin:6px 0 0;padding-left:18px;color:var(--muted);line-height:1.7}
+.scan-rest{margin-top:12px}
