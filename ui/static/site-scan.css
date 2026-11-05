@@ -94,3 +94,5 @@
 .report-actions a{background:var(--blue);border-color:var(--blue);color:#fff}
 .scan-compare{width:100%;border:0;cursor:pointer}
 @media(prefers-reduced-motion:reduce){.scan-swap .scan-left,.scan-swap .scan-right{transition:none}}
+/* The street pin marks the default location, not a scan result, so it waits until the user returns to the street map. */
+.scan-active .real-map-pin{visibility:hidden;pointer-events:none}
