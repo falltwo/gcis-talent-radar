@@ -275,3 +275,25 @@ def test_ee520_totals_parse_the_four_level_city_header(tmp_path, monkeypatch):
     assert c.loc['C', 'employees'] == 2000 and c.loc['29', 'employees'] == 200
     d = written['tc_factory_district_total_annual'].set_index('district')
     assert d.loc['太平區', 'employees'] == 10 and d.loc['和平區', 'employees_flag'] == 'suppressed_lt4'
+
+
+@pytest.mark.parametrize('skip_fetch, expected', [
+    (False, ['fetch_all', 'fetch_totals', 'transform', 'transform_totals']),
+    (True, ['transform', 'transform_totals']),
+])
+def test_standard_etl_refreshes_ee520_totals_with_the_cells(monkeypatch, skip_fetch, expected):
+    # 年度更新只跑 run_real_etl --only moea_ee520；總計沒一起更新，LQ 會因年份對不上又變回無資料
+    import importlib.util, sys, types
+    # run_real_etl 會載入所有來源模組；這裡只檢查呼叫順序，沒裝的 PDF 套件放空模組替代
+    for missing in ('pdfplumber',):
+        if importlib.util.find_spec(missing) is None:
+            monkeypatch.setitem(sys.modules, missing, types.ModuleType(missing))
+    from etl import run_real_etl
+    from etl.sources import moea_ee520
+    calls = []
+    for name in ('fetch_all', 'fetch_totals', 'transform', 'transform_totals'):
+        monkeypatch.setattr(moea_ee520, name, lambda name=name: calls.append(name))
+    monkeypatch.setattr(run_real_etl, 'write_quality_report', lambda: 'report')
+    monkeypatch.setattr(sys, 'argv', ['run_real_etl', '--only', 'moea_ee520'] + (['--skip-fetch'] if skip_fetch else []))
+    run_real_etl.main()
+    assert calls == expected

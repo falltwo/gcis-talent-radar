@@ -212,8 +212,15 @@ def transform():
     return df
 
 
-if __name__ == "__main__":
-    fetch_all()
+def run(fetch: bool = True):
+    """標準 ETL（run_real_etl --only moea_ee520）與直接執行都走這裡：逐區細格和 LQ 用的官方總計
+    一起抓、一起轉，年度更新時才不會只更新細格、總計還停在舊年份（LQ 又變回無資料）。"""
+    if fetch:
+        fetch_all()
+        fetch_totals()
     transform()
-    fetch_totals()
     transform_totals()
+
+
+if __name__ == "__main__":
+    run()
