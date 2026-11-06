@@ -7,6 +7,7 @@ from typing import Literal
 import httpx
 from pydantic import Field
 from .ai import ModelOutput, AIError
+from .intent import is_information_request
 
 
 class AssistantPlan(ModelOutput):
@@ -23,14 +24,16 @@ def plan_request(ai, messages):
     from .parser import parse
     confirmation=bool(re.fullmatch(r'\s*(?:都通用|都適用|兩個都適用|全部適用|對|是|沒錯|確認|好|可以)[。！!\s]*',users[-1]))
     candidate=users[-2] if confirmation and len(users)>1 else users[-1]
-    if not re.search(r'[?？]|行情|平均|查詢|搜尋',candidate):
+    information_request=is_information_request(users[-1])
+    if not information_request and not is_information_request(candidate):
         try:latest=parse(candidate)
         except ValueError:pass
         else:
-            turns=[text for text in users if not re.search(r'[?？]|行情|平均|查詢|搜尋',text)]
+            turns=[text for text in users if not is_information_request(text)]
             prior_roles=None
             prior=users[:-2] if confirmation else users[:-1]
             for text in reversed(prior):
+                if is_information_request(text):continue
                 try:prior_roles={row['title'] for row in parse(text,include_salary=False)};break
                 except ValueError:continue
             # A new role set is a new intake, not a salary update of previous jobs.
@@ -39,7 +42,7 @@ def plan_request(ai, messages):
             return {'action':'draft','query':'','reply':'','brief':'\n'.join(turns),'salary_turns':turns}
     if not ai.enabled:
         text=users[-1]
-        if re.search(r'平均|行情|多少|怎麼|如何|搜尋|查詢|[?？]',text):
+        if information_request:
             return {'action':'search','query':text,'reply':'','brief':''}
         return {'action':'draft','query':'','reply':'','brief':'\n'.join(users),'salary_turns':users}
     result=ai.structured(AssistantPlan,
@@ -47,6 +50,7 @@ def plan_request(ai, messages):
         '查詢薪資、平均薪資、工作內容、招募方式等問題 action=search，query 寫出含職稱、地區等已知範圍的公開搜尋問題。'
         'query 必須保留使用者本次問的所有面向；同時問薪資與工作內容時兩項都保留，不能縮成只問薪資。'
         '只問薪資或工作資訊時絕不能建立招募資料。與職缺無關的問題 action=clarify，友善說明服務範圍。'
+        '問題不需要問號，也不要求固定格式。「想了解一個品管員的工作內容」「一個前端工程師需要哪些技能」都是資訊查詢，數字不是建表意圖。'
         '使用者明確要建立企業職缺表且已提供職稱和招募人數才 action=draft；否則 action=clarify，reply 只追問缺的條件。'
         'request_indexes 選出本次建表必要的 user_requests 索引，必須包括最新一則，排除過去資訊查詢。'
         '可依 assistant_context 理解「那就幫我建表」等追問，但不能將助理提議或搜尋薪資當作HR核定條件。'
@@ -58,6 +62,10 @@ def plan_request(ai, messages):
         '例如先說兩職位各5萬，後說兩職位各6萬，再說「都通用」，兩職位皆採最新6萬，不再追問5萬或6萬。'
         'draft 時不要產生工作條件或薪資；只選使用者原文。搜尋 query 不含私人資料、公司內部薪資或帳戶資訊。',
         {'user_requests':users,'assistant_context':[m['content'][:2000] for m in messages if m['role']=='assistant'][-4:]})
+    # Never let a provider response turn a recognized information question into
+    # an automatic browser run. Luna may still resolve context in its query.
+    if information_request and result.action=='draft':
+        return {'action':'search','query':users[-1],'reply':'','brief':'','salary_turns':[]}
     indexes=result.request_indexes
     if result.action=='draft' and (not indexes or len(users)-1 not in indexes or any(i<0 or i>=len(users) for i in indexes)):
         raise AIError('invalid_request_evidence')

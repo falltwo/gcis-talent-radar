@@ -4,6 +4,7 @@ from copy import deepcopy
 from types import SimpleNamespace
 from .execution import employer_name
 from .salary import verified_salary
+from .intent import is_information_request
 
 TTL_SECONDS=1800
 CLEAR=re.compile(r'^(?:清除(?:對話)?(?:記憶|上下文)|忘記(?:先前|之前|剛才)(?:的)?(?:需求|內容)|重新開始)[。！!\s]*$')
@@ -29,6 +30,7 @@ def snapshot(batch,previous):
 
 
 def patch(state,text):
+    if is_information_request(text):return None
     items=deepcopy(state.get('items',[]))
     if not items:return None
     titles=[item['title'] for item in items]
