@@ -29,12 +29,12 @@
 
 **Files:** Create `recruitment/backend/workflow.py`; modify `requirements-recruitment.txt`; test `tests/recruitment_backend/test_workflow.py`.
 
-**Interfaces:** `ConversationWorkflow(path)`; `run(thread_id, message, request_id, handle_turn, initial_memory)` returns `{memory, result}`; `peek(thread_id)` exposes server-owned current state.
+**Interfaces:** `ConversationWorkflow(path)`; `run(thread_id, event, handle_turn, initial_memory=None)` returns `{memory, result}`; `peek(thread_id)` exposes server-owned current state.
 
-- [ ] Write failing tests for interruption, resume, restart and isolation.
-- [ ] Run focused tests and confirm failure before implementation.
-- [ ] Implement turn/wait graph with native SqliteSaver and request context callbacks.
-- [ ] Run focused tests, then commit.
+- [x] Write failing tests for interruption, resume, restart and isolation.
+- [x] Run focused tests and confirm failure before implementation.
+- [x] Implement turn/wait graph with native SqliteSaver and request context callbacks.
+- [x] Run focused tests, then commit.
 
 ### Task 2: Explicit pending field and contextual evidence
 
@@ -42,11 +42,11 @@
 
 **Interfaces:** Planner returns optional `pending_question` with field/title/location; validated memory consumes numeric replies only for that pending field. Existing batch/search/clarify responses remain compatible.
 
-- [ ] Add failing tests for screenshot input followed by `5`, intervening information query and ambiguous/non-headcount replies.
-- [ ] Add Luna pending-question structured output and source checks; preserve a deterministic offline equivalent.
-- [ ] Wire assistant turns through the graph without serializing SQL sessions, tokens or model clients.
-- [ ] Persist a turn receipt atomically with batch writes; verify identical replay and conflicting replay.
-- [ ] Verify restart, expiry, clear and existing recruitment API regression cases, then commit.
+- [x] Add failing tests for screenshot input followed by `5`, intervening information query and ambiguous/non-headcount replies.
+- [x] Add Luna pending-question structured output and source checks; preserve a deterministic offline equivalent.
+- [x] Wire assistant turns through the graph without serializing SQL sessions, tokens or model clients.
+- [x] Persist a turn receipt atomically with batch writes; verify identical replay and conflicting replay.
+- [x] Verify restart, expiry, clear and existing recruitment API regression cases, then commit.
 
 ### Task 3: Browser-refresh conversation recovery
 
@@ -54,14 +54,14 @@
 
 **Interfaces:** `GET /assistant/task?conversation_id=...` returns owned task summary; `RecruitmentAPI` retains conversation ID in per-tab sessionStorage and changes it for a new intake.
 
-- [ ] Add failing tests for storage-backed ID recovery and fresh-tab isolation.
-- [ ] Restore pending question/current batch on reconnect without auto-filling or submitting.
-- [ ] Run frontend and backend tests, then commit.
+- [x] Add failing tests for storage-backed ID recovery and fresh-tab isolation.
+- [x] Restore pending question/current batch on reconnect without auto-filling or submitting.
+- [x] Run frontend and backend tests, then commit.
 
 ### Task 4: Verification and delivery
 
-- [ ] Run recruitment regression suite and an isolated real-Luna conversation using the screenshot case.
-- [ ] Review ownership, transaction boundaries and request replay behavior.
+- [x] Run recruitment regression suite and an isolated real-Luna conversation using the screenshot case.
+- [x] Review ownership, transaction boundaries and request replay behavior.
 - [ ] Update PR and preview only after checks pass; do not merge main.
 
 ## Subsequent plans
@@ -72,3 +72,14 @@
 ## Execution ledger
 
 - 2026-11-06: User approved the architecture and requested stepwise implementation. First subsystem isolated in managed worktree `recruitment-langgraph`; original checkout untouched. LangGraph 1.0.5 and SqliteSaver 3.0.3 installed for verification.
+
+- Durable runner committed as `730ceae`; structured pending quantity, SQL receipt and per-tab recovery implemented in subsequent changes.
+- TDD evidence: runner import failed before implementation; API partial intake and refresh tests failed before wiring. Review reproduced reference-salary approval, content truncation, hidden recovered task, reversed field order and pre-graph state loss; each gained a failing regression before its shared fix.
+- Request receipts and batch writes commit in one transaction. Injected checkpoint-write failure after commit recovers without duplicating a batch. Owner and conversation scope are enforced server-side.
+- Review: all three original Important findings plus salary-order regression resolved; focused task/memory API suite 18 passed; independent re-review found no blocking first-phase issues.
+- Real Luna smoke: missing quantity -> service restart -> bare `5` -> same-request replay -> `yes`, exactly one batch and no submission. Isolated output is local only.
+- Frontend: 68 passed, 1 optional independent-service test skipped. Recovery exposes roles and full conditions without starting or submitting the browser.
+- Local full-suite first attempt hit missing optional geospatial dependencies and Windows stdout encoding. Installed the repository-pinned geo requirements and reran with PYTHONUTF8=1; final result recorded at delivery.
+- Scope limits: workflow locking currently supports one service process. Browser job IDs/reconciliation/diff-only updates and interactive human takeover remain subsequent plans, not completed by conversation checkpoints.
+
+- Final local full suite: 1033 passed, 1 skipped, 60 subtests passed; one unrelated Windows SQLite cleanup failure in `EducationDirectoryTests.test_scope_cleanup_publishes_new_snapshot_and_preserves_original`. Reproduced on unchanged original feature branch `506ca80` as well; no education files changed. Linux CI will verify repository-wide behavior.

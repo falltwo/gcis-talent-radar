@@ -2,8 +2,13 @@
 (function(root){
   'use strict';
   class RecruitmentAPI{
-    constructor(fetcher=globalThis.fetch.bind(globalThis)){this.fetcher=fetcher;this.token=null;this.newConversation();}
-    newConversation(){this.conversationId=globalThis.crypto?.randomUUID?.()||'chat-'+Date.now()+'-'+Math.random().toString(36).slice(2);}
+    constructor(fetcher=globalThis.fetch.bind(globalThis)){
+      this.fetcher=fetcher;this.token=null;
+      try{const saved=JSON.parse(globalThis.sessionStorage?.getItem('recruitment-task')||'null');if(saved&&/^[A-Za-z0-9_-]{1,80}$/.test(saved.conversationId)){this.conversationId=saved.conversationId;this.pendingTurn=saved.pendingTurn;}}catch{}
+      if(!this.conversationId)this.newConversation();
+    }
+    saveConversation(){try{globalThis.sessionStorage?.setItem('recruitment-task',JSON.stringify({conversationId:this.conversationId,pendingTurn:this.pendingTurn}));}catch{}}
+    newConversation(){this.conversationId=globalThis.crypto?.randomUUID?.()||'chat-'+Date.now()+'-'+Math.random().toString(36).slice(2);this.pendingTurn=null;this.saveConversation();}
     async request(path,body,method){
       const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),['/assistant','/execution/prepare'].includes(path)?120000:30000);
       try{
@@ -29,7 +34,11 @@
     async startDemo(){const data=await this.request('/auth/demo',{});this.token=data.access_token;return data;}
     register(data){return this.request('/auth/register',data);}
     async logout(){try{if(this.token)await this.request('/auth/logout',{});}finally{this.token=null;}}
-    async assistant(message,district=''){return this.request('/assistant',{message,district,conversation_id:this.conversationId});}
+    async assistant(message,district=''){
+      if(!this.pendingTurn||this.pendingTurn.message!==message||this.pendingTurn.district!==district)this.pendingTurn={message,district,conversation_id:this.conversationId,request_id:globalThis.crypto?.randomUUID?.()||'turn-'+Date.now()+'-'+Math.random().toString(36).slice(2)};
+      this.saveConversation();const result=await this.request('/assistant',this.pendingTurn);this.pendingTurn=null;this.saveConversation();return result;
+    }
+    task(){return this.request('/assistant/task?conversation_id='+encodeURIComponent(this.conversationId));}
     async portal(path,body){
       const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),20000);
       try{

@@ -86,7 +86,18 @@
  function reset(){panel.classList.remove('posting-chat-expanded');$('posting-expand-chat').textContent='放大對話';$('posting-expand-chat').setAttribute('aria-pressed','false');reviewDirty=[];reviewVersions=[];$('posting-review').src='about:blank';delete $('posting-review').dataset.jobId;jobs=[];proposals=[];batchId=null;completed=[];selected=0;$('posting-error').textContent='';panel.classList.remove('posting-is-expanded');$('posting-run').textContent='重試自動填表';setPhase('brief');setStatus('提出需求後，這裡會顯示實際輸入網站網址與填表的畫面。');}
  $('posting-again').addEventListener('click',()=>{api.newConversation();reset();$('posting-brief').value='';$('posting-brief').focus();});
  function sidebar(collapsed){if(workspace.classList.contains('sidebar-collapsed')!==collapsed)$('sidebar-toggle').click();}
- function activate(){active=true;collapsedByUs=!workspace.classList.contains('sidebar-collapsed');sidebar(true);window.streetMap.closeCompany(false);workspace.classList.add('posting-active');panel.hidden=false;window.radarFeatures.select('刊登召募');reset();defaultDistrict=$('city-district').value||'臺中市';$('posting-default-location').textContent='工作地點先暫定為雷達選取的'+defaultDistrict+'；如有不同地點，請直接告訴我。';connect().catch(showError);$('posting-brief').focus({preventScroll:true});}
+ async function restoreTask(){
+  const current=generation,conversation=api.conversationId;await connect();const task=await api.task();
+  if(!active||current!==generation||conversation!==api.conversationId||busy)return;
+  if(task.items.length){
+   jobs=task.items.map(i=>({role:i.title,hires:i.quantity}));batchId=task.batch_id;taskSummary();$('posting-task').hidden=false;
+   const summary=task.items.map(i=>[`${i.title} ${i.quantity}人`,i.location,i.salary_min==null?'薪資未指定':`${({monthly:'月薪',yearly:'年薪',hourly:'時薪'})[i.salary_type]||'薪資'} ${i.salary_min}–${i.salary_max}元`,i.description&&'工作內容：'+i.description,i.requirements&&'任職條件：'+i.requirements].filter(Boolean).join('\n')).join('\n\n');
+   chatMessage('assistant','已恢復招募條件：\n'+summary+'\n可在下方繼續補充。既有網站填表進度尚未接回，請先核對；系統不會自動重新填寫或送審。');
+   setStatus('已恢復招募條件，可在左側繼續補充。既有填表進度請先核對，系統不會自動重新填寫。');
+  }
+  else if(task.pending_question){chatMessage('assistant','已接回先前的招募需求，請問預計招募幾位'+task.pending_question.title+'？');}
+ }
+ function activate(){active=true;collapsedByUs=!workspace.classList.contains('sidebar-collapsed');sidebar(true);window.streetMap.closeCompany(false);workspace.classList.add('posting-active');panel.hidden=false;window.radarFeatures.select('刊登召募');reset();defaultDistrict=$('city-district').value||'臺中市';$('posting-default-location').textContent='工作地點先暫定為雷達選取的'+defaultDistrict+'；如有不同地點，請直接告訴我。';restoreTask().catch(showError);$('posting-brief').focus({preventScroll:true});}
  async function deactivate(){if(!active||busy&&phase==='complete')return;generation++;executionEpoch++;executionBusy=false;active=false;live.stop().catch(()=>{});panel.hidden=true;workspace.classList.remove('posting-active');if(collapsedByUs)sidebar(false);window.radarFeatures.select(null);}
  $('posting-exit').addEventListener('click',deactivate);window.recruitment={toggle(){active?deactivate():activate();},deactivate};renderArchive();
 })();
