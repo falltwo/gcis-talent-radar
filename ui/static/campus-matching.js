@@ -298,7 +298,9 @@
   }
   function activate(){active=true;workspace.classList.add('campus-active');tabs.hidden=false;context.hidden=false;window.radarFeatures.select('校園人才媒合');window.streetMap.closeCompany(false);selectView('schools');refresh(true);}
   function deactivate(){if(!active)return;active=false;if(popup)camera?.restore(true);cancelRequest();clearResults();busy(false);workspace.classList.remove('campus-active');tabs.hidden=true;context.hidden=true;panel.hidden=true;chat.hidden=false;window.radarFeatures.select(null);}
-  window.campusMatching={toggle(){active?deactivate():activate();},deactivate};
+  // Entry point for other features (the site scan): fill the search, then open, which searches straight away.
+  function open({query}={}){window.radarFeatures.closeOthers?.('校園人才媒合');if(query!==undefined)$('campus-query').value=query;if(active)refresh(true);else activate();}
+  window.campusMatching={toggle(){active?deactivate():activate();},open,deactivate};
   $('campus-filters').addEventListener('submit',event=>{event.preventDefault();refresh(true);});
   $('campus-retry').addEventListener('click',()=>refresh(true));
   $('campus-exit').addEventListener('click',deactivate);$('campus-show-all').addEventListener('click',()=>{if(popup)camera?.discard();closePopup({restore:false});fitAll();});

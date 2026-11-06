@@ -560,22 +560,11 @@
       salary: talent.districts[name].salary_floor_median,
     };
   }
-  // Each feature resets its own fields when it opens, so the values go in on the next frame.
-  function fill(key, carry) {
-    const set = (id, value) => {const el = $(id);if (!el || !value) return;el.value = value;el.dispatchEvent(new Event('input', {bubbles:true}));};
-    if (key === 'campus') {set('campus-query', carry.department);return;}
-    requestAnimationFrame(() => {
-      if (key === 'posting') {
-        set('posting-role', carry.role);set('posting-address', carry.place);
-        set('posting-brief', `在${carry.district}設廠，想招${carry.role || '現場技術人員'}${carry.salary ? `；當地製造類職缺起薪中位數 ${carry.salary.toLocaleString()} 元，薪資請參考` : ''}`);
-      } else {
-        // The agent checks for live mode after it opens and then writes its own sample query, so
-        // re-apply ours for two seconds unless the user has started typing something else.
-        const defaults = ['CNC 技術員', '找會 Python 的軟體工程師，在台中'];
-        const apply = () => {if (defaults.includes($('hunter-job').value) || $('hunter-job').value === carry.senior) {set('hunter-job', carry.senior);$('hunter-tag').textContent = carry.senior;}};
-        apply();[300, 800, 1500, 2200].forEach(delay => setTimeout(apply, delay));
-      }
-    });
+  // Each feature takes its values through its own open() entry point, so the site scan never touches their field ids.
+  function openFeature(key, carry) {
+    if (key === 'campus') return window.campusMatching?.open({query: carry.department});
+    if (key === 'posting') return window.recruitment?.open({note: `在${carry.place}設廠，想招${carry.role || '現場技術人員'}${carry.salary ? `；當地製造類職缺起薪中位數 ${carry.salary.toLocaleString()} 元，薪資請參考` : ''}`});
+    return window.headhunter?.open({job: carry.senior});
   }
   // ponytail: relative cut-off (the city median ratio) so the order survives changes in how the ratio is counted;
   // the rule itself is still open in issue #39.
@@ -631,11 +620,7 @@
       card.querySelector('button').textContent = `開啟${FEATURES[item.key]} →`;
       card.querySelector('button').addEventListener('click', () => {
         setStep('feature');
-        const carry = carryOver(name);
-        // Campus matching searches as soon as it opens, so its query has to be set first.
-        if (item.key === 'campus') fill('campus', carry);
-        document.querySelector(`.primary-feature-button[data-feature="${FEATURES[item.key]}"]`)?.click();
-        if (item.key !== 'campus') fill(item.key, carry);
+        openFeature(item.key, carryOver(name));
       });
       return card;
     }));
