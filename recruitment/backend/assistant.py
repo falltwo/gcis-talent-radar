@@ -24,7 +24,7 @@ def complete_pending_intake(users):
     if not count:return None
     for prior in reversed(users[:-1]):
         if is_information_request(prior):continue
-        match=re.search(r'(?:招募|招聘|徵才|徵求)\s*([^，,。；;\n]+?)[。\s]*$',prior)
+        match=re.search(r'(?:招募|招聘|徵才|徵求|想招(?:募)?)\s*([^，,。；;\n]+?)[。\s]*$',prior)
         if not match:continue
         title=match[1].strip()
         if not valid_title(title) or re.search(rf'{NUM}|與|和|及|、|[?？]',title):return None
@@ -83,6 +83,7 @@ def plan_request(ai, messages):
         '問題不需要問號，也不要求固定格式。「想了解一個品管員的工作內容」「一個前端工程師需要哪些技能」都是資訊查詢，數字不是建表意圖。'
         '使用者明確要建立企業職缺表且已提供職稱和招募人數才 action=draft；否則 action=clarify，reply 只追問缺的條件。'
         '「我要招募」「幫我招募」「請問可以幫我招募」都已表達建立職缺意圖，不必再要求說出建立職缺表。'
+        '「想招」「想招募」同樣表示招募意圖；「在太平區設廠，想招現場技術人員5人」的職稱僅為現場技術人員，地點太平區，人數5。'
         '若前文已說招募職稱，本次只回答人數或薪資，合併本次招募的使用者原文，僅追問仍缺的條件，不能重問建表意願。'
         '「任職條件熟悉如何操作量測儀器」是指定條件，不是詢問如何操作；判斷整句目的，不因請問、如何等單一詞彙改判查詢。'
         'request_indexes 選出本次建表必要的 user_requests 索引，必須包括最新一則，排除過去資訊查詢。'

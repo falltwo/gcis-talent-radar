@@ -145,3 +145,37 @@ def test_pending_intake_can_be_completed_after_questions_and_restart(c,monkeypat
         assert (item['title'],item['quantity'],item['location'])==('品管員',20,'南區')
         changed=say(restarted,h,'月薪4萬')
         assert changed['batch']['items'][0]['salary_min']==40000
+
+
+@pytest.mark.parametrize('prefix',['想招','想招募','我想招','我想招募','想要招','我們想招','我要招募'])
+def test_hiring_request_prefix_is_not_part_of_occupation(prefix):
+    from recruitment.backend.parser import parse
+    row,=parse('在太平區設廠，'+prefix+'現場技術人員5人')
+    assert (row['title'],row['quantity'],row['location'])==('現場技術人員',5,'太平區')
+    rows=parse(prefix+'現場技術人員與品管員各5人')
+    assert [r['title'] for r in rows]==['現場技術人員','品管員']
+
+
+def test_bad_model_title_cannot_override_correct_hiring_prefix_parser(c,monkeypatch):
+    from recruitment.backend.ai import Extraction
+    text='在太平區設廠，想招現場技術人員5人'
+    h=account(c)
+    monkeypatch.setattr(c.app.state.ai,'mode','auto')
+    monkeypatch.setattr(c.app.state.ai,'key','test-only')
+    def structured(schema,system,data):
+        assert schema is Extraction
+        return Extraction(items=[dict(title='想招現場技術人員',quantity=5,quantity_text='5',
+            evidence=text,description='',requirements='',location='太平區')],clarification='')
+    monkeypatch.setattr(c.app.state.ai,'structured',structured)
+    result=say(c,h,text)
+    row,=result['batch']['items']
+    assert (row['title'],row['quantity'],row['location'])==('現場技術人員',5,'太平區')
+    assert result['batch']['ai']['fallback_reason']=='invalid_job_title'
+
+
+@pytest.mark.parametrize('prefix',['想招','想招募'])
+def test_want_to_hire_pending_role_can_be_completed(c,prefix):
+    h=account(c)
+    assert say(c,h,'在太平區設廠，'+prefix+'現場技術人員')['kind']=='clarify'
+    row,=say(c,h,'5人')['batch']['items']
+    assert (row['title'],row['quantity'],row['location'])==('現場技術人員',5,'太平區')
