@@ -13,7 +13,7 @@
 | 前端資料 | 產生程式 | 本地輸入 |
 | --- | --- | --- |
 | `ui/static/district-stats.json` | `etl/build_district_stats.py` | `tc_factory_district_industry_annual.csv`、`tc_taiwanjobs_snapshot.csv`、同日逐郵遞區號原始職缺 CSV |
-| `ui/static/gcis-district-activity.json` | `etl/build_gcis_district_activity.py` | `data/raw/gcis_lists/setup`、`dissolved` 的月清冊；不把 daily 子目錄當完整月份 |
+| `ui/static/gcis-district-activity.json` | `etl/build_gcis_district_activity.py` | `data/raw/gcis_lists/setup`、`dissolved` 的月清冊與 `data/raw/tax_registry/bgmopen1_industry.csv` 公司存量；不把 daily 子目錄當完整月份 |
 | `ui/static/district-talent.json` | `etl/build_district_talent.py` | 各校系所畢業生、校區座標、行政區界線，以及同一份經驗證職缺快照 |
 
 原始來源連結及資料期別寫在 JSON 中。重建是重新計算本地資料，不代表向政府抓到新資料。
@@ -52,7 +52,9 @@
 
 從新設與解散月清冊中找最新月份，再往前取 12 個月。任一類缺檔都列入 `missing_months`，不視為該月 0 家；最新月份只到一類時，也會揭露缺另一類。表頭需有「公司所在地」，地址必須能辨認為臺中 29 區之一；任一類無法解析的列數達 1% 時不發布。
 
-「經營穩定」仍為解散家數／新設家數，沒有公司存量的標準退出率意義。
+整合 #48 後，市場活力使用（新設−解散）／現有公司家數，經營穩定使用解散／現有公司家數。分母來自財政部稅籍檔中營業地址在該區、組織別為公司且排除分公司的紀錄；JSON 揭露該檔日期。缺少有效分母時不計該區比率。
+
+同業群聚保留產業員工規模與 LQ；計算 LQ 所需的行政區／全市總員工數或該產業員工數若有保密／缺值，不將未知視為零，也不發布 LQ。個別產業已公布的員工規模仍可計分，畫面標示「LQ 無資料（僅依規模）」。未指定產業時，總員工數若不完整，整個群聚指標為無資料。
 
 ## 重建與排程
 
@@ -83,6 +85,6 @@ python -m etl.daily_refresh --skip-tax
 
 - 區中心點仍為區內代表點，不是區公所或產業聚落中心，太平區可能落在丘陵。
 - 畢業生來源仍只含大專校院，不含高職。
-- 沒有接入各區公司存量來計算標準退出率。
+- 公司存量仍是不同時點的稅籍快照，不等於月清冊期間內逐月平均存量。
 - 未新增各區求職者數及期望薪資；這次沒有完成公開來源調查，不宣稱不存在這些資料。
 - 畢業生／職缺比只作既有參考訊號，不等於可招到的人數、求職求才比或企業招募成功率。

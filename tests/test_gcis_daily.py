@@ -303,3 +303,11 @@ def test_api_marks_missing_and_partial_days(temp_db):
     assert data["missing_days"] == ["2026-11-03"] and by_day["2026-11-03"]["new"] is None  # 沒有資料，不是 0
     assert by_day["2026-11-02"]["new"] == 0 and by_day["2026-11-04"]["new"] == 1
     assert data["partial_days"] == ["2026-11-05"] and data["updated_through"] == "2026-11-04"
+
+
+def test_tax_registry_addresses_with_full_width_spaces_still_find_the_district():
+    addresses = pd.Series(["臺中市南\u3000區忠明南路1號", "台中市西\u3000區民權路2號", "臺中市西屯區市政路3號",
+                           "南投縣中寮鄉中寮村永平路1號"])
+    found = gcis_registry.taichung_district(addresses)
+    assert found.tolist()[:3] == ["南區", "西區", "西屯區"]  # 稅籍寫「南　區」，中間有全形空白
+    assert pd.isna(found.iloc[3])

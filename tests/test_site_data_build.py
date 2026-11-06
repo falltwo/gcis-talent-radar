@@ -16,6 +16,16 @@ def csv_file(path, rows, fields=None):
 
 
 @pytest.fixture
+def company_stock(tmp_path,monkeypatch):
+    path=tmp_path/'tax.csv'
+    csv_file(path,[{'臺中行政區':'太平區','組織別名稱':'有限公司'},
+                   {'臺中行政區':'太平區','組織別名稱':'分公司'},
+                   {'臺中行政區':'太平區','組織別名稱':'獨資'}])
+    monkeypatch.setattr(activity,'TAX',path)
+    return path
+
+
+@pytest.fixture
 def site_inputs(tmp_path):
     processed, raw = tmp_path/'processed', tmp_path/'raw'
     csv_file(processed/'tc_factory_district_industry_annual.csv', [
@@ -57,7 +67,7 @@ def test_stats_uses_latest_year_preserves_suppression_and_latest_deduplicated_jo
     assert result['jobs']['excluded_location_rows'] == 1
 
 
-def test_activity_includes_all_twelve_months_and_reports_an_unpaired_latest_month(tmp_path,monkeypatch):
+def test_activity_includes_all_twelve_months_and_reports_an_unpaired_latest_month(tmp_path,monkeypatch,company_stock):
     lists = tmp_path/'lists';monkeypatch.setattr(activity,'LISTS',lists)
     for month in activity.months('2026-09',12):
         for kind in ('setup','dissolved'):
@@ -66,6 +76,7 @@ def test_activity_includes_all_twelve_months_and_reports_an_unpaired_latest_mont
     assert result['window']==['2025-10','2026-09']
     assert result['missing_months']==[]
     assert result['districts']['太平區']['setup']==12
+    assert result['districts']['太平區']['companies']==1
     csv_file(lists/'dissolved/2026-10.csv',[{'公司所在地':'臺中市太平區中山路1號'}])
     result=activity.build()
     assert result['window']==['2025-11','2026-10']
@@ -203,3 +214,9 @@ def test_employee_unknowns_and_invalid_counts_are_not_zeroed(site_inputs):
     assert build(processed_dir=processed,raw_dir=raw)['factories']['employees']['太平區']['機械設備業'] is None
     rows[1]['employees']='NaN';csv_file(path,rows)
     with pytest.raises(ValueError,match='employee count'):build(processed_dir=processed,raw_dir=raw)
+
+
+def test_invalid_tax_stock_does_not_publish_company_ratios(tmp_path,monkeypatch):
+    path=tmp_path/'bad-tax.csv';monkeypatch.setattr(activity,'TAX',path)
+    csv_file(path,[{'error':'upstream unavailable'}])
+    with pytest.raises(ValueError):activity.companies()
