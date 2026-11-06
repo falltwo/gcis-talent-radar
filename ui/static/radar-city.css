@@ -97,10 +97,10 @@ body.analysis-paused .city-caption a[href="/compare"],
 body.analysis-paused .city-callout a[href="#expansion"]{display:none!important}
 body.analysis-paused .city-caption{margin-bottom:0}
 
-/* Reserved primary product entries, placed above the map workspace. */
-.radar-workspace{grid-template-rows:86px minmax(0,1fr)}
-.radar-sidebar{grid-column:1;grid-row:1 / span 2}
-.city-stage{grid-column:2;grid-row:2}
+/* Hiring entries are reached from the selected-site channel cards. */
+.radar-workspace{grid-template-rows:minmax(0,1fr)}
+.radar-sidebar{grid-column:1;grid-row:1}
+.city-stage{grid-column:2;grid-row:1}
 .primary-feature-nav{grid-column:2;grid-row:1;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;align-items:stretch;padding:13px 20px;background:#f8fafd;border-bottom:1px solid #d8e1ee;z-index:3}
 .primary-feature-button{display:flex;justify-content:center;align-items:center;gap:12px;min-width:0;min-height:58px;padding:10px 14px;border-radius:10px;border:1px solid #365e94;background:#294f83;color:#fff;box-shadow:0 4px 10px #294f8314;font-size:16px;font-weight:650;letter-spacing:.02em;transition:background .18s ease,box-shadow .18s ease}
 .primary-feature-button:hover{background:#3769a6;box-shadow:0 6px 14px #294f8329}
@@ -115,3 +115,5 @@ body.analysis-paused .city-caption{margin-bottom:0}
 @media(max-width:1100px){.primary-feature-nav{gap:8px;padding:13px 14px}.primary-feature-button{gap:7px;padding:10px 8px;font-size:14px}.primary-feature-button svg{width:22px;height:22px}}
 @media(max-width:720px){.primary-feature-nav{order:-2;flex-shrink:0;grid-column:auto;grid-row:auto;padding:12px;min-height:90px}.primary-feature-button{flex-direction:column;gap:5px;padding:9px 5px;font-size:13px}.primary-feature-button svg{width:23px;height:23px}}
 @media(prefers-reduced-motion:reduce){.primary-feature-button{transition:none}}
+
+.primary-feature-nav[hidden]{display:none}

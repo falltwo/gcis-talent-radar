@@ -2,183 +2,296 @@
  "source": "OpenStreetMap 國道與快速公路交流道（highway=motorway_junction，不含系統交流道、休息站、平交路口）、各區區公所位置",
  "source_url": "https://www.openstreetmap.org/copyright",
  "license": "© OpenStreetMap contributors, ODbL",
- "fetched_at": "2026-11-06T01:55:45+08:00",
+ "fetched_at": "2026-11-06T02:53:20+08:00",
  "junctions": 157,
- "rule": "區公所到最近交流道的直線距離（公里）；找不到區公所時用區內離邊界最遠的點",
+ "hubs": {
+  "hsr": {
+   "name": "高鐵臺中站",
+   "osm_name": "台中",
+   "point": [
+    120.61594,
+    24.1121
+   ]
+  },
+  "airport": {
+   "name": "臺中國際機場",
+   "osm_name": "臺中清泉崗機場",
+   "point": [
+    120.62584,
+    24.26685
+   ]
+  },
+  "port": {
+   "name": "臺中港",
+   "osm_name": "臺中港",
+   "point": [
+    120.50785,
+    24.25788
+   ]
+  }
+ },
+ "rule": "區公所到最近交流道、臺中港、臺中國際機場、高鐵臺中站的直線距離（公里）；找不到區公所時用區內離邊界最遠的點",
  "districts": {
   "龍井區": {
    "nearest_km": 2.2,
    "nearest_name": "龍井交流道",
    "inside": 3,
-   "from": "區公所"
+   "from": "區公所",
+   "hsr_km": 11.4,
+   "airport_km": 11.5,
+   "port_km": 8.2
   },
   "大雅區": {
    "nearest_km": 2.7,
    "nearest_name": "大雅交流道",
    "inside": 1,
-   "from": "區公所"
+   "from": "區公所",
+   "hsr_km": 13.3,
+   "airport_km": 4.7,
+   "port_km": 14.6
   },
   "沙鹿區": {
    "nearest_km": 3.0,
    "nearest_name": "沙鹿交流道",
    "inside": 3,
-   "from": "區公所"
+   "from": "區公所",
+   "hsr_km": 14.3,
+   "airport_km": 7.1,
+   "port_km": 6.5
   },
   "梧棲區": {
    "nearest_km": 1.0,
    "nearest_name": "梧棲交流道",
    "inside": 3,
-   "from": "區公所"
+   "from": "區公所",
+   "hsr_km": 18.0,
+   "airport_km": 9.6,
+   "port_km": 2.4
   },
   "豐原區": {
    "nearest_km": 2.5,
    "nearest_name": "潭子交流道",
    "inside": 3,
-   "from": "區公所"
+   "from": "區公所",
+   "hsr_km": 17.7,
+   "airport_km": 9.8,
+   "port_km": 21.4
   },
   "東勢區": {
    "nearest_km": 0.4,
    "nearest_name": null,
    "inside": 1,
-   "from": "區公所"
+   "from": "區公所",
+   "hsr_km": 26.9,
+   "airport_km": 20.5,
+   "port_km": 32.5
   },
   "后里區": {
    "nearest_km": 1.2,
    "nearest_name": "后里交流道",
    "inside": 2,
-   "from": "區公所"
+   "from": "區公所",
+   "hsr_km": 23.4,
+   "airport_km": 9.6,
+   "port_km": 21.2
   },
   "神岡區": {
    "nearest_km": 2.2,
    "nearest_name": "神岡交流道",
    "inside": 4,
-   "from": "區公所"
+   "from": "區公所",
+   "hsr_km": 16.8,
+   "airport_km": 3.7,
+   "port_km": 15.6
   },
   "新社區": {
    "nearest_km": 3.1,
    "nearest_name": null,
    "inside": 0,
-   "from": "區公所"
+   "from": "區公所",
+   "hsr_km": 23.8,
+   "airport_km": 19.0,
+   "port_km": 30.7
   },
   "石岡區": {
    "nearest_km": 0.7,
    "nearest_name": null,
    "inside": 2,
-   "from": "區公所"
+   "from": "區公所",
+   "hsr_km": 24.5,
+   "airport_km": 15.7,
+   "port_km": 27.7
   },
   "外埔區": {
    "nearest_km": 1.0,
    "nearest_name": "大甲交流道",
    "inside": 2,
-   "from": "區公所"
+   "from": "區公所",
+   "hsr_km": 24.6,
+   "airport_km": 7.8,
+   "port_km": 17.0
   },
   "大肚區": {
    "nearest_km": 2.7,
    "nearest_name": "和美交流道",
    "inside": 1,
-   "from": "區公所"
+   "from": "區公所",
+   "hsr_km": 8.3,
+   "airport_km": 15.2,
+   "port_km": 12.4
   },
   "大甲區": {
    "nearest_km": 2.1,
    "nearest_name": "大甲交流道",
    "inside": 2,
-   "from": "區公所"
+   "from": "區公所",
+   "hsr_km": 26.2,
+   "airport_km": 9.1,
+   "port_km": 15.4
   },
   "大安區": {
    "nearest_km": 2.1,
    "nearest_name": "大安二交流道",
    "inside": 4,
-   "from": "區公所"
+   "from": "區公所",
+   "hsr_km": 26.1,
+   "airport_km": 9.6,
+   "port_km": 12.6
   },
   "清水區": {
    "nearest_km": 1.5,
    "nearest_name": "清水交流道",
    "inside": 3,
-   "from": "區公所"
+   "from": "區公所",
+   "hsr_km": 18.2,
+   "airport_km": 6.7,
+   "port_km": 5.4
   },
   "霧峰區": {
    "nearest_km": 1.0,
    "nearest_name": null,
    "inside": 20,
-   "from": "區公所"
+   "from": "區公所",
+   "hsr_km": 10.2,
+   "airport_km": 24.0,
+   "port_km": 29.2
   },
   "大里區": {
    "nearest_km": 0.6,
    "nearest_name": "大里二交流道",
    "inside": 10,
-   "from": "區公所"
+   "from": "區公所",
+   "hsr_km": 7.2,
+   "airport_km": 19.4,
+   "port_km": 25.1
   },
   "南區": {
    "nearest_km": 1.2,
    "nearest_name": "大里一交流道",
    "inside": 0,
-   "from": "區公所"
+   "from": "區公所",
+   "hsr_km": 4.9,
+   "airport_km": 17.0,
+   "port_km": 22.2
   },
   "烏日區": {
    "nearest_km": 0.9,
    "nearest_name": "成功交流道",
    "inside": 5,
-   "from": "區公所"
+   "from": "區公所",
+   "hsr_km": 1.1,
+   "airport_km": 17.9,
+   "port_km": 20.6
   },
   "中區": {
    "nearest_km": 3.1,
    "nearest_name": "太平交流道",
    "inside": 0,
-   "from": "區公所"
+   "from": "區公所",
+   "hsr_km": 7.4,
+   "airport_km": 14.7,
+   "port_km": 21.5
   },
   "西區": {
    "nearest_km": 3.6,
    "nearest_name": "大里一交流道",
    "inside": 0,
-   "from": "區公所"
+   "from": "區公所",
+   "hsr_km": 6.5,
+   "airport_km": 14.6,
+   "port_km": 21.0
   },
   "南屯區": {
    "nearest_km": 2.4,
    "nearest_name": "南屯二交流道",
    "inside": 7,
-   "from": "區公所"
+   "from": "區公所",
+   "hsr_km": 3.8,
+   "airport_km": 14.8,
+   "port_km": 19.4
   },
   "北區": {
    "nearest_km": 3.7,
    "nearest_name": "太原交流道",
    "inside": 0,
-   "from": "區公所"
+   "from": "區公所",
+   "hsr_km": 9.0,
+   "airport_km": 12.5,
+   "port_km": 20.4
   },
   "西屯區": {
    "nearest_km": 0.4,
    "nearest_name": "西屯一交流道",
    "inside": 13,
-   "from": "區公所"
+   "from": "區公所",
+   "hsr_km": 6.2,
+   "airport_km": 11.2,
+   "port_km": 16.4
   },
   "北屯區": {
    "nearest_km": 2.1,
    "nearest_name": "崇德交流道",
    "inside": 7,
-   "from": "區公所"
+   "from": "區公所",
+   "hsr_km": 10.6,
+   "airport_km": 11.2,
+   "port_km": 20.0
   },
   "潭子區": {
    "nearest_km": 1.0,
    "nearest_name": "潭子交流道",
    "inside": 3,
-   "from": "區公所"
+   "from": "區公所",
+   "hsr_km": 14.9,
+   "airport_km": 12.1,
+   "port_km": 22.7
   },
   "東區": {
    "nearest_km": 0.6,
    "nearest_name": "太平交流道",
    "inside": 1,
-   "from": "區公所"
+   "from": "區公所",
+   "hsr_km": 9.3,
+   "airport_km": 16.4,
+   "port_km": 24.0
   },
   "太平區": {
    "nearest_km": 1.3,
    "nearest_name": "太平交流道",
    "inside": 2,
-   "from": "區公所"
+   "from": "區公所",
+   "hsr_km": 10.5,
+   "airport_km": 18.1,
+   "port_km": 25.8
   },
   "和平區": {
    "nearest_km": 11.0,
    "nearest_name": null,
    "inside": 0,
-   "from": "區公所"
+   "from": "區公所",
+   "hsr_km": 28.1,
+   "airport_km": 28.1,
+   "port_km": 39.2
   }
  }
 }

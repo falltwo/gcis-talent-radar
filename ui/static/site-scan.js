@@ -8,14 +8,17 @@
   const CRITERIA = [
     {id:'vitality', label:'市場活力', hint:'近一年（新設−解散）÷ 現有公司家數＝淨增率，全產業（名冊沒有行業欄）', unit:'%', better:1, words:['活力','成長','新創']},
     {id:'stability', label:'經營穩定', hint:'近一年解散 ÷ 現有公司家數＝退出率，越低越好', unit:'%', better:-1, words:['穩定','風險']},
-    {id:'cluster', label:'同業群聚', hint:'同業員工數（規模）與區位商數 LQ（集中度，>1 代表比全市集中）各占一半', unit:'人', better:1, words:['供應鏈','上下游','群聚','聚落']},
+    {id:'cluster', label:'同業群聚', hint:'同業員工數（規模）與區位商數 LQ（集中度，>1 代表比全市集中）各占一半；LQ 所需總數有缺值時僅依已公布規模', unit:'人', better:1, words:['供應鏈','上下游','群聚','聚落']},
     {id:'transport', label:'交通便利', hint:'區公所到最近國道或快速公路交流道的距離，越近越好（不含系統交流道）', unit:'公里', better:-1, words:['交流道','國道','交通','物流','運輸'], optional:true},
+    {id:'port', label:'靠近港口', hint:'區公所到臺中港的距離，越近越好（出口、海運）', unit:'公里', better:-1, words:['港口','臺中港','台中港','海運','出口'], optional:true},
+    {id:'airport', label:'靠近機場', hint:'區公所到臺中國際機場的距離，越近越好（空運）', unit:'公里', better:-1, words:['機場','空運'], optional:true},
+    {id:'rail', label:'靠近高鐵', hint:'區公所到高鐵臺中站的距離，越近越好（出差、人員往來）', unit:'公里', better:-1, words:['高鐵'], optional:true},
     {id:'competition', label:'避開競爭', hint:'每百家工廠的製造類職缺，越少越好（職缺與工廠年份不同）', unit:'筆', better:-1, words:['競爭','搶人']},
   ];
   // ponytail: fixed gate; districts with few factories are not realistic sites and would win "low competition" by default.
   const MIN_FACTORIES = 100;
   const PREFERENCE = {'上下游群聚優先':'cluster','避開激烈競爭':'competition','靠近交通樞紐':'transport'};
-  const NO_DATA_WORDS = ['港口','機場','高鐵'];
+  const NO_DATA_WORDS = [];  // 交流道、港口、機場、高鐵都有資料了；之後再有沒資料的條件就加在這裡
   let map, geo, activity, stats, transport, talent, intent, aiIntent = null, industry, checked = {}, boosted = {}, ranking = [], frame = 0, started = false;
   let revealed = false, located = false, step = 'intro', navigationEpoch = 0, intentKey = null;
   let comparedDistricts = [], selectedDistrict = null;
@@ -120,24 +123,37 @@
     if (id === 'vitality') return row.companies ? (row.setup - row.dissolved) / row.companies : null;
     if (id === 'stability') return row.companies ? row.dissolved / row.companies : null;
     if (id === 'transport') return transport.districts[name]?.nearest_km ?? null;
+    if (id === 'port') return transport.districts[name]?.port_km ?? null;
+    if (id === 'airport') return transport.districts[name]?.airport_km ?? null;
+    if (id === 'rail') return transport.districts[name]?.hsr_km ?? null;
     if (id === 'cluster') return clusterParts(name);
     if (stats.jobs.capped.includes(name)) return null;
     const postings = stats.jobs.metrics.manufacturing_postings[name];
-    return postings === undefined ? null : postings / factoryTotal(name) * 100;
+    return postings == null ? null : postings / factoryTotal(name) * 100;
   }
   // Cluster = size and specialisation, as the EU Cluster Observatory and US Cluster Mapping do: employees in the
   // industry, and the location quotient (its share of the district's factory jobs over its share city-wide).
-  const sumKnown = row => Object.values(row || {}).reduce((sum, count) => sum + (count ?? 0), 0);
+  // A suppressed cell is unknown, never zero. LQ requires complete district and city totals.
+  const completeTotal = row => {
+    const values = Object.values(row || {});
+    return values.length && values.every(v => Number.isFinite(v) && v >= 0)
+      ? values.reduce((sum, v) => sum + v, 0) : null;
+  };
   function clusterParts(name) {
-    const staff = stats.factories.employees?.[name];
+    const employees = stats.factories.employees, staff = employees?.[name];
     if (!staff) return null;
-    const total = sumKnown(staff);
-    if (!industry) return total ? {size:total, lq:null} : null;
+    const total = completeTotal(staff);
+    if (!industry) return total === null ? null : {size:total, lq:null};
     const size = staff[industry];
-    if (size === null || size === undefined || !total) return null;
-    const city = Object.values(stats.factories.employees), cityTotal = city.reduce((sum, row) => sum + sumKnown(row), 0);
-    const cityIndustry = city.reduce((sum, row) => sum + (row[industry] ?? 0), 0);
-    return {size, lq: cityIndustry ? (size / total) / (cityIndustry / cityTotal) : null};
+    if (!Number.isFinite(size) || size < 0) return null;
+    // Published industry size remains useful even when LQ cannot be computed.
+    const unknown = {size, lq:null};
+    if (total === null || total <= 0) return unknown;
+    const city = Object.keys(stats.factories.districts).map(district => employees[district]);
+    const totals = city.map(completeTotal), sizes = city.map(row => row?.[industry]);
+    if (totals.some(v => v === null) || sizes.some(v => !Number.isFinite(v) || v < 0)) return unknown;
+    const cityTotal = totals.reduce((sum, v) => sum + v, 0), cityIndustry = sizes.reduce((sum, v) => sum + v, 0);
+    return {size, lq: cityTotal > 0 && cityIndustry > 0 ? (size / total) / (cityIndustry / cityTotal) : null};
   }
   const minMax = values => {
     const known = Object.values(values).filter(v => v !== null && v !== undefined), low = Math.min(...known), high = Math.max(...known);
@@ -197,8 +213,11 @@
     if (v === null || v === undefined) return '無資料';
     if (c.id === 'stability') return `退出率 ${(v * 100).toFixed(1)}%`;
     if (c.id === 'transport') return `最近交流道 ${v.toFixed(1)} 公里`;
+    if (c.id === 'port') return `到臺中港 ${v.toFixed(1)} 公里`;
+    if (c.id === 'airport') return `到機場 ${v.toFixed(1)} 公里`;
+    if (c.id === 'rail') return `到高鐵站 ${v.toFixed(1)} 公里`;
     if (c.id === 'vitality') return `淨增 ${v >= 0 ? '+' : ''}${(v * 100).toFixed(1)}%`;
-    if (c.id === 'cluster') return `${v.size.toLocaleString()} 人${v.lq === null ? '' : `・LQ ${v.lq.toFixed(2)}`}`;
+    if (c.id === 'cluster') return `${v.size.toLocaleString()} 人${v.lq === null ? (industry ? '・LQ 無資料（僅依規模）' : '') : `・LQ ${v.lq.toFixed(2)}`}`;
     if (c.id === 'competition') return `每百家工廠 ${Math.round(v)} 筆`;
     return `${v.toLocaleString()} ${c.unit}`;
   }
@@ -249,7 +268,7 @@
       row.textContent = `${run.label}：${run.top3.join('、')}`;
       return row;
     }));
-    $('scan-source').textContent = `分數 0–100 是 ${candidates.length} 個候選區互相比較的相對值，不是預測或匹配率；製造業工廠不到 ${MIN_FACTORIES} 家的 ${geo.features.length - candidates.length} 區不列入。資料：商工登記 ${activity.window.join(' 至 ')}${activity.missing_months.length ? `（缺 ${activity.missing_months.join('、')}）` : ''}、稅籍現有公司 ${activity.companies_as_of}、工廠校正 ${stats.factories.year} 年（家數與員工數）、就業通職缺 ${stats.jobs.snapshot_date}、OpenStreetMap 交流道 ${transport.fetched_at.slice(0, 10)}。市場活力、經營穩定與同業群聚的算法依美國普查局 BDS、歐盟統計局企業人口統計與產業群聚觀測站。`;
+    $('scan-source').textContent = `分數 0–100 是 ${candidates.length} 個候選區互相比較的相對值，不是預測或匹配率；製造業工廠不到 ${MIN_FACTORIES} 家的 ${geo.features.length - candidates.length} 區不列入。資料：商工登記 ${activity.window.join(' 至 ')}${activity.missing_months.length ? `（缺 ${activity.missing_months.join('、')}）` : ''}、稅籍現有公司 ${activity.companies_as_of}、工廠校正 ${stats.factories.year} 年（家數與員工數）、就業通職缺 ${stats.jobs.snapshot_date}、OpenStreetMap 交流道與港口、機場、高鐵站 ${transport.fetched_at.slice(0, 10)}。市場活力、經營穩定與同業群聚的算法依美國普查局 BDS、歐盟統計局企業人口統計與產業群聚觀測站。`;
   }
 
   function bounds(feature) {
@@ -572,8 +591,8 @@
     const nextKey=JSON.stringify(intent);
     const aiRequest = nextKey!==intentKey ? requestIntent(intent) : null;
     try {
-      if (!geo) [geo, activity, stats, transport] = await Promise.all(['/static/taichung-districts.geojson','/static/gcis-district-activity.json?v=20261106-rate1','/static/district-stats.json?v=20261106-lq1','/static/district-transport.json?v=20261106-osm1'].map(async url => {
-        const response = await fetch(url);
+      if (!geo) [geo, activity, stats, transport] = await Promise.all(['/static/taichung-districts.geojson','/static/gcis-district-activity.json?v=20261106-rate1','/static/district-stats.json?v=20261106-lq1','/static/district-transport.json?v=20261106-hubs1'].map(async url => {
+        const response = await fetch(url, {cache:'no-cache'});
         if (!response.ok) throw Error(url);
         return response.json();
       }));

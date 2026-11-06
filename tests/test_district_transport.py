@@ -22,3 +22,16 @@ def test_district_office_must_sit_inside_its_district():
         {"tags": {"name": "中區區公所"}, "lon": 121.5, "lat": 25.0},  # 不在區內：不用
     ], shapes)
     assert set(found) == {"南區", "南屯區"}
+
+
+def test_hubs_take_the_harbour_not_the_railway_station_named_after_it():
+    from etl.build_district_transport import hubs
+
+    found = hubs([
+        {"lon": 120.6027, "lat": 24.3043, "tags": {"name": "臺中港", "railway": "station", "operator": "國營臺灣鐵路股份有限公司"}},
+        {"center": {"lon": 120.5079, "lat": 24.2579}, "tags": {"name": "臺中港", "landuse": "harbour"}},
+        {"center": {"lon": 120.6258, "lat": 24.2668}, "tags": {"name": "臺中清泉崗機場", "aeroway": "aerodrome", "iata": "RMQ"}},
+        {"lon": 120.6159, "lat": 24.1121, "tags": {"name": "台中", "railway": "station", "operator": "台灣高速鐵路股份有限公司"}},
+    ])
+    assert found["port"]["point"] == [120.5079, 24.2579]
+    assert found["airport"]["name"] == "臺中國際機場" and found["hsr"]["osm_name"] == "台中"
