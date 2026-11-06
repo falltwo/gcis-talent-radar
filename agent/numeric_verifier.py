@@ -243,25 +243,57 @@ def _matches_rounding(text, number, fields):
 
 # 期別代碼要明寫是期別才算，前後都看：「資料期間 11412」「114 年 12 月（11412）」「11412 是資料期別」
 # 「每月為11412」「行業代碼11412」不算，不能拿來支持人數、單位數
-_PERIOD_BEFORE_RE = re.compile(r"(?:(?:資料|統計)?期別|(?:資料|統計)期間|資料期)\s*(?:為|是|[:：])?\s*$"
+_MARKS = r"[\s*_「『」』\"'（）()]*"
+# 數字前面明寫期別：「資料期間 11412」「資料期別（11412）」「資料期別：**11412**」「114 年 12 月（11412）」
+_PERIOD_BEFORE_RE = re.compile(r"(?:(?:資料|統計)?期別|(?:資料|統計)期間|資料期)\s*(?:為|是|[:：])?" + _MARKS + "$"
                                r"|\d\s*年\s*\d{1,2}\s*月\s*[（(]\s*$")
-_PERIOD_AFTER_RE = re.compile(r"[\s*_」』\"'）)]*(?:是|為|即|代表|表示|指)?\s*(?:資料|統計)?期別"
-                              r"|[\s*_」』\"'）)]*(?:是|為|即|代表|表示|指)?\s*[（(]?\s*民國\s*\d{3}\s*年\s*\d{1,2}\s*月")
+# 數字後面主動說明它是期別：「11412 是資料期別」「11412 代表資料期間」「11412 表示民國114年12月」。
+# 說明要一路到這一小段結束：「11412 表示民國114年12月的人數」「11412 為資料期間內人數」不算。
+_PERIOD_CLAIM_RE = re.compile(_MARKS + r"(?:只是|就是|是|為|即|代表|表示|指)\s*" + _MARKS
+                              + r"(?:(?:資料|統計)?(?:期別|期間)(?:代碼)?|民國\s*\d{3}\s*年\s*\d{1,2}\s*月)" + _MARKS + "$")
+# 數字後面只附註年月：「11412（民國114年12月）」，比較弱，數字必須是整句開頭才算。
+_PERIOD_NOTE_RE = re.compile(_MARKS + r"[（(]\s*民國\s*\d{3}\s*年\s*\d{1,2}\s*月\s*[）)]")
+# 「不能把 11412 當成人數」：明說它不是數量
+_NOT_QUANTITY_BEFORE_RE = re.compile(r"[\s*_「『\"'（(>#-]*(?:所以|因此|但|但是)?\s*(?:不能|不應|不要|不可|不得|別|勿)\s*(?:直接)?\s*把" + _MARKS + "$")
+_NOT_QUANTITY_AFTER_RE = re.compile(_MARKS + r"(?:直接)?(?:當成|當作|視為|誤讀為|誤認為|解讀為)\s*"
+                                    r"(?:投保|製造業)?(?:人數|數量|單位數|家數|筆數|數字|總數)")
+# 句子開頭的標點、粗體、引號、列表符號、標題符號
+_LEAD_RE = re.compile(r"[\s*_「『」』\"'（(）)>#\-]*")
+# 數字前面同一句裡，只能有這些中性詞（以逗號、冒號、換行分段）。「投保人數：11412 是資料期別」「投保人數\n11412…」
+# 看起來都像「欄位：值」（Markdown 單一換行會併成同一行），所以前面出現欄位名就不承認後面的期別說明。
+_NEUTRAL_WORDS = {"", "答案", "結論", "說明", "回答", "不行", "不可以", "不能", "不是", "否", "注意", "重點",
+                  "所以", "因此", "也就是說", "換句話說", "其中", "查證結果", "查證後", "簡單說"}
 
 
-# 數字後面的期別說明，只在數字自己就是句子開頭時才算（「11412 是資料期別」）。
-# 前面接了任何字（「投保人數 11412（民國114年12月）」「投保單位數等於11412…」）就只看前面的期別字樣。
-_CLAUSE_START_RE = re.compile(r"[\s*_「『\"'（(]*$")
+_NOT_QUANTITY_PART_RE = re.compile(
+    r"[\s*_「『\"'（(>#-]*(?:所以|因此|但|但是)?\s*(?:不能|不應|不要|不可|不得|別|勿)\s*(?:直接)?\s*把"
+    r"[\s*_「『」』\"']*\d{5}[\s*_「『」』\"']*(?:直接)?(?:當成|當作|視為|誤讀為|誤認為|解讀為)\s*"
+    r"(?:投保|製造業)?(?:人數|數量|單位數|家數|筆數|數字|總數)[\s*_」』\"'）)]*")
+
+
+def _neutral_lead(sentence):
+    # 「不應把 11412 當成數量，11412 是資料期別」：前一段明說它不是數量，也算中性
+    return all(_LEAD_RE.sub("", part) in _NEUTRAL_WORDS or _NOT_QUANTITY_PART_RE.fullmatch(part)
+               for part in re.split(r"[，,：:、；;\n]", sentence))
 
 
 def _is_period_code(text, number, period_codes):
     if number.unit or str(number.display) not in period_codes:
         return False
-    prefix = _clause_prefix(text, number.start)
-    if _PERIOD_BEFORE_RE.search(prefix):
+    before = text[:number.start]
+    # 前後語境都只看到句號為止：換行、逗號、冒號後面的數字仍屬於前面的欄位
+    sentence = re.split(r"[。！？!?]", before)[-1]
+    if _PERIOD_BEFORE_RE.search(sentence):
         return True
     after = re.split(r"[，,。；;！？!?\n]", text[number.end:])[0]
-    return _CLAUSE_START_RE.fullmatch(prefix) is not None and _PERIOD_AFTER_RE.match(after) is not None
+    clause = re.split(r"[，,、；;：:\n]", sentence)[-1]
+    if _PERIOD_CLAIM_RE.match(after) and _neutral_lead(sentence):
+        return True
+    if (_NOT_QUANTITY_BEFORE_RE.fullmatch(clause) and _NOT_QUANTITY_AFTER_RE.match(after)
+            and _neutral_lead(sentence[:len(sentence) - len(clause)])):
+        return True
+    # 「投保人數：\n11412（民國114年12月）」：只附註年月時，前面整句都不能有別的字
+    return _PERIOD_NOTE_RE.match(after) is not None and _LEAD_RE.fullmatch(sentence) is not None
 
 
 # 中文數量（兩萬人、三十六萬、兩成、一半、翻倍、③）無法對到工具欄位，一律當成未驗證的數字。
