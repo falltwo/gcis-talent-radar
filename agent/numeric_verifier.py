@@ -1,9 +1,11 @@
 """Lexical numeric guardrail, with separate metadata and user assumptions.
 
 Exact quantity overlap is not semantic fact-checking. Display rounding is
-limited to named monetary fields with explicit units, to whole numbers, and to
-values marked as approximate (萬 or 約) that keep two significant digits.
-A literal data period code (11412) counts only when it equals data_period. User-attributed conditions
+limited to named monetary fields with explicit units, to whole yuan, and to
+values marked as approximate (萬 or 約) that keep two significant digits; a
+rounded value must come from a field of the same kind (money or count).
+A literal data period code (11412) counts only when it equals data_period
+and is written as a period. User-attributed conditions
 are not tool observations; without user_query their input provenance is unknown.
 """
 import re
@@ -242,27 +244,61 @@ def _matches_rounding(text, number, fields):
 
 
 _APPROX_RE = re.compile(r"(?:約|大約|大概|將近)(?:是|為|合)?\s*$")
+_MONEY_KEY_RE = re.compile(r"salary|wage|capital|pay|amount|price|cost|income", re.IGNORECASE)
+_MONEY_WORD_RE = re.compile(r"薪|資本|金額|元")
+_COUNT_UNITS = {"人", "家", "筆", "個"}
+# 期別代碼只在「資料期間 11412」「12 月（11412）」這種語境才算，不能拿來支持家數或人數
+_PERIOD_CONTEXT_RE = re.compile(r"(?:期別|期間|資料期|代碼|月)\s*(?:為|是|[:：（(])?\s*$")
 
 
-def _matches_approximation(text, number, truth_nums):
-    """36,201.78 → 36,202；約 36,200 元、3.6 萬元、36.2 萬人。數字必須是資料四捨五入後的結果。"""
+def _number_kind(text, number):
+    """金額或數量；百分比與沒有單位的數字不做近似比對。"""
+    unit = number.unit[1:] if number.unit.startswith("萬") else number.unit
+    if unit == "元":
+        return "money"
+    if unit in _COUNT_UNITS:
+        return "count"
+    if number.unit == "萬":  # 「約3.6萬」：看同一句前面講的是薪資還是人數
+        return "money" if _MONEY_WORD_RE.search(_clause_prefix(text, number.start)) else "count"
+    return None
+
+
+def _matches_approximation(text, number, fields):
+    """36,201.78 元 → 36,202 元；約 36,200 元、3.6 萬元、36.2 萬人。
+
+    數字必須是同類欄位（金額欄位對元、整數欄位對人／家／筆）四捨五入到寫出來的位數後的結果。
+    """
+    kind = _number_kind(text, number)
+    if kind is None:
+        return False
     exponent = number.display.as_tuple().exponent
     approximate = number.scale == 10000 or _APPROX_RE.search(text[:number.start]) is not None
     if approximate:
-        normalized = number.display.normalize().as_tuple()
-        if len(normalized.digits) < 2:  # 「約 3 萬」這種一位有效數字太粗，不放行
+        digits = number.display.normalize().as_tuple() if exponent >= 0 else number.display.as_tuple()
+        if len(digits.digits) < 2:  # 「約 3 萬」這種一位有效數字太粗，不放行
             return False
-        exponent = max(exponent, normalized.exponent)  # 約 36,200 → 取到百位
-    elif exponent < 0 or number.scale != 1:
-        return False
+        if exponent >= 0:  # 約 36,200 → 取到百位；寫出的小數位（3.60 萬）照原樣比對
+            exponent = digits.exponent
+    elif kind != "money" or exponent < 0 or number.scale != 1:
+        return False  # 沒標「約」時只接受金額小數取整成整數元
     precision = Decimal(1).scaleb(exponent)
-    for truth in truth_nums:
-        scaled = Decimal(str(truth)) / number.scale
+    for key, value, _ in fields:
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
+            continue
+        money = bool(_MONEY_KEY_RE.search(key or ""))
+        if (kind == "money") != money or (kind == "count" and not isinstance(value, int)):
+            continue
+        scaled = Decimal(str(value)) / number.scale
         if not approximate and scaled == scaled.to_integral_value():
-            continue  # 沒標「約」時只接受小數取整，整數資料要精確相符
+            continue  # 整數資料要精確相符
         if scaled.quantize(precision, rounding=ROUND_HALF_UP) == number.display:
             return True
     return False
+
+
+def _is_period_code(text, number, period_codes):
+    return (not number.unit and str(number.display) in period_codes
+            and _PERIOD_CONTEXT_RE.search(_clause_prefix(text, number.start)) is not None)
 
 
 def verify_explanation_numbers(
@@ -298,8 +334,8 @@ def verify_explanation_numbers(
             continue
         if (any(abs(float(number.value) - truth) <= tolerance for truth in truth_nums)
                 or _matches_rounding(explanation_text, number, fields)
-                or _matches_approximation(explanation_text, number, truth_nums)
-                or (not number.unit and str(number.display) in period_codes)):
+                or _matches_approximation(explanation_text, number, fields)
+                or _is_period_code(explanation_text, number, period_codes)):
             matched += 1
         else:
             unmatched.append(float(number.value))

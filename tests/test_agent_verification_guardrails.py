@@ -97,6 +97,15 @@ class NumericVerifierGuardrailTests(unittest.TestCase):
             ("平均投保薪資 36,201 元。", "FAILED"),
             ("投保單位 20,060 家。", "FAILED"),
             ("資料期間 11501。", "FAILED"),
+            ("資料期間為 114 年 12 月（11412）。", "VERIFIED"),
+            ("投保單位約 2.0 萬家。", "VERIFIED"),
+            # 薪資取整不能支持別的單位，期別代碼不能冒充數量，寫出的小數位要照原樣比對
+            ("工廠總數為36,202家。", "FAILED"),
+            ("失業率為36,202%。", "FAILED"),
+            ("投保人數約 3.6 萬人。", "FAILED"),
+            ("投保單位數為11412。", "FAILED"),
+            ("平均投保薪資約3.60萬元。", "FAILED"),
+            ("平均投保薪資約36,200.00元。", "FAILED"),
         ):
             with self.subTest(answer=answer):
                 self.assertEqual(verify_explanation_numbers(answer, data)["status"], expected)
@@ -192,6 +201,28 @@ class AgentResponseGuardrailTests(unittest.TestCase):
         self.assertEqual(response["status"], "FAILED")
         self.assertEqual(response["verification"]["status"], "FAILED")
         self.assertNotIn("依勞動部統計", response["answer"])
+
+    def test_agent_wage_answer_rounding(self):
+        wage = {"available": True, "data_period": "11412", "insured_units": 20056,
+                "insured_people": 361509, "average_insured_salary": 36201.78}
+        for content, expected in (
+            ("平均投保薪資約 3.6 萬元，資料期間 11412。", "SUCCESS"),
+            ("工廠總數為36,202家。", "FAILED"),
+            ("投保單位數為11412。", "FAILED"),
+        ):
+            with self.subTest(content=content), (
+                patch("agent.llm_agent._post_chat", side_effect=[
+                    {"choices": [{"message": {"tool_calls": [{
+                        "id": "call-1",
+                        "function": {"name": "get_wage_baseline", "arguments": "{}"},
+                    }]}}]},
+                    {"choices": [{"message": {"content": content}}]},
+                ])
+            ), patch("agent.llm_agent._run_tool",
+                     return_value={"tool": "get_wage_baseline", "data": wage, "evidence": {}}):
+                response = OpenRouterAgent().process_query("台中製造業的平均投保薪資是多少？")
+            self.assertEqual(response["status"], expected)
+            self.assertEqual(content in response["answer"], expected == "SUCCESS")
 
 
 if __name__ == "__main__":
