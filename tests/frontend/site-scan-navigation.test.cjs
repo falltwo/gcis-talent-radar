@@ -126,6 +126,16 @@ function completeEmployees(stats){
  const names=Object.keys(stats.factories.districts);
  stats.factories.districts=Object.fromEntries(names.map(name=>[name,{'機械設備業':['太平區','西屯區'].includes(name)?100:0,'其他':0}]));
  stats.factories.employees=Object.fromEntries(names.map(name=>[name,{'機械設備業':['太平區','西屯區'].includes(name)?100:0,'其他':['太平區','西屯區'].includes(name)?900:0}]));
+ delete stats.factories.totals;  // these cases test the fallback that sums the cells
+ return stats;
+}
+function officialTotals(stats){
+ completeEmployees(stats);
+ const names=Object.keys(stats.factories.districts);
+ // A suppressed cell (其他 = null) no longer blocks LQ: the census publishes the district total itself.
+ names.forEach(name=>{stats.factories.employees[name]['其他']=null;});
+ stats.factories.totals={year:2024,district_employees:Object.fromEntries(names.map(name=>[name,['太平區','西屯區'].includes(name)?1000:0])),
+  city_employees:{'機械設備業':200,'其他':1800},city_total_employees:2000};
  return stats;
 }
 const clusterText=e=>e.ids.get('scan-podium').querySelectorAll('small').map(s=>s.textContent).join('\n');
@@ -145,4 +155,25 @@ test('complete totals retain a valid location quotient and exact zero observatio
  const e=setup(completeEmployees);
  const loading=e.window.siteScan.start();await e.resolveAll();await loading;await e.tick();
  assert.match(clusterText(e),/同業群聚：100 人・LQ 1\.00/);
+});
+test('official census totals give a location quotient even when every district has a suppressed cell',async()=>{
+ const e=setup(officialTotals);
+ const loading=e.window.siteScan.start();await e.resolveAll();await loading;await e.tick();
+ assert.match(clusterText(e),/同業群聚：100 人・LQ 1\.00/);
+});
+test('a suppressed official district total leaves that district without LQ but keeps its size',async()=>{
+ const e=setup(stats=>{officialTotals(stats);stats.factories.totals.district_employees['太平區']=null;return stats;});
+ const loading=e.window.siteScan.start();await e.resolveAll();await loading;await e.tick();
+ assert.match(clusterText(e),/同業群聚：100 人・LQ 無資料/);
+ assert.match(clusterText(e),/同業群聚：100 人・LQ 1\.00/,'西屯區 still has its LQ');
+});
+test('the shipped data now yields location quotients, and size without a named industry',async()=>{
+ const e=setup();e.window.radarIntent={text:'機械工廠，要供應鏈完整',preference:''};
+ let loading=e.window.siteScan.start();await e.resolveAll();await loading;await e.tick();
+ assert.match(clusterText(e),/同業群聚：[\d,]+ 人・LQ \d+\.\d\d/);
+ assert.doesNotMatch(clusterText(e),/LQ 無資料/);
+ const plain=setup();plain.window.radarIntent={text:'要供應鏈完整',preference:''};
+ loading=plain.window.siteScan.start();await plain.resolveAll();await loading;await plain.tick();
+ assert.match(clusterText(plain),/同業群聚：[\d,]+ 人/,'without an industry the district total is the size');
+ assert.doesNotMatch(clusterText(plain),/同業群聚：無資料/);
 });

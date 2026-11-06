@@ -381,5 +381,52 @@
       "用來判斷 tc_mfg_company_events_monthly 各月可信度"
     ],
     "built_at": "2026-11-05T22:12:43"
+  },
+  "tc_factory_district_total_annual": {
+    "file": "tc_factory_district_total_annual.csv",
+    "rows": 667,
+    "columns": [
+      "roc_year",
+      "year",
+      "district",
+      "employees",
+      "factories",
+      "employees_flag",
+      "factories_flag"
+    ],
+    "grain": "臺中市行政區 × 年（民國），製造業大類總計",
+    "sources": [
+      "經濟部統計處 工廠校正統計調查（EE520 InvestigateG）",
+      "https://service.moea.gov.tw/EE520/investigate/InvestigateG.aspx"
+    ],
+    "notes": [
+      "factories_flag／employees_flag：suppressed_lt4＝未滿 4 家保密；no_value＝原站無數值",
+      "區位商數 LQ 的分母：各區細格有保密，自己加總湊不出總數，所以另取官方總計"
+    ],
+    "built_at": "2026-11-06T22:23:03"
+  },
+  "tc_factory_city_industry_annual": {
+    "file": "tc_factory_city_industry_annual.csv",
+    "rows": 621,
+    "columns": [
+      "roc_year",
+      "year",
+      "industry_code",
+      "industry",
+      "employees",
+      "factories",
+      "employees_flag",
+      "factories_flag"
+    ],
+    "grain": "臺中市 × 製造業大類與中類 × 年（民國）",
+    "sources": [
+      "經濟部統計處 工廠校正統計調查（EE520 InvestigateG）",
+      "https://service.moea.gov.tw/EE520/investigate/InvestigateG.aspx"
+    ],
+    "notes": [
+      "factories_flag／employees_flag：suppressed_lt4＝未滿 4 家保密；no_value＝原站無數值",
+      "區位商數 LQ 的分母：各區細格有保密，自己加總湊不出總數，所以另取官方總計"
+    ],
+    "built_at": "2026-11-06T22:23:03"
   }
 }

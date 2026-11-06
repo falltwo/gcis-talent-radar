@@ -220,3 +220,80 @@ def test_invalid_tax_stock_does_not_publish_company_ratios(tmp_path,monkeypatch)
     path=tmp_path/'bad-tax.csv';monkeypatch.setattr(activity,'TAX',path)
     csv_file(path,[{'error':'upstream unavailable'}])
     with pytest.raises(ValueError):activity.companies()
+
+
+def totals_files(processed, district_year='2024', city_year='2024'):
+    csv_file(processed/'tc_factory_district_total_annual.csv', [
+        {'year':district_year,'district':'太平區','employees':'1000','employees_flag':''},
+        {'year':district_year,'district':'和平區','employees':'','employees_flag':'suppressed_lt4'},
+    ])
+    csv_file(processed/'tc_factory_city_industry_annual.csv', [
+        {'year':city_year,'industry_code':'C','industry':'製造業','employees':'2000','employees_flag':''},
+        {'year':city_year,'industry_code':'29','industry':'機械設備業','employees':'200','employees_flag':''},
+    ])
+
+
+def test_stats_publish_official_census_totals_for_location_quotients(site_inputs):
+    from etl.build_district_stats import build
+    processed, raw = site_inputs
+    totals_files(processed)
+    totals = build(processed_dir=processed, raw_dir=raw, query_limit=2)['factories']['totals']
+    assert totals['year'] == 2024 and totals['city_total_employees'] == 2000
+    assert totals['city_employees'] == {'機械設備業':200}
+    assert totals['district_employees']['太平區'] == 1000
+    assert totals['district_employees']['和平區'] is None, 'a suppressed district total is unknown, not zero'
+    assert totals['district_employees']['大雅區'] is None
+
+
+@pytest.mark.parametrize('years', [None, ('2023', '2024'), ('2024', '2023')])
+def test_missing_or_other_year_totals_are_not_published(site_inputs, years):
+    from etl.build_district_stats import build
+    processed, raw = site_inputs
+    if years:
+        totals_files(processed, *years)
+    assert build(processed_dir=processed, raw_dir=raw, query_limit=2)['factories']['totals'] is None
+
+
+def test_ee520_totals_parse_the_four_level_city_header(tmp_path, monkeypatch):
+    from etl.sources import moea_ee520
+    head = '<tr><th>項目別</th><th colspan="2">年底從業員工人數 (人)</th></tr>'
+    city = ('<table id="ContentPlaceHolder1_tabResult">' + head +
+            '<tr><th></th><th colspan="2">製造業</th></tr><tr><th></th><th></th><th>機械設備業</th></tr>'
+            '<tr><th></th><th>台中市</th><th>台中市</th></tr><tr><td>113年</td><td>2,000</td><td>200</td></tr></table>')
+    district = ('<table id="ContentPlaceHolder1_tabResult">' + head.replace('colspan="2"', 'colspan="29"') +
+                '<tr><th></th><th colspan="29">製造業</th></tr><tr><th></th>' +
+                ''.join(f'<th>{d}</th>' for d in moea_ee520.TAICHUNG_DISTRICTS) + '</tr><tr><td>113年</td>' +
+                ''.join('<td>*</td>' if d == '和平區' else '<td>10</td>' for d in moea_ee520.TAICHUNG_DISTRICTS) +
+                '</tr></table>')
+    (tmp_path/'city_industry.html').write_text(city, encoding='utf-8')
+    (tmp_path/'district_total.html').write_text(district, encoding='utf-8')
+    written = {}
+    monkeypatch.setattr(moea_ee520, 'TOTALS_RAW', tmp_path)
+    monkeypatch.setattr(moea_ee520, 'write_processed', lambda df, name, **kw: written.setdefault(name, df))
+    moea_ee520.transform_totals()
+    c = written['tc_factory_city_industry_annual'].set_index('industry_code')
+    assert c.loc['C', 'employees'] == 2000 and c.loc['29', 'employees'] == 200
+    d = written['tc_factory_district_total_annual'].set_index('district')
+    assert d.loc['太平區', 'employees'] == 10 and d.loc['和平區', 'employees_flag'] == 'suppressed_lt4'
+
+
+@pytest.mark.parametrize('skip_fetch, expected', [
+    (False, ['fetch_all', 'fetch_totals', 'transform', 'transform_totals']),
+    (True, ['transform', 'transform_totals']),
+])
+def test_standard_etl_refreshes_ee520_totals_with_the_cells(monkeypatch, skip_fetch, expected):
+    # 年度更新只跑 run_real_etl --only moea_ee520；總計沒一起更新，LQ 會因年份對不上又變回無資料
+    import importlib.util, sys, types
+    # run_real_etl 會載入所有來源模組；這裡只檢查呼叫順序，沒裝的 PDF 套件放空模組替代
+    for missing in ('pdfplumber',):
+        if importlib.util.find_spec(missing) is None:
+            monkeypatch.setitem(sys.modules, missing, types.ModuleType(missing))
+    from etl import run_real_etl
+    from etl.sources import moea_ee520
+    calls = []
+    for name in ('fetch_all', 'fetch_totals', 'transform', 'transform_totals'):
+        monkeypatch.setattr(moea_ee520, name, lambda name=name: calls.append(name))
+    monkeypatch.setattr(run_real_etl, 'write_quality_report', lambda: 'report')
+    monkeypatch.setattr(sys, 'argv', ['run_real_etl', '--only', 'moea_ee520'] + (['--skip-fetch'] if skip_fetch else []))
+    run_real_etl.main()
+    assert calls == expected

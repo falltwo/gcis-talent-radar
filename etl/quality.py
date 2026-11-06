@@ -23,6 +23,8 @@ KEYS = {
     "tc_jobmarket_occupation_q": ["roc_year", "quarter", "occupation"],
     "tc_jobmarket_industry_q": ["roc_year", "quarter", "industry"],
     "tc_factory_district_industry_annual": ["roc_year", "district", "industry_code"],
+    "tc_factory_district_total_annual": ["roc_year", "district"],
+    "tc_factory_city_industry_annual": ["roc_year", "industry_code"],
     "tc_factory_count_district_monthly": ["year_month", "district", "industry"],
     "tc_factory_survey_city_annual": ["year", "industry"],
     "tc_labor_insurance_annual": ["year_month", "industry_code", "unit_type_code", "employment_insurance_flag"],

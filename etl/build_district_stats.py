@@ -16,6 +16,28 @@ from etl.sources.common import TAICHUNG_DISTRICTS
 OUT = ROOT/'ui/static/district-stats.json'
 
 
+def official_totals(processed_dir, year):
+    """LQ 的分母：EE520 官方公布的區總計與全市各中類。各區細格有保密，自己加總永遠湊不出總數。
+    檔案不存在或沒有同一年的資料就回傳 None，前端改回只看規模。保密的區總計保留 None，不當成 0。"""
+    paths = (processed_dir/'tc_factory_district_total_annual.csv', processed_dir/'tc_factory_city_industry_annual.csv')
+    if not all(path.exists() for path in paths):
+        return None
+    number = lambda row: (None if row['employees_flag'] or not row['employees'].strip()
+                          else nonnegative_number(row['employees'],'total employees',integer=True))
+    districts = [row for row in csv_rows(paths[0], ['year','district','employees','employees_flag']) if int(row['year']) == year]
+    city = [row for row in csv_rows(paths[1], ['year','industry_code','industry','employees','employees_flag'])
+            if int(row['year']) == year]
+    city_total = next((number(row) for row in city if row['industry_code'] == 'C'), None)
+    if not districts or city_total is None:
+        return None
+    return {'year':year, 'source':'經濟部工廠校正統計調查（EE520）官方總計：各區製造業大類、臺中市各中類',
+            'rule':'區位商數 LQ 的分母用官方總計，不用細格加總；保密的區總計保留 null',
+            'district_employees':{d:next((number(row) for row in districts if row['district'] == d), None)
+                                  for d in TAICHUNG_DISTRICTS},
+            'city_employees':{row['industry']:number(row) for row in city if row['industry_code'] != 'C'},
+            'city_total_employees':city_total}
+
+
 def build(processed_dir=None, raw_dir=None, query_limit=1000):
     processed_dir = Path(processed_dir or ROOT/'data/processed')
     rows = csv_rows(processed_dir/'tc_factory_district_industry_annual.csv',
@@ -51,7 +73,8 @@ def build(processed_dir=None, raw_dir=None, query_limit=1000):
             metrics['manufacturing_openings'][district] += row['openings']
     return {'factories':{'year':year,'source':'經濟部工廠校正統計調查（EE520）',
                 'source_url':'https://service.moea.gov.tw/EE520/investigate/InvestigateG.aspx',
-                'null_rule':'原始空白、保密或無數值保留 null，家數與員工數皆不當作 0', 'districts':factories, 'employees':employees},
+                'null_rule':'原始空白、保密或無數值保留 null，家數與員工數皆不當作 0', 'districts':factories, 'employees':employees,
+                'totals':official_totals(processed_dir, year)},
             'jobs':{key:value for key,value in jobs.items() if key != 'rows'} | {
                 'source':'台灣就業通職缺清單','source_url':'https://data.gov.tw/dataset/44062',
                 'manufacturing_job_families':sorted(MAP_JOB_FAMILIES),

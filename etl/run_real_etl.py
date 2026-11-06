@@ -35,7 +35,7 @@ def _registry(fetch: bool, api_limit: int):
 STEPS = {
     "gcis_county_industry": lambda f, a: (f and gcis_county_industry.fetch_all(), gcis_county_industry.transform()),
     "taichung_labor_reports": lambda f, a: (f and taichung_labor_reports.fetch_all(), taichung_labor_reports.transform()),
-    "moea_ee520": lambda f, a: (f and moea_ee520.fetch_all(), moea_ee520.transform()),
+    "moea_ee520": lambda f, a: moea_ee520.run(f),   # 含 LQ 用的官方總計
     "labor_insurance": lambda f, a: (f and labor_insurance.fetch_all(), labor_insurance.transform()),
     "taichung_opendata": lambda f, a: (f and taichung_opendata.fetch_all(), taichung_opendata.transform()),
     "moe_education": lambda f, a: (f and moe_education.fetch_all(), moe_education.transform()),
