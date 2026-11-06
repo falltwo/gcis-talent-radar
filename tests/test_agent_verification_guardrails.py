@@ -116,6 +116,12 @@ class NumericVerifierGuardrailTests(unittest.TestCase):
             ("投保人數為11412，是資料期別。", "FAILED"),
             ("投保人數為 11412（民國114年12月）。", "FAILED"),
             ("平均投保薪資（含加班費約）36,202 元。", "FAILED"),
+            # 數字後附年月不能讓數量欄位的數字變成期別；只有數字自己開頭的句子才看後面
+            ("投保人數 11412（民國114年12月）。", "FAILED"),
+            ("投保單位 11412（民國114年12月）。", "FAILED"),
+            ("投保人數達到11412（民國114年12月）。", "FAILED"),
+            ("投保單位數等於11412（民國114年12月）。", "FAILED"),
+            ("「11412」是資料期別。", "VERIFIED"),
         ):
             with self.subTest(answer=answer):
                 self.assertEqual(verify_explanation_numbers(answer, data)["status"], expected)
@@ -221,6 +227,8 @@ class AgentResponseGuardrailTests(unittest.TestCase):
             ("工廠總數為36,202家。", "FAILED"),
             ("投保單位數為11412。", "FAILED"),
             ("投保人數每月為11412。", "FAILED"),
+            ("投保人數 11412（民國114年12月）。", "FAILED"),
+            ("投保單位數等於11412（民國114年12月）。", "FAILED"),
             # 真模型回答（組員實測 #8）：期別說明在數字後面，不能誤擋
             ("不可以。**11412 是資料期別**，表示民國114年12月，不是人數或單位數。\n\n"
              "查得的臺中市製造業資料中，該期的**投保人數為 361,509 人**，**投保單位數為 20,056 個**。"
