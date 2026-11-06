@@ -127,21 +127,28 @@
   // Cluster = size and specialisation, as the EU Cluster Observatory and US Cluster Mapping do: employees in the
   // industry, and the location quotient (its share of the district's factory jobs over its share city-wide).
   // A suppressed cell is unknown, never zero. LQ requires complete district and city totals.
+  // Every district has suppressed cells, so the totals come from the census's own published totals (factories.totals);
+  // summing the cells is only the fallback for data built before those totals were fetched.
   const completeTotal = row => {
     const values = Object.values(row || {});
     return values.length && values.every(v => Number.isFinite(v) && v >= 0)
       ? values.reduce((sum, v) => sum + v, 0) : null;
   };
+  const count = v => Number.isFinite(v) && v >= 0 ? v : null;
   function clusterParts(name) {
-    const employees = stats.factories.employees, staff = employees?.[name];
+    const employees = stats.factories.employees, staff = employees?.[name], official = stats.factories.totals;
     if (!staff) return null;
-    const total = completeTotal(staff);
+    const total = official ? count(official.district_employees?.[name]) : completeTotal(staff);
     if (!industry) return total === null ? null : {size:total, lq:null};
     const size = staff[industry];
     if (!Number.isFinite(size) || size < 0) return null;
     // Published industry size remains useful even when LQ cannot be computed.
     const unknown = {size, lq:null};
     if (total === null || total <= 0) return unknown;
+    if (official) {
+      const cityTotal = count(official.city_total_employees), cityIndustry = count(official.city_employees?.[industry]);
+      return {size, lq: cityTotal > 0 && cityIndustry > 0 ? (size / total) / (cityIndustry / cityTotal) : null};
+    }
     const city = Object.keys(stats.factories.districts).map(district => employees[district]);
     const totals = city.map(completeTotal), sizes = city.map(row => row?.[industry]);
     if (totals.some(v => v === null) || sizes.some(v => !Number.isFinite(v) || v < 0)) return unknown;
@@ -564,7 +571,7 @@
     map = window.streetMap.getMap();
     if (!map) {started = false;return;}
     try {
-      if (!geo) [geo, activity, stats, transport] = await Promise.all(['/static/taichung-districts.geojson','/static/gcis-district-activity.json?v=20261106-rate1','/static/district-stats.json?v=20261106-lq1','/static/district-transport.json?v=20261106-hubs1'].map(async url => {
+      if (!geo) [geo, activity, stats, transport] = await Promise.all(['/static/taichung-districts.geojson','/static/gcis-district-activity.json?v=20261106-rate1','/static/district-stats.json?v=20261107-lq-totals1','/static/district-transport.json?v=20261106-hubs1'].map(async url => {
         const response = await fetch(url, {cache:'no-cache'});
         if (!response.ok) throw Error(url);
         return response.json();
