@@ -96,7 +96,7 @@
     if (PREFERENCE[preference]) boosted[PREFERENCE[preference]] = true;
     // Optional criteria (transport) only count when the demand asks for them, so other rankings stay as they were.
     checked = Object.fromEntries(CRITERIA.map(c => [c.id, (!c.optional || boosted[c.id]) && !(avoid.has(c.id) && !boosted[c.id])]));
-    if (!CRITERIA.some(c => checked[c.id])) checked = Object.fromEntries(CRITERIA.map(c => [c.id, !c.optional]));
+    // Every criterion ruled out: rank nothing and ask, rather than quietly ranking by what the demand excluded.
     const tags = [];
     tags.push(industry ? ['產業', industry] : ['產業', '未判斷，看全部製造業']);
     if (preference) tags.push(['偏好', preference]);
@@ -110,7 +110,8 @@
     }));
     $('scan-intent-note').textContent = !text ? '沒有輸入文字，只依偏好按鈕設定。'
       : ai ? `「${text}」・由 AI（gpt-6-luna）解析` : `「${text}」・用關鍵字擷取（AI 暫時無法使用時的備案）`;
-    $('scan-gap').textContent = missing.length ? `沒有${[...new Set(missing)].join('、')}的資料，這次未納入排名。` : '';
+    $('scan-gap').textContent = [missing.length ? `沒有${[...new Set(missing)].join('、')}的資料，這次未納入排名。` : '',
+      CRITERIA.some(c => checked[c.id]) ? '' : NO_CRITERIA].join('');
   }
 
   function factoryTotal(name) {
@@ -183,7 +184,7 @@
       }));
     }
     lastScaled = scaled;lastRaw = raw;
-    ranking = scoreWith(checked, boosted);
+    ranking = CRITERIA.some(c => checked[c.id]) ? scoreWith(checked, boosted) : [];
   }
   let lastScaled, lastRaw;
   function scoreWith(use, heavy) {
@@ -222,6 +223,7 @@
     return `${v.toLocaleString()} ${c.unit}`;
   }
 
+  const NO_CRITERIA = '需求排除了所有排名條件，請在左側勾選至少一項。';
   function renderCriteria() {
     $('scan-criteria').replaceChildren(...CRITERIA.map(c => {
       const row = document.createElement('label');row.className = 'scan-criterion';
@@ -233,12 +235,20 @@
       box.addEventListener('change', () => {
         checked[c.id] = box.checked;
         if (!CRITERIA.some(item => checked[item.id])) {checked[c.id] = box.checked = true;return;}
+        $('scan-gap').textContent = $('scan-gap').textContent.replace(NO_CRITERIA, '');
         rank();paintScores(true);renderCards();
       });
       return row;
     }));
   }
   function renderCards() {
+    $('scan-compare').disabled = !ranking.length;
+    if (!ranking.length) {
+      ['scan-podium', 'scan-grid', 'scan-check-list'].forEach(id => $(id).replaceChildren());
+      $('scan-check-summary').textContent = '';
+      $('scan-compare').textContent = NO_CRITERIA;
+      return;
+    }
     const top = ranking.slice(0, 12);
     const cards = top.map((item, index) => {
       const card = document.createElement('li');card.className = 'scan-card' + (index === 0 ? ' is-top' : '') + (index < 3 ? ' is-podium' : '');
@@ -311,7 +321,7 @@
       const t = now - begin;
       order.forEach(({name}, index) => map.setFeatureState({source:'scan', id:name}, {lit:Math.max(0, Math.min(1, (t - index * stagger) / fade))}));
       if (t < total) frame = requestAnimationFrame(step);
-      else {map.setPaintProperty('scan-top', 'line-opacity', 1);status.textContent = `掃描完成：第一名${top}`;}
+      else {map.setPaintProperty('scan-top', 'line-opacity', 1);status.textContent = top ? `掃描完成：第一名${top}` : NO_CRITERIA;}
     };
     frame = requestAnimationFrame(step);
   }
@@ -486,11 +496,12 @@
   function carryOver(name) {
     const text = intent?.text || '';
     const field = industry ? industry.replace(/業$/, '') : '';
-    const role = aiIntent?.role || ROLE_WORDS.find(([word]) => text.toUpperCase().includes(word))?.[1] || '';
-    const senior = aiIntent?.senior || SENIOR_WORDS.find(([word]) => text.includes(word))?.[1];
+    // A successful AI answer is used as is, null included: "不需要 CNC 技術員" must not bring the keyword back.
+    const role = (aiIntent ? aiIntent.role : ROLE_WORDS.find(([word]) => text.toUpperCase().includes(word))?.[1]) || '';
+    const senior = aiIntent ? aiIntent.senior : SENIOR_WORDS.find(([word]) => text.includes(word))?.[1];
     return {
       district:name, place:`${name}${$('city-road').value}`, role,
-      department: aiIntent?.department || DEPT_FOR[industry] || (text.includes('電') ? '電機' : '機械'),
+      department: (aiIntent ? aiIntent.department : null) || DEPT_FOR[industry] || (text.includes('電') ? '電機' : '機械'),
       senior: senior ? (senior === '工程師' && field ? `${field.replace(/設備$/, '')}工程師` : senior) : (field ? `${field.replace(/設備$/, '')}工程師` : '製程工程師'),
       salary: talent.districts[name].salary_floor_median,
     };

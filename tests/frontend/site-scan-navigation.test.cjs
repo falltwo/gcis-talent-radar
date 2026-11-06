@@ -171,3 +171,27 @@ test('the demand text is parsed by the AI when available, keywords otherwise',as
  assert.match(rules.ids.get('scan-intent-note').textContent,/用關鍵字擷取/);
  assert.match(rules.ids.get('scan-tags').textContent,/未判斷/,'keywords alone do not know 螺絲');
 });
+test('a null role from a successful AI answer is not filled back in from keywords',async()=>{
+ const e=setup();e.window.radarIntent={text:'機械工廠，不需要 CNC 技術員，只找廠長',preference:''};
+ e.intent.response={available:true,source:'llm',industry:'機械設備業',boost:[],avoid:[],role:null,senior:'廠長',department:null};
+ const loading=e.window.siteScan.start();await e.resolveAll();await loading;await e.tick();
+ e.ids.get('scan-compare').click();await e.resolveAll();await e.tick();
+ e.ids.get('report-supply').querySelector('button').click();await e.tick();
+ for(const name of ['刊登召募','獵頭Agent']){
+  e.ids.get('hire-plan-list').querySelectorAll('button').find(b=>b.textContent.includes(name)).click();await e.tick();
+  e.ids.get('scan-feature-back').click();await e.tick();
+ }
+ const values=Object.fromEntries(e.opened);
+ assert.doesNotMatch(values['刊登召募'].note,/CNC/,'the AI understood "不需要 CNC 技術員"');
+ assert.equal(values['獵頭Agent'].job,'廠長');
+});
+test('ruling out every criterion ranks nothing until one is ticked',async()=>{
+ const e=setup();e.window.radarIntent={text:'什麼都不考慮',preference:''};
+ e.intent.response={available:true,source:'llm',industry:null,boost:[],avoid:['vitality','stability','cluster','competition'],role:null,senior:null,department:null};
+ const loading=e.window.siteScan.start();await e.resolveAll();await loading;await e.tick();
+ const boxes=e.ids.get('scan-criteria').querySelectorAll('input');
+ assert.equal(boxes.filter(box=>box.checked).length,0,'excluded criteria are not quietly switched back on');
+ assert.match(e.ids.get('scan-tags').textContent,/不考慮市場活力/);
+ assert.match(e.ids.get('scan-gap').textContent,/請在左側勾選至少一項/);
+ assert.equal(e.ids.get('scan-compare').disabled,true);
+});

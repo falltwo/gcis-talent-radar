@@ -54,3 +54,29 @@ def test_endpoint(model):
     assert res.status_code == 200 and res.json()["senior"] == "廠長"
     assert client.post("/api/site-scan/intent", json={"text": "x" * 301, "industries": INDUSTRIES,
                                                       "criteria": CRITERIA}).status_code == 422
+
+
+@pytest.mark.parametrize("bad", [{}, {"industry": None, "boost": [], "avoid": [{}], "role": None, "senior": None,
+                                      "department": None},
+                                 {"industry": 3, "boost": [], "avoid": [], "role": None, "senior": None,
+                                  "department": None},
+                                 {"industry": None, "boost": "cluster", "avoid": [], "role": None, "senior": None,
+                                  "department": None}])
+def test_missing_or_wrong_typed_fields_fall_back_to_keywords(model, bad):
+    model["out"] = bad
+    assert parse()["available"] is False
+
+
+def test_endpoint_does_not_crash_on_bad_model_answer(model):
+    from api.main import app
+    model["out"] = {"industry": None, "boost": [], "avoid": [{}], "role": None, "senior": None, "department": None}
+    res = TestClient(app).post("/api/site-scan/intent", json={"text": "機械工廠", "industries": INDUSTRIES,
+                                                              "criteria": CRITERIA, "departments": DEPARTMENTS})
+    assert res.status_code == 200 and res.json()["available"] is False
+
+
+@pytest.mark.parametrize("title", ["越南籍作業員", "外籍移工", "基督徒主管", "佛教徒作業員", "本國籍工程師"])
+def test_origin_or_faith_is_not_a_job_title(model, title):
+    model["out"] = {"industry": None, "boost": [], "avoid": [], "role": title, "senior": title, "department": None}
+    out = parse()
+    assert out["available"] and out["role"] is None and out["senior"] is None

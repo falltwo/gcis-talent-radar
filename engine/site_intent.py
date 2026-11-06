@@ -4,6 +4,7 @@
 沒有金鑰、模型失敗或回應格式不對時回 available=False，前端改用原本的關鍵字規則，流程不中斷。
 職務名稱經過個人特徵過濾（年齡、性別等），不會帶到刊登召募或獵頭。
 """
+import re
 from typing import Any, Optional
 
 from sourcing import llm
@@ -22,11 +23,26 @@ SYSTEM = (
 )
 
 
+# PERSONAL_TRAIT 只認「國籍」「宗教」字面；「越南籍作業員」「基督徒主管」也要擋
+_ORIGIN_OR_FAITH = re.compile(r"籍|外國|本國|信仰|教徒|基督|天主|佛教|道教|伊斯蘭|穆斯林|回教")
+
+
 def _clean_title(value: Any) -> Optional[str]:
     text = " ".join(str(value or "").split())
-    if not text or len(text) > 20 or PERSONAL_TRAIT.search(text):
+    if not text or len(text) > 20 or PERSONAL_TRAIT.search(text) or _ORIGIN_OR_FAITH.search(text):
         return None
     return text
+
+
+def _valid(out: Any) -> bool:
+    """模型回應要有全部欄位、型別也對，否則整份不用，前端改走關鍵字規則。"""
+    if not isinstance(out, dict):
+        return False
+    optional_text = ("industry", "role", "senior", "department")
+    return (all(key in out for key in optional_text + ("boost", "avoid"))
+            and all(out[key] is None or isinstance(out[key], str) for key in optional_text)
+            and all(isinstance(out[key], list) and all(isinstance(i, str) for i in out[key])
+                    for key in ("boost", "avoid")))
 
 
 def parse_intent(text: str, preference: str, industries: list[str], criteria: list[dict],
@@ -51,14 +67,14 @@ def parse_intent(text: str, preference: str, industries: list[str], criteria: li
     user = (f"需求：{text}\n偏好按鈕：{preference or '無'}\n條件清單：\n{listing}\n"
             f"產業清單：{'、'.join(industries)}\n科系清單：{'、'.join(departments)}")
     out = llm.chat_json(SYSTEM, user, "site_intent", schema, max_tokens=200)
-    if not isinstance(out, dict):
-        return {"available": False, "reason": "模型暫時無法使用"}
-    avoid = [i for i in dict.fromkeys(out.get("avoid") or []) if i in ids]
+    if not _valid(out):
+        return {"available": False, "reason": "模型暫時無法使用或回應格式不對"}
+    avoid = [i for i in dict.fromkeys(out["avoid"]) if i in ids]
     return {
         "available": True,
         "source": "llm",
         "industry": out.get("industry") if out.get("industry") in industries else None,
-        "boost": [i for i in dict.fromkeys(out.get("boost") or []) if i in ids and i not in avoid],
+        "boost": [i for i in dict.fromkeys(out["boost"]) if i in ids and i not in avoid],
         "avoid": avoid,
         "role": _clean_title(out.get("role")),
         "senior": _clean_title(out.get("senior")),
