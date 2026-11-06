@@ -176,3 +176,25 @@ def test_chinese_quantities_count_as_the_models_own_numbers(monkeypatch):
 def test_ordinary_words_with_numeral_characters_are_kept():
     for plain in ["三區之中，太平區比較適合一起找學校合作。", "南區資料不足，一般建議先進一步確認。", "每百家工廠的職缺偏少，十分適合從學校招人。"]:
         assert site_advice._sentence(plain, {}) == plain
+
+
+def test_quantities_hidden_inside_fixed_words_or_other_scripts_are_dropped(monkeypatch):
+    # Review on #49: deleting 千萬、十分、之一 before the check also deleted the quantity in 千萬元 and 十分之一.
+    monkeypatch.setenv("OPENROUTER_API_KEY", "test")
+    site_advice.clear_cache()
+    only = {**REQUEST, "facts": [{**FACTS[0], "required": True}]}
+    monkeypatch.setattr(llm, "chat_json", lambda *a, **k: {"sentences": [
+        "太平區附近畢業生為 {f1}，只有十分之一會應徵，投資約千萬元就夠。"]})
+    assert site_advice.advise(only)["reason"] == "nothing_valid"
+    assert site_advice.lookup(only) is None
+    values = {"f1": "2,744 人", "f3": "0.14"}
+    for claim in ["只有十分之一的人會應徵。", "太平區投資約千萬元就夠。", "投資千萬。", "起薪伍仟元以上。", "比其他區多貳成。",
+                  "大約廿人會應徵。", "職缺卅筆以上。", "職缺是 ③ 倍。", "起薪 Ⅲ 萬。", "過半畢業生會留下。", "大半畢業生會留下。",
+                  "職缺翻倍。", "職缺加倍成長。", "需求是供給的雙倍。", "人數倍增。", "每位畢業生對應 {f3} 成職缺。", "超過 {f1} 萬人。"]:
+        assert site_advice._sentence(claim, values) is None, claim
+
+
+def test_ordinary_words_around_numerals_are_still_kept():
+    for plain in ["前三名都一樣，最近一個月每一家企業都可以一起考慮。", "這是一成不變的規則，千萬不要誤讀。", "萬一資料不足，其中之一可以先進一步確認。",
+                  "兩區之中第一名是太平區，兩者條件接近。"]:
+        assert site_advice._sentence(plain, {}) == plain

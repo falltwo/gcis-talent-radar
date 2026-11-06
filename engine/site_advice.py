@@ -21,6 +21,7 @@ import os
 import re
 import threading
 import time
+import unicodedata
 from collections import OrderedDict
 from typing import Any
 
@@ -35,11 +36,48 @@ PLACEHOLDER_DUMP = re.compile(r"[（(]\s*(?:\{f\d{1,3}\}\s*[、,，]?\s*){2,}[�
 PLACEHOLDER = re.compile(r"\{(f\d{1,3})\}")
 # Arabic digits in either width, and percent signs, may only come from a placeholder.
 OWN_NUMBER = re.compile(r"[0-9０-９%％]")
-# Chinese quantities are claims too (十萬元, 兩成, 一半, 三倍). Any numeral other than 一 counts; 一 counts only
-# before a unit or fraction word, so 一起、一樣、進一步 stay. Fixed words that only look numeric are removed first.
-# ponytail: a word list, not a parser; a false hit drops the sentence and the page keeps the rule-based advice.
-NOT_A_NUMBER = re.compile(r"[三兩二]區|每百家|十分|萬一|千萬|一致|統一|唯一|一定|一般|一樣|一起|一些|一直|一旦|之一|第一")
-CN_NUMBER = re.compile(r"[〇零二兩三四五六七八九十百千萬億]|半數|一(?:半|成|倍|萬|千|百|元|塊|人|名|位|家|所|筆|個|間|年|月|週|天|點)|分之|[幾數]成")
+# Chinese quantities are claims too (十萬元, 兩成, 一半, 三倍, 十分之一). Each run of numeral characters is judged in
+# place by its neighbours, never by deleting fixed words first: deleting 千萬、十分、之一 used to delete the quantity in
+# 千萬元 and 十分之一 along with them. A false hit only drops the sentence; the page keeps the rule-based advice.
+CN_DIGITS = "〇零二兩三四五六七八九壹貳參肆伍陸柒捌玖廿卅"
+CN_MAGNITUDES = "十百千萬億拾佰仟"
+CN_RUN = re.compile(f"[一{CN_DIGITS}{CN_MAGNITUDES}]+")
+# 一 is a quantity only before a unit or fraction word (一半、一成、一萬元), not in 一起、一般、進一步、第一、每一家
+ONE_UNITS = "半成倍萬千百億元塊人名位家所筆間年月週天點"   # 不含「個」：一個月、一個職缺是泛稱
+NO_DIGIT_QUANTITY = re.compile(r"半數|過半|大半|翻倍|加倍|倍增|雙倍|[幾數](?:成|倍|十|百|千|萬)")
+# A placeholder's value already carries its unit; a unit right after it changes the number ({f3} 成 → 0.14成).
+PLACEHOLDER_UNIT = re.compile(r"\{f\d{1,3}\}\s*(?:成|倍|萬|千|百|億|%|％|分之)")
+
+
+def _is_quantity(text: str, m: re.Match) -> bool:
+    run, before, after = m.group(), text[:m.start()], text[m.end():]
+    nxt = after[:1]   # "" at the end of the sentence; "" in "abc" is True in Python, so always test nxt first
+    if after.startswith("分之") or before.endswith("分之"):
+        return True                                        # 十分之一、百分之五、三分之二
+    if run == "一":
+        return (bool(nxt) and nxt in ONE_UNITS and not after.startswith("成不")       # 一成不變
+                and not before.endswith(("第", "每", "單", "唯", "統", "進")))
+    if before.endswith(("前", "後", "第")) and nxt == "名":
+        return False                                       # 前三名、第二名
+    if run in ("二", "兩", "三") and nxt and nxt in "區者邊方":
+        return False                                       # 三區之中、兩者、兩邊
+    if run == "十" and after.startswith("分"):
+        return False                                       # 十分適合（分之 already handled above）
+    if run == "千萬" and nxt and nxt in "不別要記勿":
+        return False                                       # 千萬不要；千萬元、投資千萬 are quantities
+    if run == "萬一" or (run == "百" and before.endswith("每")):
+        return False                                       # 萬一資料不足；每百家工廠 is the fact's own label
+    return True
+
+
+def has_own_quantity(prose: str) -> bool:
+    if NO_DIGIT_QUANTITY.search(prose):
+        return True
+    # Any other numeric character the model wrote: ③、Ⅲ、٣ and the like.
+    if any(unicodedata.numeric(ch, None) is not None and not CN_RUN.fullmatch(ch) for ch in prose):
+        return True
+    return any(_is_quantity(prose, m) for m in CN_RUN.finditer(prose))
+
 
 CACHE_SIZE = 200
 CACHE_TTL = 24 * 3600
@@ -73,7 +111,8 @@ def _sentence(raw: Any, values: dict[str, str]) -> str | None:
     text = raw.strip()
     ids = PLACEHOLDER.findall(text)
     prose = PLACEHOLDER.sub("", text)
-    if not text or len(text) > MAX_SENTENCE or OWN_NUMBER.search(prose) or CN_NUMBER.search(NOT_A_NUMBER.sub("", prose)):
+    if (not text or len(text) > MAX_SENTENCE or OWN_NUMBER.search(prose) or has_own_quantity(prose)
+            or PLACEHOLDER_UNIT.search(text)):
         return None
     if len(ids) > MAX_PLACEHOLDERS or PLACEHOLDER_DUMP.search(text):
         return None
