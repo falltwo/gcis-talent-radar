@@ -52,8 +52,7 @@ class ConversationWorkflow:
         return self.graph.get_state({'configurable':{'thread_id':thread_id}}).values or {}
 
     def run(self,thread_id,event,handle,initial_memory=None):
-        # This process owns the local demo runner; shared multi-worker deployment
-        # needs a database-backed per-thread lease before accepting concurrent turns.
+        # shortcut: process-local thread locks; add database leases before multi-worker deployment.
         with self.lock_guard:
             lock=self.locks.get(thread_id)
             if lock is None:

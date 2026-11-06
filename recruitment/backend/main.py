@@ -2,10 +2,12 @@ import hashlib
 import hmac
 import os
 import secrets
+import json
 from pathlib import Path
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta, timezone
 from fastapi import FastAPI, Depends, HTTPException, Request, Query
+from fastapi.encoders import jsonable_encoder
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy import create_engine, select, update, event, delete
 from sqlalchemy.orm import sessionmaker, Session
@@ -15,8 +17,9 @@ from .models import *
 from .schemas import Register, Login, Message, AssistantMessage, TemplateIn, ReferenceIn, ItemEdit, ExecutionRequest
 from .ai import RecruitmentAI
 from .ai import AIError
-from .assistant import plan_request, search_answer, preserve_question_topics
+from .assistant import plan_request, search_answer, preserve_question_topics, pending_intake
 from . import memory as context_memory
+from .workflow import ConversationWorkflow
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 load_dotenv(PROJECT_ROOT / '.env', encoding='utf-8-sig')
@@ -39,11 +42,19 @@ def create_app(database_url=None):
     async def lifespan(app):
         Base.metadata.create_all(engine)
         yield
+        app.state.workflow.close()
         engine.dispose()
     app = FastAPI(title='AI 智慧招募 MVP', version='0.1.0', lifespan=lifespan)
     app.state.ai = RecruitmentAI()
     app.state.engine = engine
     app.state.session_factory = factory
+    database=engine.url.database
+    workflow_path=os.getenv('RECRUITMENT_WORKFLOW_DB')
+    if not workflow_path:
+        if engine.dialect.name=='sqlite':workflow_path=database+'.workflow.sqlite3' if database and database!=':memory:' else ':memory:'
+        else:workflow_path=PROJECT_ROOT/'database'/'recruitment-workflow.sqlite3'
+    app.state.workflow=ConversationWorkflow(workflow_path)
+    workflow_namespace=hashlib.sha256(str(engine.url).encode()).hexdigest()[:16]
     def db():
         with factory() as session:
             try: yield session
@@ -156,7 +167,7 @@ def create_app(database_url=None):
     @app.get('/salary-templates')
     def salaries(u=Depends(current),s:Session=Depends(db)):
         return [serialize(x) for x in s.scalars(select(SalaryTemplate).where(SalaryTemplate.company_id==u.company_id))]
-    def create_batch(body,u,s,salary_turns=None,parsed_override=None):
+    def create_batch(body,u,s,salary_turns=None,parsed_override=None,commit=True):
         try:
             if parsed_override is None:
                 parsed, ai_info = app.state.ai.extract(body.message,**({'salary_turns':salary_turns} if salary_turns is not None else {}))
@@ -169,23 +180,16 @@ def create_app(database_url=None):
         for data in parsed: s.add(RecruitmentBatchItem(batch_id=b.id,**enrich(s,u,data)))
         s.add(ChatLog(company_id=u.company_id,user_id=u.id,role='user',content=body.message))
         s.add(ChatLog(company_id=u.company_id,user_id=u.id,role='assistant',content=f'已建立草稿批次 {b.id}，請補齊缺漏欄位並確認。'))
-        audit(s,u,'create_batch',b.id,{'ai':ai_info}); s.commit(); return {**view(s,b),'ai':ai_info}
+        audit(s,u,'create_batch',b.id,{'ai':ai_info}); s.commit() if commit else s.flush(); return {**view(s,b),'ai':ai_info}
     @app.post('/batches',status_code=201)
     def draft(body:Message,u=Depends(current),s:Session=Depends(db)):
         return create_batch(body,u,s)
     @app.get('/batches')
     def list_batches(u=Depends(current),s:Session=Depends(db)):
         return [serialize(b) for b in s.scalars(select(RecruitmentBatch).where(RecruitmentBatch.company_id==u.company_id))]
-    @app.post('/assistant')
-    def assistant(body:AssistantMessage,u=Depends(current),s:Session=Depends(db)):
+    def assistant_turn(body,u,s,state,memory):
         from agent.prompt_guard import inspect_hiring_prompt
         now=datetime.now(timezone.utc)
-        s.execute(delete(AssistantMemory).where(AssistantMemory.company_id==u.company_id,AssistantMemory.user_id==u.id,AssistantMemory.expires_at<=now))
-        memory=s.scalar(select(AssistantMemory).where(AssistantMemory.company_id==u.company_id,AssistantMemory.user_id==u.id,AssistantMemory.conversation_id==body.conversation_id))
-        state={}
-        if memory is not None and memory.expires_at.replace(tzinfo=timezone.utc)>now:state=dict(memory.state)
-        if memory is None:
-            memory=AssistantMemory(company_id=u.company_id,user_id=u.id,conversation_id=body.conversation_id,state={},expires_at=now+timedelta(seconds=context_memory.TTL_SECONDS));s.add(memory)
         recent=state.get('messages',[])
         pinned=([context_memory.brief_for(state)] if state.get('items') else state.get('pending_requests',[]))
         messages=[{'role':'user','content':text} for text in pinned if not any(m['role']=='user' and m['content']==text for m in recent)]+recent+[{'role':'user','content':body.message}]
@@ -211,8 +215,9 @@ def create_app(database_url=None):
                     raise HTTPException(422,'請移除個人特徵篩選條件，改以職責與技能建立職缺')
                 if len(plan['brief'])>4000:raise HTTPException(422,'這次需求過長，請分批提供職稱與人數')
                 try:
-                    created=create_batch(Message(message=plan['brief']),u,s,plan.get('salary_turns'),plan.get('items'))
+                    created=create_batch(Message(message=plan['brief']),u,s,plan.get('salary_turns'),plan.get('items'),commit=False)
                     state=context_memory.snapshot(created,state)
+                    state["batch_id"]=created["id"]
                     result={'kind':'batch','message':'已依你提供的條件建立企業職缺草稿；請審核後再刊登。','batch':created,'sources':[]}
                 except HTTPException as exc:
                     if exc.status_code!=422:raise
@@ -228,10 +233,61 @@ def create_app(database_url=None):
         if not cleared and not rejected:
             if result['kind']=='clarify' and not state.get('items') and not context_memory.is_information_request(body.message):
                 state['pending_requests']=(state.get('pending_requests',[])+[body.message])[-6:]
+                pending=plan.get('pending_question') or pending_intake(body.message)
+                if pending:state['pending_question']=pending
             state['messages']=(state.get('messages',[])+[{'role':'user','content':body.message},{'role':'assistant','content':result['message'][:2000]}])[-10:]
         memory.state=state;memory.expires_at=now+timedelta(seconds=context_memory.TTL_SECONDS)
-        audit(s,u,'assistant_turn',detail={'kind':result['kind'],'sources':len(result.get('sources',[]))});s.commit()
-        return {**result,'context':{'expires_in':context_memory.TTL_SECONDS,'remembered_roles':[row['title'] for row in state.get('items',[])]}}
+        audit(s,u,'assistant_turn',detail={'kind':result['kind'],'sources':len(result.get('sources',[]))});s.flush()
+        return state,{**result,'context':{'expires_in':context_memory.TTL_SECONDS,'remembered_roles':[row['title'] for row in state.get('items',[])],'pending_question':state.get('pending_question'),'engine':'langgraph'}}
+    @app.post('/assistant')
+    def assistant(body:AssistantMessage,u=Depends(current),s:Session=Depends(db)):
+        owner=(AssistantMemory.company_id==u.company_id,AssistantMemory.user_id==u.id,AssistantMemory.conversation_id==body.conversation_id)
+        def receipt(request_id):
+            return s.scalar(select(AssistantTurn).where(AssistantTurn.company_id==u.company_id,AssistantTurn.user_id==u.id,AssistantTurn.conversation_id==body.conversation_id,AssistantTurn.request_id==request_id))
+        def fingerprint(event):
+            return hashlib.sha256(json.dumps([event['message'],event['district']],ensure_ascii=False).encode()).hexdigest()
+        event={'message':body.message,'district':body.district,'request_id':body.request_id}
+        previous=receipt(body.request_id)
+        if previous:
+            if previous.fingerprint!=fingerprint(event):raise HTTPException(409,'這個請求編號已用於不同內容，未重複執行。')
+            return previous.result
+        def handle(state,event):
+            memory=s.scalar(select(AssistantMemory).where(*owner))
+            previous=receipt(event['request_id'])
+            if previous:
+                if previous.fingerprint!=fingerprint(event):
+                    return {'memory':dict(memory.state) if memory else state,'result':{'_http_error':409,'detail':'這個請求編號已用於不同內容，未重複執行。'}}
+                return {'memory':dict(memory.state) if memory else state,'result':previous.result}
+            now=datetime.now(timezone.utc)
+            if memory is None:
+                memory=AssistantMemory(company_id=u.company_id,user_id=u.id,conversation_id=body.conversation_id,state={},expires_at=now+timedelta(seconds=context_memory.TTL_SECONDS));s.add(memory)
+            elif memory.expires_at.replace(tzinfo=timezone.utc)<=now:
+                state['messages']=[]
+            try:
+                turn_body=AssistantMessage(**event,conversation_id=body.conversation_id)
+                state,result=assistant_turn(turn_body,u,s,state,memory)
+                result=jsonable_encoder(result)
+                memory.state=jsonable_encoder(state)
+                s.add(AssistantTurn(company_id=u.company_id,user_id=u.id,conversation_id=body.conversation_id,request_id=event['request_id'],fingerprint=fingerprint(event),result=result))
+                s.commit()
+                return {'memory':memory.state,'result':result}
+            except HTTPException as exc:
+                s.rollback()
+                return {'memory':state,'result':{'_http_error':exc.status_code,'detail':exc.detail}}
+        initial=s.scalar(select(AssistantMemory).where(*owner))
+        initial_memory=dict(initial.state) if initial else {}
+        thread_id=f'{workflow_namespace}:{u.company_id}:{u.id}:{body.conversation_id}'
+        completed=app.state.workflow.run(thread_id,event,handle,initial_memory)
+        result=completed['result']
+        if '_http_error' in result:raise HTTPException(result['_http_error'],result['detail'])
+        return result
+
+    @app.get('/assistant/task')
+    def assistant_task(conversation_id:str=Query(default='legacy',pattern=r'^[A-Za-z0-9_-]{1,80}$'),u=Depends(current),s:Session=Depends(db)):
+        memory=s.scalar(select(AssistantMemory).where(AssistantMemory.company_id==u.company_id,AssistantMemory.user_id==u.id,AssistantMemory.conversation_id==conversation_id))
+        state=memory.state if memory else {}
+        return {'engine':'langgraph','conversation_id':conversation_id,'items':state.get('items',[]),'batch_id':state.get('batch_id'),'pending_question':state.get('pending_question')}
+
     @app.get('/salary-reference')
     def salary_reference(role:str=Query(min_length=1,max_length=120),district:str=Query(default='',max_length=80),u=Depends(current)):
         from recruitment.taiwan_salary import get_reference

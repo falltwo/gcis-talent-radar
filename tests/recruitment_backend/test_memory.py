@@ -55,14 +55,16 @@ def test_context_isolated_by_conversation_and_user_and_can_be_cleared(c):
     assert say(c,h,'月薪200000')['kind']=='clarify'
 
 
-def test_expired_memory_does_not_revive_from_chat_logs(c):
+def test_expired_chat_context_keeps_durable_recruitment_task(c):
     h=account(c)
     say(c,h,'1位前端工程師，月薪4萬')
     with c.app.state.session_factory() as session:
         memory=session.scalar(select(AssistantMemory))
         memory.expires_at=datetime.now(timezone.utc)-timedelta(seconds=1);session.commit()
-    assert say(c,h,'月薪200000')['kind']=='clarify'
-    assert len(c.get('/batches',headers=h).json())==1
+    result=say(c,h,'月薪200000')
+    assert result['kind']=='batch'
+    assert result['batch']['items'][0]['salary_min']==200000
+    assert len(c.get('/batches',headers=h).json())==2
 
 
 def test_active_requirements_survive_many_questions_and_service_restart(c,monkeypatch):
