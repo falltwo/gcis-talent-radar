@@ -53,7 +53,7 @@ _ROUNDING_FIELDS = {
 }
 _DISPLAY_CONNECTORS = (
     r"\s*(?:[：:=]|為|是|約|大約|約合|折合|取整|四捨五入|後"
-    r"|新臺幣|新台幣|NT\$|TWD|[（(][^（()）\d]{1,12}[）)]|\s)*$"
+    r"|新臺幣|新台幣|NT\$|TWD|[（(](?:非|不是|不等於)[^（()）\d]{0,10}[）)]|\s)*$"
 )
 _USER_PREFIX_RE = re.compile(
     r"(?:"
@@ -241,13 +241,26 @@ def _matches_rounding(text, number, fields):
     return False
 
 
-# 期別代碼只在「資料期間 11412」「12 月（11412）」這種語境才算，不能拿來支持家數或人數
-_PERIOD_CONTEXT_RE = re.compile(r"(?:期別|期間|資料期|代碼|月)\s*(?:為|是|[:：（(])?\s*$")
+# 期別代碼要明寫是期別才算，前後都看：「資料期間 11412」「114 年 12 月（11412）」「11412 是資料期別」
+# 「每月為11412」「行業代碼11412」不算，不能拿來支持人數、單位數
+_PERIOD_BEFORE_RE = re.compile(r"(?:(?:資料|統計)?期別|(?:資料|統計)期間|資料期)\s*(?:為|是|[:：])?\s*$"
+                               r"|\d\s*年\s*\d{1,2}\s*月\s*[（(]\s*$")
+_PERIOD_AFTER_RE = re.compile(r"\s*[*_]*\s*(?:是|為|即|代表|表示|指)?\s*(?:資料|統計)?期別"
+                              r"|\s*[*_]*\s*(?:是|為|即|代表|表示|指)?\s*[（(]?\s*民國\s*\d{3}\s*年\s*\d{1,2}\s*月")
+
+
+# 「投保人數為 11412（民國114年12月）」：前面已經把數字當成某個量的值，後面的期別說明不算
+_VALUE_SLOT_RE = re.compile(r"(?:為|是|有|共|達|約|計|[:：=])\s*[*_]*\s*$")
 
 
 def _is_period_code(text, number, period_codes):
-    return (not number.unit and str(number.display) in period_codes
-            and _PERIOD_CONTEXT_RE.search(_clause_prefix(text, number.start)) is not None)
+    if number.unit or str(number.display) not in period_codes:
+        return False
+    prefix = _clause_prefix(text, number.start)
+    if _PERIOD_BEFORE_RE.search(prefix):
+        return True
+    after = re.split(r"[，,。；;！？!?\n]", text[number.end:])[0]
+    return not _VALUE_SLOT_RE.search(prefix) and _PERIOD_AFTER_RE.match(after) is not None
 
 
 def verify_explanation_numbers(

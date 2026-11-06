@@ -106,6 +106,16 @@ class NumericVerifierGuardrailTests(unittest.TestCase):
             ("失業率為36,202%。", "FAILED"),
             ("資本額為 36,202 元。", "FAILED"),
             ("投保單位數為11412。", "FAILED"),
+            # 期別說明寫在數字後面也算；「每月」「代碼」不是期別語境
+            ("不可以。**11412 是資料期別**，表示民國114年12月，不是人數或單位數。", "VERIFIED"),
+            ("11412（民國114年12月）的投保人數 361,509 人。", "VERIFIED"),
+            ("資料期別：11412。", "VERIFIED"),
+            ("投保人數每月為11412。", "FAILED"),
+            ("投保單位數本月為11412。", "FAILED"),
+            ("製造業行業代碼11412。", "FAILED"),
+            ("投保人數為11412，是資料期別。", "FAILED"),
+            ("投保人數為 11412（民國114年12月）。", "FAILED"),
+            ("平均投保薪資（含加班費約）36,202 元。", "FAILED"),
         ):
             with self.subTest(answer=answer):
                 self.assertEqual(verify_explanation_numbers(answer, data)["status"], expected)
@@ -210,6 +220,11 @@ class AgentResponseGuardrailTests(unittest.TestCase):
             ("平均投保薪資約 3.6 萬元。", "FAILED"),
             ("工廠總數為36,202家。", "FAILED"),
             ("投保單位數為11412。", "FAILED"),
+            ("投保人數每月為11412。", "FAILED"),
+            # 真模型回答（組員實測 #8）：期別說明在數字後面，不能誤擋
+            ("不可以。**11412 是資料期別**，表示民國114年12月，不是人數或單位數。\n\n"
+             "查得的臺中市製造業資料中，該期的**投保人數為 361,509 人**，**投保單位數為 20,056 個**。"
+             "這是勞保行業大類「製造業」的年末資料，不應把期別 11412 誤讀為數量。", "SUCCESS"),
         ):
             with self.subTest(content=content), (
                 patch("agent.llm_agent._post_chat", side_effect=[
