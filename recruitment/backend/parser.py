@@ -19,7 +19,7 @@ NUM = r'[0-9零一二三四五六七八九十百千萬兩]+'
 def valid_title(title):
     """Reject instruction fragments and merged roles instead of treating them as jobs."""
     return bool(title and len(title)<=100
-                and not re.search(r'幫我|請幫|麻煩|我想|我要|幫忙|協助我|建立|新增|職缺表|履歷表|履歷範本|招募範本|表單範本',title)
+                and not re.search(r'幫我|請幫|麻煩|我想|我要|幫忙|協助我|建立|新增|改成|改為|改到|調整|職缺表|履歷表|履歷範本|招募範本|表單範本',title)
                 and not re.match(r'^(?:填寫|填表|套用|使用範本|送出|送審)',title)
                 and title.count('工程師')<2
                 and not re.search(rf'{NUM}\s*(?:個|位|名|人)',title))
@@ -67,7 +67,7 @@ def parse(text,include_salary=True):
             title=re.split(r'[、，,。；;\s]|月薪|時薪|年薪',segment)[0]
             if not valid_title(title):raise ValueError('職稱或人數歸屬不明確，請分別列出每個職位與人數；「幫我建立」不會當成職位。')
             matches.append((m[1],title))
-        if not matches: raise ValueError('請使用「三個工程師、兩個經理，經理月薪十萬元」格式；未解析內容請以招募資料編輯補齊。')
+        if not matches: raise ValueError('請補充要招募的職稱與人數，可以分次告訴我，不需要固定格式。')
         result = [dict(title=title,quantity=number(count)) for count,title in matches]
     if len({i['title'] for i in result}) != len(result): raise ValueError('重複職稱，請合併人數')
     if any(i['quantity'] < 1 or i['quantity'] > 10000 for i in result): raise ValueError('人數必須為 1–10000')

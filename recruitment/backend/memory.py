@@ -9,6 +9,7 @@ from .intent import is_information_request
 TTL_SECONDS=1800
 CLEAR=re.compile(r'^(?:清除(?:對話)?(?:記憶|上下文)|忘記(?:先前|之前|剛才)(?:的)?(?:需求|內容)|重新開始)[。！!\s]*$')
 SHARED=re.compile(r'^(?:都通用|都適用|兩個都適用|全部適用|全部一樣|兩個都一樣)[。！!\s]*$')
+AFFIRM=re.compile(r'\s*(?:yes|yep|yeah|ok|okay|對|是|沒錯|確認|好|好的|可以)[。！!\s]*',re.I)
 
 
 def brief_for(state):
@@ -34,7 +35,20 @@ def patch(state,text):
     items=deepcopy(state.get('items',[]))
     if not items:return None
     titles=[item['title'] for item in items]
+    if AFFIRM.fullmatch(text):
+        if state.get('pending_salary'):
+            return {'kind':'clarify','message':'請指定這筆薪資適用的職位；若全部適用，可以說「全部適用」。'}
+        return {'kind':'ack','message':'已保留目前的招募條件。請在右側檢查填表結果，修改並儲存後再按「確認送審」。'}
     from .parser import NUM,number
+    named=next((title for title in sorted(titles,key=len,reverse=True) if text.startswith(title)),None)
+    if named:
+        changed_count=re.fullmatch(rf'\s*(?:的)?(?:招募)?(?:人數)?\s*(?:改成|改為|改到|調整為|調整成)\s*({NUM})\s*(?:位|人|名|個)?[。\s]*',text[len(named):])
+        if changed_count:
+            value=number(changed_count[1])
+            if not 1<=value<=10000:return {'kind':'clarify','message':'招募人數必須為1至10000。'}
+            for item in items:
+                if item['title']==named:item['quantity']=value
+            return {'kind':'patch','state':{**state,'items':items}}
     count=re.fullmatch(rf'\s*(?:(全部|所有)(?:職位)?\s*)?(?:人數\s*)?(?:改成|改為|調整為|[:：])?\s*({NUM})\s*(?:位|人|名|個)[。\s]*',text)
     if count:
         value=number(count[2])
@@ -42,6 +56,8 @@ def patch(state,text):
         if len(items)>1 and not count[1]:return {'kind':'clarify','message':'請指定要修改哪個職位的人數，或說「全部改成5位」。'}
         for item in items:item['quantity']=value
         return {'kind':'patch','state':{**state,'items':items}}
+    if re.search(rf'(?:改成|改為|調整為)\s*{NUM}\s*(?:位|人|名|個)',text):
+        return {'kind':'clarify','message':'請指定目前要修改的職位與人數；目前職位為：'+'、'.join(titles)+'。'}
     # Complete new role/count requests belong to intake, not an update of old roles.
     from .parser import parse
     try:parse(text,include_salary=False)
@@ -61,11 +77,10 @@ def patch(state,text):
     if company:
         return {'kind':'patch','state':{**state,'company':company,'pending_salary':None}}
     field_text=text;targets=items
-    named=next((title for title in sorted(titles,key=len,reverse=True) if text.startswith(title)),None)
     shared=re.match(r'^(?:全部|所有)(?:職位)?\s*',text)
     if named:field_text=text[len(named):];targets=[item for item in items if item['title']==named]
     elif shared:field_text=text[shared.end():]
-    match=re.fullmatch(r'\s*(地點|工作地點|地址|工作內容|任職條件|必要技能)\s*(?:改成|改為|是|為|[:：])\s*(.+)',field_text,re.S)
+    match=re.fullmatch(r'\s*(地點|工作地點|地址|工作內容|任職條件|必要技能)\s*(?:改成|改為|改到|是|為|[:：])\s*(.+)',field_text,re.S)
     if match:
         if len(items)>1 and not (named or shared):return {'kind':'clarify','message':'請指定要修改哪個職位，或明確說明全部職位都適用。'}
         field={'地點':'location','工作地點':'location','地址':'location','工作內容':'description','任職條件':'requirements','必要技能':'requirements'}[match[1]]

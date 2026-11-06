@@ -17,9 +17,39 @@ class AssistantPlan(ModelOutput):
     request_indexes: list[int] = Field(max_length=8)
 
 
+def complete_pending_intake(users):
+    """Bind a standalone headcount to one explicitly named pending role."""
+    from .parser import NUM, number, valid_title, parse
+    count=re.fullmatch(rf'\s*({NUM})\s*(?:個|位|人|名)[。\s]*',users[-1])
+    if not count:return None
+    for prior in reversed(users[:-1]):
+        if is_information_request(prior):continue
+        match=re.search(r'(?:招募|招聘|徵才|徵求)\s*([^，,。；;\n]+?)[。\s]*$',prior)
+        if not match:continue
+        title=match[1].strip()
+        if not valid_title(title) or re.search(rf'{NUM}|與|和|及|、|[?？]',title):return None
+        if not 1<=number(count[1])<=10000:raise ValueError('人數必須為 1–10000')
+        normalized=f'{count[1]}位{title}'
+        location=re.search(r'(?:在|於)\s*((?:臺中市|台中市)?[\u4e00-\u9fff]{1,4}區)',prior)
+        if location:normalized+='，工作地點：'+location[1]
+        turns=[text for text in users if not is_information_request(text)]+[normalized]
+        # Both the pending role and the new count are exact HR evidence. Keep
+        # validated fields structured instead of asking a model to re-read labels.
+        from .memory import patch
+        state={'items':parse(normalized,include_salary=False)}
+        for text in users[:-1]:
+            changed=patch(state,text)
+            if changed and changed['kind']=='patch':state=changed['state']
+        return {'action':'draft','query':'','reply':'','brief':'\n'.join(turns),'items':state['items']}
+    return None
+
+
 def plan_request(ai, messages):
     """Only HR-authored messages can become draft evidence, never search results."""
-    users=[m['content'] for m in messages if m['role']=='user'][-8:]
+    user_history=[m['content'] for m in messages if m['role']=='user']
+    pending=complete_pending_intake(user_history)
+    if pending:return pending
+    users=user_history[-8:]
     # A complete latest brief (or confirmation of it) needs no LLM ambiguity loop.
     from .parser import parse
     confirmation=bool(re.fullmatch(r'\s*(?:都通用|都適用|兩個都適用|全部適用|對|是|沒錯|確認|好|可以)[。！!\s]*',users[-1]))
@@ -52,6 +82,9 @@ def plan_request(ai, messages):
         '只問薪資或工作資訊時絕不能建立招募資料。與職缺無關的問題 action=clarify，友善說明服務範圍。'
         '問題不需要問號，也不要求固定格式。「想了解一個品管員的工作內容」「一個前端工程師需要哪些技能」都是資訊查詢，數字不是建表意圖。'
         '使用者明確要建立企業職缺表且已提供職稱和招募人數才 action=draft；否則 action=clarify，reply 只追問缺的條件。'
+        '「我要招募」「幫我招募」「請問可以幫我招募」都已表達建立職缺意圖，不必再要求說出建立職缺表。'
+        '若前文已說招募職稱，本次只回答人數或薪資，合併本次招募的使用者原文，僅追問仍缺的條件，不能重問建表意願。'
+        '「任職條件熟悉如何操作量測儀器」是指定條件，不是詢問如何操作；判斷整句目的，不因請問、如何等單一詞彙改判查詢。'
         'request_indexes 選出本次建表必要的 user_requests 索引，必須包括最新一則，排除過去資訊查詢。'
         '可依 assistant_context 理解「那就幫我建表」等追問，但不能將助理提議或搜尋薪資當作HR核定條件。'
         '使用者已明確提供的公司名稱、薪資、地點、工作內容及任職條件必須保留；範本只補缺漏。'

@@ -186,7 +186,9 @@ def create_app(database_url=None):
         if memory is not None and memory.expires_at.replace(tzinfo=timezone.utc)>now:state=dict(memory.state)
         if memory is None:
             memory=AssistantMemory(company_id=u.company_id,user_id=u.id,conversation_id=body.conversation_id,state={},expires_at=now+timedelta(seconds=context_memory.TTL_SECONDS));s.add(memory)
-        messages=([{'role':'user','content':context_memory.brief_for(state)}] if state.get('items') else [])+state.get('messages',[])+[{'role':'user','content':body.message}]
+        recent=state.get('messages',[])
+        pinned=([context_memory.brief_for(state)] if state.get('items') else state.get('pending_requests',[]))
+        messages=[{'role':'user','content':text} for text in pinned if not any(m['role']=='user' and m['content']==text for m in recent)]+recent+[{'role':'user','content':body.message}]
         cleared=bool(context_memory.CLEAR.fullmatch(body.message.strip()))
         rejected=inspect_hiring_prompt(body.message)['decision']=='REJECT'
         if cleared:
@@ -200,7 +202,7 @@ def create_app(database_url=None):
                     plan={'action':'draft','brief':context_memory.brief_for(patched['state']),'items':patched['state']['items']}
                 elif patched:
                     if patched.get('pending_salary'):state['pending_salary']=patched['pending_salary']
-                    plan={'action':'clarify','reply':patched['message']}
+                    plan={'action':'ack' if patched['kind']=='ack' else 'clarify','reply':patched['message']}
                 else:plan=plan_request(app.state.ai,messages)
             except (AIError,ValueError):
                 raise HTTPException(503,'助理暫時無法判斷需求，請稍後重試；未建立職缺。') from None
@@ -220,10 +222,12 @@ def create_app(database_url=None):
                 query=preserve_question_topics(plan['query'],body.message)
                 if not location_in(query):query+=' 臺中市（整體，不限行政區）'
                 result={'kind':'answer',**search_answer(app.state.ai,query)}
-            else:result={'kind':'clarify','message':plan['reply'] or '請告訴我職稱與招募人數，或直接詢問職缺、薪資相關問題。','sources':[]}
+            else:result={'kind':'ack' if plan['action']=='ack' else 'clarify','message':plan['reply'] or '請告訴我職稱與招募人數，或直接詢問職缺、薪資相關問題。','sources':[]}
         s.add(ChatLog(company_id=u.company_id,user_id=u.id,role='user',content=body.message))
         s.add(ChatLog(company_id=u.company_id,user_id=u.id,role='assistant',content=result['message']))
         if not cleared and not rejected:
+            if result['kind']=='clarify' and not state.get('items') and not context_memory.is_information_request(body.message):
+                state['pending_requests']=(state.get('pending_requests',[])+[body.message])[-6:]
             state['messages']=(state.get('messages',[])+[{'role':'user','content':body.message},{'role':'assistant','content':result['message'][:2000]}])[-10:]
         memory.state=state;memory.expires_at=now+timedelta(seconds=context_memory.TTL_SECONDS)
         audit(s,u,'assistant_turn',detail={'kind':result['kind'],'sources':len(result.get('sources',[]))});s.commit()
