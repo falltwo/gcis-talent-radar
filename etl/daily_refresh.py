@@ -18,6 +18,7 @@ scripts/daily_refresh.sh；伺服器設 GCIS_DAILY_REFRESH=1 則由 etl/schedule
    第一次執行只抓今天，不往回補：開始累積之前的日子在 API 標成沒有資料（不是 0 家），月份清冊公布後由清冊補上
 5. 營業項目：每日資料裡稅籍查不到的公司（多半是剛設立的）用 API 查營業項目，判斷產業別
 6. 整理：重算 tc_mfg_company_events_monthly，並把最近 24 個月的事件載入資料庫 gcis_company_events
+7. 地圖資料：依本地來源重建工廠／職缺圖層、GCIS 區域動態及三區人才報告；不另外抓取人才來源
 """
 import argparse
 import datetime as dt
@@ -163,6 +164,11 @@ def _rebuild(today: dt.date) -> dict:
     return {**load_company_events(gcis_registry.build_events(), today=today), **load_coverage(today=today)}
 
 
+def _site_data() -> dict:
+    from etl.build_site_data import refresh
+    return refresh()
+
+
 def run(*, max_calls: Optional[int] = None, skip_tax: bool = False, today: Optional[dt.date] = None,
         backfill_days: Optional[int] = None,
         steps: Optional[dict[str, Callable[[], dict]]] = None, log: Callable[[str], None] = print) -> dict:
@@ -182,6 +188,7 @@ def run(*, max_calls: Optional[int] = None, skip_tax: bool = False, today: Optio
         "daily_api": lambda: _daily_api(budget, today, backfill_days),
         "business_items": lambda: _business_items(budget),
         "rebuild": lambda: _rebuild(today),
+        "site_data": _site_data,
     }
     report = {"started_at": dt.datetime.now().astimezone().isoformat(timespec="seconds"), "steps": {}}
     for name, fn in steps.items():

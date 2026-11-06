@@ -118,7 +118,7 @@
     }
     if (stats.jobs.capped.includes(name)) return null;
     const postings = stats.jobs.metrics.manufacturing_postings[name];
-    return postings === undefined ? null : postings / factoryTotal(name) * 100;
+    return postings == null ? null : postings / factoryTotal(name) * 100;
   }
   // Each criterion is rescaled to 0–1 across the candidate districts; a missing value drops that criterion for that district only.
   let candidates = [];

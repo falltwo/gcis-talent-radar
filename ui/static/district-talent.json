@@ -9,6 +9,46 @@
   "工程／研發／生技",
   "技術／維修／操作"
  ],
+ "job_location_rule": "只納入最新快照、工作地點明確位於查詢區的職缺，依 URL 去重；此為職類篩選而非雇主行業分類",
+ "jobs_coverage": {
+  "snapshot_date": "2026-10-05",
+  "capped": [],
+  "missing_districts": [],
+  "raw_rows_by_district": {
+   "中區": 20,
+   "東區": 52,
+   "南區": 55,
+   "西區": 59,
+   "北區": 60,
+   "北屯區": 140,
+   "西屯區": 379,
+   "南屯區": 215,
+   "太平區": 137,
+   "大里區": 203,
+   "霧峰區": 94,
+   "烏日區": 107,
+   "豐原區": 101,
+   "后里區": 122,
+   "石岡區": 22,
+   "東勢區": 19,
+   "和平區": 17,
+   "新社區": 19,
+   "潭子區": 89,
+   "大雅區": 163,
+   "神岡區": 209,
+   "大肚區": 75,
+   "沙鹿區": 61,
+   "龍井區": 65,
+   "梧棲區": 130,
+   "清水區": 80,
+   "大甲區": 114,
+   "外埔區": 43,
+   "大安區": 6
+  },
+  "excluded_location_rows": 34,
+  "duplicate_rows": 0,
+  "query_limit": 1000
+ },
  "sources": {
   "graduates": "教育部大專校院各校科系別學生數（畢業生數）",
   "campuses": "教育部校區名冊座標（本專案整理，只含大專校院）",
@@ -294,12 +334,12 @@
    "graduates_nearby": 0,
    "graduates_in_district": 0,
    "schools": [],
-   "postings": 71,
-   "openings": 430,
+   "postings": 70,
+   "openings": 425,
    "salary_floor_median": 33000,
-   "salary_samples": 58,
-   "salary_ceiling_median": 38000,
-   "salary_ceiling_samples": 27
+   "salary_samples": 57,
+   "salary_ceiling_median": 38215,
+   "salary_ceiling_samples": 26
   },
   "神岡區": {
    "label_point": [
@@ -920,12 +960,12 @@
      ]
     }
    ],
-   "postings": 47,
-   "openings": 187,
+   "postings": 43,
+   "openings": 170,
    "salary_floor_median": 32000,
-   "salary_samples": 44,
+   "salary_samples": 40,
    "salary_ceiling_median": 36300,
-   "salary_ceiling_samples": 39
+   "salary_ceiling_samples": 37
   },
   "中區": {
    "label_point": [
@@ -1019,12 +1059,12 @@
      ]
     }
    ],
-   "postings": 3,
-   "openings": 30,
+   "postings": 2,
+   "openings": 25,
    "salary_floor_median": 41000,
-   "salary_samples": 3,
-   "salary_ceiling_median": 40000,
-   "salary_ceiling_samples": 1
+   "salary_samples": 2,
+   "salary_ceiling_median": null,
+   "salary_ceiling_samples": 0
   },
   "西區": {
    "label_point": [
