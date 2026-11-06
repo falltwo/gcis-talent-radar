@@ -79,3 +79,54 @@ def test_offscreen_salary_must_be_verified_before_save_is_offered():
     assert 'next' not in operations(bottom,job,checked)
     operations(view(control('f-min','50000'),control('f-max','50000')),job,checked)
     assert 'next' in operations(bottom,job,checked)
+
+
+def test_visible_new_job_button_is_not_competing_with_unneeded_scroll():
+    data=view(control('new',tag='button',label='新增職缺'),editor=False,scrollMax=900)
+    assert set(operations(data,{'title':'現場技術人員'}))=={'new_job'}
+
+
+def test_visible_field_and_select_changes_take_priority_over_scrolling():
+    data=view(control('f-title','預設職缺'),control('f-shift-control',displayed='晚班'),scrollMax=900)
+    job={'title':'現場技術人員','shift':'日班'}
+    assert set(operations(data,job))=={'fill_fields'}
+    data['controls'][0]['value']='現場技術人員'
+    assert set(operations(data,job))=={'select_shift'}
+
+
+def test_low_confidence_reobserves_before_retrying_without_executing_uncertain_choice():
+    observations=[view(control('new',tag='button',label='新增職缺'),editor=False,scrollMax=900),
+                  view(control('new',tag='button',label='新增職缺',x=350),editor=False,scrollMax=900)]
+    seen=[]
+    page=SimpleNamespace(url='http://127.0.0.1:8088/mock104',evaluate=lambda _:observations.pop(0))
+    def classify(**kwargs):
+        seen.append(kwargs)
+        return SimpleNamespace(answers={'operation':SimpleNamespace(
+            choice='scroll_down' if len(seen)==1 else 'new_job',confidence=.14 if len(seen)==1 else .99)})
+    result=decide_operation(page,{'title':'現場技術人員'},'fill','',client=SimpleNamespace(system_one=classify))
+    assert result['operation']=='new_job'
+    assert result['actions']==[{'type':'click','x':350,'y':220}]
+    assert len(seen)==2 and not observations
+    assert seen[1]['state']['observation_attempt']==2
+    assert '尚未執行任何動作' in seen[1]['state']['previous_error']
+    assert all(set(p['questions']['operation']['criteria'])=={'new_job'} for p in seen)
+
+
+def test_persistently_uncertain_classification_stops_after_three_attempts():
+    page=SimpleNamespace(url='http://127.0.0.1:8088/mock104',evaluate=lambda _:view())
+    calls=[]
+    def classify(**kwargs):
+        calls.append(kwargs)
+        return SimpleNamespace(answers={'operation':SimpleNamespace(choice='wait',confidence=.14)})
+    with pytest.raises(RuntimeError,match='重新觀察3次'):
+        decide_operation(page,{},'fill','',client=SimpleNamespace(system_one=classify))
+    assert len(calls)==3
+
+
+def test_retry_rechecks_origin_before_reading_new_page():
+    page=SimpleNamespace(url='http://127.0.0.1:8088/mock104',evaluate=lambda _:view())
+    def classify(**kwargs):
+        page.url='https://evil.example/mock104'
+        return SimpleNamespace(answers={'operation':SimpleNamespace(choice='wait',confidence=.14)})
+    with pytest.raises(RuntimeError,match='本機'):
+        decide_operation(page,{},'fill','',client=SimpleNamespace(system_one=classify))
