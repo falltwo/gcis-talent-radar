@@ -81,6 +81,26 @@ class NumericVerifierGuardrailTests(unittest.TestCase):
             with self.subTest(answer=answer):
                 self.assertEqual(verify_explanation_numbers(answer, data)["status"], expected)
 
+    def test_wage_answer_rounding_and_period_code(self):
+        data = {"data_period": "11412", "insured_units": 20056, "insured_people": 361509,
+                "average_insured_salary": 36201.78}
+        for answer, expected in (
+            ("平均投保薪資約 3.6 萬元。", "VERIFIED"),
+            ("平均投保薪資約3.6萬。", "VERIFIED"),
+            ("平均投保薪資大約是36,200元。", "VERIFIED"),
+            ("製造業平均月投保薪資為 36,202 元。", "VERIFIED"),
+            ("投保人數約 36.2 萬人，投保單位 20,056 家。", "VERIFIED"),
+            ("資料期間 11412，平均投保薪資 36,201.78 元。", "VERIFIED"),
+            ("平均投保薪資約 3.7 萬元。", "FAILED"),
+            ("平均投保薪資約 3 萬元。", "FAILED"),
+            ("平均投保薪資 36,300 元。", "FAILED"),
+            ("平均投保薪資 36,201 元。", "FAILED"),
+            ("投保單位 20,060 家。", "FAILED"),
+            ("資料期間 11501。", "FAILED"),
+        ):
+            with self.subTest(answer=answer):
+                self.assertEqual(verify_explanation_numbers(answer, data)["status"], expected)
+
 
 class AgentResponseGuardrailTests(unittest.TestCase):
     def test_agent_hides_unverified_claim_about_user_plan(self):

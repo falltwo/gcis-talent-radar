@@ -1,7 +1,9 @@
 """Lexical numeric guardrail, with separate metadata and user assumptions.
 
 Exact quantity overlap is not semantic fact-checking. Display rounding is
-limited to named monetary fields with explicit units. User-attributed conditions
+limited to named monetary fields with explicit units, to whole numbers, and to
+values marked as approximate (萬 or 約) that keep two significant digits.
+A literal data period code (11412) counts only when it equals data_period. User-attributed conditions
 are not tool observations; without user_query their input provenance is unknown.
 """
 import re
@@ -239,6 +241,30 @@ def _matches_rounding(text, number, fields):
     return False
 
 
+_APPROX_RE = re.compile(r"(?:約|大約|大概|將近)(?:是|為|合)?\s*$")
+
+
+def _matches_approximation(text, number, truth_nums):
+    """36,201.78 → 36,202；約 36,200 元、3.6 萬元、36.2 萬人。數字必須是資料四捨五入後的結果。"""
+    exponent = number.display.as_tuple().exponent
+    approximate = number.scale == 10000 or _APPROX_RE.search(text[:number.start]) is not None
+    if approximate:
+        normalized = number.display.normalize().as_tuple()
+        if len(normalized.digits) < 2:  # 「約 3 萬」這種一位有效數字太粗，不放行
+            return False
+        exponent = max(exponent, normalized.exponent)  # 約 36,200 → 取到百位
+    elif exponent < 0 or number.scale != 1:
+        return False
+    precision = Decimal(1).scaleb(exponent)
+    for truth in truth_nums:
+        scaled = Decimal(str(truth)) / number.scale
+        if not approximate and scaled == scaled.to_integral_value():
+            continue  # 沒標「約」時只接受小數取整，整數資料要精確相符
+        if scaled.quantize(precision, rounding=ROUND_HALF_UP) == number.display:
+            return True
+    return False
+
+
 def verify_explanation_numbers(
     explanation_text: str,
     structured_data: Dict[str, Any],
@@ -256,6 +282,8 @@ def verify_explanation_numbers(
     truth_nums = flatten_structured_numbers(structured_data)
     dates, identifiers, urls = _structured_metadata(structured_data)
     fields = list(_fields(structured_data, excluded=_METRIC_EXCLUDED))
+    period_codes = {value for key, value, _ in _fields(structured_data)
+                    if key == "data_period" and isinstance(value, str) and re.fullmatch(r"\d{5}", value)}
     query_nums = list(_number_tokens(user_query, _metadata_tokens(user_query))) if user_query is not None else None
     conditions, matched, unmatched = [], 0, []
     unverified_conditions = []
@@ -268,7 +296,10 @@ def verify_explanation_numbers(
                 unverified_conditions.append(float(number.value))
                 unmatched.append(float(number.value))
             continue
-        if any(abs(float(number.value) - truth) <= tolerance for truth in truth_nums) or _matches_rounding(explanation_text, number, fields):
+        if (any(abs(float(number.value) - truth) <= tolerance for truth in truth_nums)
+                or _matches_rounding(explanation_text, number, fields)
+                or _matches_approximation(explanation_text, number, truth_nums)
+                or (not number.unit and str(number.display) in period_codes)):
             matched += 1
         else:
             unmatched.append(float(number.value))
