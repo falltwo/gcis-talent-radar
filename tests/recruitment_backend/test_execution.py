@@ -29,6 +29,67 @@ def test_unknown_role_gets_proposal_without_inventing_salary():
     assert prepared[0]['job']['salary_mode']=='NEGOTIABLE'
     assert prepared[0]['job']['description']
 
+
+def test_transient_drafting_failure_is_retried_without_losing_hr_values(monkeypatch):
+    from recruitment.backend.execution import JobSuggestion
+    from recruitment.backend.ai import AIError
+    monkeypatch.setattr('recruitment.job_research.history_for',lambda *a:None)
+    calls=[]
+    def structured(schema,system,data):
+        calls.append(data)
+        if len(calls)==1:raise AIError('timeout')
+        return JobSuggestion(description='依標準流程操作現場設備並記錄作業結果。',required_skills=['設備操作'],trainable_skills=[])
+    proposal,=prepare_execution(SimpleNamespace(enabled=True,structured=structured),
+        {'original_text':'現場技術人員5人','items':[{'title':'現場技術人員','quantity':5,'location':'太平區'}]},'測試雇主','臺中市')
+    assert len(calls)==2
+    assert proposal['source']=='AI_SUGGESTION'
+    assert proposal['job']['headcount']==5 and proposal['job']['district']=='太平區'
+    assert proposal['job']['salary_mode']=='NEGOTIABLE'
+
+
+def test_persistent_drafting_failure_uses_labeled_template_and_preserves_explicit_values(monkeypatch):
+    from recruitment.backend.ai import AIError
+    monkeypatch.setattr('recruitment.job_research.history_for',lambda *a:None)
+    calls=[]
+    def structured(*args):
+        calls.append(1);raise AIError('invalid_response')
+    text='公司名稱：大安有限公司，現場技術人員5人，日班，08:00-17:00'
+    item={'title':'現場技術人員','quantity':5,'salary_min':50000,'salary_max':50000,'salary_type':'monthly',
+          'location':'太平區','description':'依指定規範執行現場設備巡檢與維護。','requirements':'設備巡檢、異常回報'}
+    proposal,=prepare_execution(SimpleNamespace(enabled=True,structured=structured),
+        {'original_text':text,'items':[item]},'本機示範公司','北區')
+    job=proposal['job']
+    assert len(calls)==2 and proposal['source']=='GENERAL_TEMPLATE'
+    assert proposal['sources']==[] and any('AI擬稿暫時未完成' in note for note in proposal['notes'])
+    assert (job['company_name'],job['title'],job['headcount'],job['district'])==('大安有限公司','現場技術人員',5,'太平區')
+    assert job['salary_min']==job['salary_max']==50000
+    assert job['description']==item['description'] and job['required_skills']==['設備巡檢','異常回報']
+    assert job['work_hours']=='08:00–17:00'
+
+
+def test_execution_api_continues_with_valid_preview_when_drafting_is_unavailable(c,monkeypatch):
+    from recruitment.backend.ai import AIError
+    monkeypatch.setattr('recruitment.job_research.history_for',lambda *a:None)
+    h=account(c)
+    batch=c.post('/batches',headers=h,json={'message':'在太平區設廠，想招現場技術人員5人'}).json()
+    monkeypatch.setattr(c.app.state.ai,'mode','auto');monkeypatch.setattr(c.app.state.ai,'key','test-only')
+    monkeypatch.setattr(c.app.state.ai,'structured',lambda *a:(_ for _ in ()).throw(AIError('provider_http_error')))
+    result=c.post('/execution/prepare',headers=h,json={'batch_id':batch['id']})
+    assert result.status_code==200,result.text
+    proposal,=result.json()['jobs']
+    assert proposal['suggested'] and result.json()['requires_final_confirmation']
+    assert proposal['job']['title']=='現場技術人員' and proposal['job']['headcount']==5
+    assert proposal['job']['district']=='太平區' and proposal['job']['salary_mode']=='NEGOTIABLE'
+    assert proposal['source']=='GENERAL_TEMPLATE'
+    assert c.get('/job-postings',headers=h).json()==[]
+
+
+def test_drafting_fallback_does_not_swallow_other_validation_errors(monkeypatch):
+    monkeypatch.setattr('recruitment.job_research.history_for',lambda *a:None)
+    ai=SimpleNamespace(enabled=True,structured=lambda *a:(_ for _ in ()).throw(ValueError('invalid HR data')))
+    with pytest.raises(ValueError,match='invalid HR data'):
+        prepare_execution(ai,{'original_text':'現場技術人員5人','items':[{'title':'現場技術人員','quantity':5}]},'測試雇主','太平區')
+
 def test_taiwan_salary_reference_never_overwrites_employer_salary(monkeypatch):
     reference={'status':'available','sample_count':8,'salary_min':30000,'salary_max':40000,'mode':'live'}
     monkeypatch.setattr('recruitment.backend.execution.get_reference',lambda *a:reference)

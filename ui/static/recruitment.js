@@ -69,7 +69,7 @@
   try{
    const prepared=await api.request('/execution/prepare',{batch_id:id,district:defaultDistrict});if(seq!==executionEpoch||!active)return;
    proposals=prepared.jobs;jobs=proposals.map(p=>({role:p.job.title,hires:p.job.headcount}));taskSummary();showProposal(0);
-   chatMessage('assistant','已套用職位範本／AI建議，正在開啟招募網站並填表。未指定的條件先採建議預設，薪資未指定則標示面議，填完再由你確認。');
+   chatMessage('assistant',proposals.some(p=>p.source==='GENERAL_TEMPLATE')?'已套用通用職務範本作為待確認建議，正在開啟招募網站並填表。已保留你提供的條件，請特別檢查工作內容與任職條件；薪資未指定時先標示面議。':'已套用職位範本／AI建議，正在開啟招募網站並填表。未指定的條件先採建議預設，薪資未指定則標示面議，填完再由你確認。');
    await live.start(proposals.map(p=>p.job),{proposal:true});
   }catch(e){if(seq===executionEpoch){setPhase('failed');setStatus(e.message);showError(e);}}
   finally{if(seq===executionEpoch)executionBusy=false;renderTabs();}
