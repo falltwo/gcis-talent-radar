@@ -156,6 +156,35 @@ test('complete totals retain a valid location quotient and exact zero observatio
  const loading=e.window.siteScan.start();await e.resolveAll();await loading;await e.tick();
  assert.match(clusterText(e),/同業群聚：100 人・LQ 1\.00/);
 });
+test('a valid model answer of industry:null is kept instead of falling back to keywords',async()=>{
+ // Review on #49: "機械" in the text must not overrule the model's "no category fits".
+ const e=setup();e.window.radarIntent={text:'使用機械的工廠，產品還沒決定',preference:''};
+ e.window.radarIntentParse=Promise.resolve({source:'llm',intent:{industry:null,related_industries:[],uncodable_question:'主要生產什麼產品？',
+  role:null,senior_role:null,hires:null,emphasis:[],unsupported:[],unsupported_phrases:[]}});
+ const loading=e.window.siteScan.start();await e.resolveAll();await loading;await e.tick();
+ const tags=e.ids.get('scan-tags').children.map(tag=>tag.lastChild.textContent);
+ assert.ok(tags.includes('未判斷，看全部製造業'),tags.join('|'));
+ assert.ok(!tags.includes('機械設備業'));
+ assert.match(e.ids.get('scan-intent-note').textContent,/AI 判斷不出產業/);
+ const cluster=e.ids.get('scan-criteria').children.find(row=>row.querySelector('b').textContent.startsWith('同業群聚'));
+ assert.equal(cluster.querySelector('b').textContent,'同業群聚');
+});
+test('without a model answer the keyword rules still pick the industry',async()=>{
+ const e=setup();e.window.radarIntent={text:'使用機械的工廠',preference:''};e.window.radarIntentParse=Promise.resolve(null);
+ const loading=e.window.siteScan.start();await e.resolveAll();await loading;await e.tick();
+ assert.ok(e.ids.get('scan-tags').children.map(tag=>tag.lastChild.textContent).includes('機械設備業'));
+});
+test('related industries join the cluster as one group, sized by summed employees',async()=>{
+ const e=setup();e.window.radarIntent={text:'機械加工與模具沖壓',preference:''};
+ e.window.radarIntentParse=Promise.resolve({source:'llm',intent:{industry:'機械設備業',related_industries:['金屬製品業'],uncodable_question:null,
+  role:null,senior_role:null,hires:null,emphasis:['cluster'],unsupported:[],unsupported_phrases:[]}});
+ const loading=e.window.siteScan.start();await e.resolveAll();await loading;await e.tick();
+ const cluster=e.ids.get('scan-criteria').children.find(row=>row.querySelector('b').textContent.startsWith('同業群聚'));
+ assert.equal(cluster.querySelector('b').textContent,'同業群聚（機械設備業＋金屬製品業）');
+ const staff=JSON.parse(fs.readFileSync(path.join(__dirname,'../../ui/static/district-stats.json'),'utf8')).factories.employees['大里區'];
+ const card=e.ids.get('scan-podium').children.concat(e.ids.get('scan-grid').children).find(li=>li.textContent.includes('大里區'));
+ assert.match(card.textContent,new RegExp((staff['機械設備業']+staff['金屬製品業']).toLocaleString()+' 人'));
+});
 test('official census totals give a location quotient even when every district has a suppressed cell',async()=>{
  const e=setup(officialTotals);
  const loading=e.window.siteScan.start();await e.resolveAll();await loading;await e.tick();
@@ -176,4 +205,18 @@ test('the shipped data now yields location quotients, and size without a named i
  loading=plain.window.siteScan.start();await plain.resolveAll();await loading;await plain.tick();
  assert.match(clusterText(plain),/同業群聚：[\d,]+ 人/,'without an industry the district total is the size');
  assert.doesNotMatch(clusterText(plain),/同業群聚：無資料/);
+});
+test('with related industries the city share uses the same group as the district share',async()=>{
+ // #49 sums the main and related industries; #55's official city figures must be summed over that same group.
+ const e=setup(stats=>{officialTotals(stats);
+  for(const name of Object.keys(stats.factories.districts)){const on=['太平區','西屯區'].includes(name);
+   stats.factories.districts[name]['金屬製品業']=on?10:0;stats.factories.employees[name]['金屬製品業']=on?100:0;}
+  stats.factories.totals.city_employees['金屬製品業']=200;return stats;});
+ e.window.radarIntent={text:'機械加工與模具沖壓',preference:''};
+ e.window.radarIntentParse=Promise.resolve({source:'llm',intent:{industry:'機械設備業',related_industries:['金屬製品業'],uncodable_question:null,
+  role:null,senior_role:null,hires:null,emphasis:['cluster'],unsupported:[],unsupported_phrases:[]}});
+ const loading=e.window.siteScan.start();await e.resolveAll();await loading;await e.tick();
+ // 太平區: (100+100)/1000 over (200+200)/2000 = 1.00; using only 機械設備業 city-wide would give 2.00
+ assert.match(clusterText(e),/同業群聚：200 人・LQ 1\.00/);
+ assert.doesNotMatch(clusterText(e),/LQ 2\.00/);
 });
