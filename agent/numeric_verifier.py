@@ -264,10 +264,27 @@ def _is_period_code(text, number, period_codes):
     return _CLAUSE_START_RE.fullmatch(prefix) is not None and _PERIOD_AFTER_RE.match(after) is not None
 
 
+# 中文數量（兩萬人、三十六萬、兩成、一半、翻倍、③）無法對到工具欄位，一律當成未驗證的數字。
+# 模型被要求照抄工具的阿拉伯數字，寫成中文就是自己換算或編的。
+_CN_DIGIT = "一二兩三四五六七八九壹貳參肆伍陸柒捌玖廿卅"
+_CN_QUANTITY_RE = re.compile(
+    rf"[{_CN_DIGIT}十拾]+[十百千萬億拾佰仟]"                       # 兩萬、三十六、一百
+    rf"|(?<![前第後每單])[{_CN_DIGIT}十拾]+(?:人|名|家|間|所|筆|元|塊|%|％)"  # 三人、五家（「一家」除外，見下）
+    rf"|[{_CN_DIGIT}十拾幾數]+(?:成(?![功立為本果長員熟效交品分就不])|倍|分之)"
+    r"|一半|過半|大半|半數|翻倍|加倍|倍增|雙倍"
+    r"|[①-⑳㉑-㉟㊱-㊿]"
+)
+_GENERIC_ONE_RE = re.compile(r"^一(?:人|名|家|間|所|筆)$")  # 「每一家」「一筆職缺」這種泛稱不算數量
+
+
+def _chinese_quantities(text):
+    return [m.group() for m in _CN_QUANTITY_RE.finditer(text) if not _GENERIC_ONE_RE.match(m.group())]
+
+
 def verify_explanation_numbers(
     explanation_text: str,
     structured_data: Dict[str, Any],
-    tolerance: float = 0.05,
+    tolerance: float = 1e-9,
     *,
     user_query: Optional[str] = None,
 ) -> Dict[str, Any]:
@@ -314,7 +331,9 @@ def verify_explanation_numbers(
         else:
             unmatched.append(value)
 
-    total = len(numbers) - len(conditions) + len(metadata)
+    chinese = _chinese_quantities(explanation_text)
+    unmatched.extend(chinese)
+    total = len(numbers) - len(conditions) + len(metadata) + len(chinese)
     matched += metadata_matched
     details = []
     if conditions:

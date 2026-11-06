@@ -122,6 +122,28 @@ class NumericVerifierGuardrailTests(unittest.TestCase):
             ("投保人數達到11412（民國114年12月）。", "FAILED"),
             ("投保單位數等於11412（民國114年12月）。", "FAILED"),
             ("「11412」是資料期別。", "VERIFIED"),
+            # 中文數量對不到工具欄位，一律擋下；一般用語不受影響
+            ("依勞動部統計缺工兩萬人。", "FAILED"),
+            ("投保人數約三十六萬人。", "FAILED"),
+            ("平均投保薪資約三萬六千元。", "FAILED"),
+            ("比去年多兩成。", "FAILED"),
+            ("超過一半的勞工投保。", "FAILED"),
+            ("投保人數翻倍。", "FAILED"),
+            ("前三名都一樣，最近一個月每一家企業都可以一起考慮，平均投保薪資 36,201.78 元。", "VERIFIED"),
+        ):
+            with self.subTest(answer=answer):
+                self.assertEqual(verify_explanation_numbers(answer, data)["status"], expected)
+
+
+    def test_small_values_must_match_exactly(self):
+        # 原本固定 ±0.05 的容差，對 0.14 這種比值等於放行 30% 的誤差
+        data = {"supply_demand_ratio": 0.14, "growth_rate": 3.2}
+        for answer, expected in (
+            ("每位畢業生對應 0.14 個職缺。", "VERIFIED"),
+            ("成長率 3.2%。", "VERIFIED"),
+            ("每位畢業生對應 0.18 個職缺。", "FAILED"),
+            ("每位畢業生對應 0.10 個職缺。", "FAILED"),
+            ("成長率 3.25%。", "FAILED"),
         ):
             with self.subTest(answer=answer):
                 self.assertEqual(verify_explanation_numbers(answer, data)["status"], expected)
