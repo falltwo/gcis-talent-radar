@@ -206,7 +206,7 @@ def research_role(role):
     try:
         response = requests.post(os.environ.get("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1").rstrip("/") + "/chat/completions",
             headers={"Authorization":"Bearer " + key,"Content-Type":"application/json"},
-            json={"model":os.environ.get("OPENROUTER_MODEL","openai/gpt-6-luna"),
+            json={"model":os.environ.get("RECRUITMENT_THINKING_MODEL",os.environ.get("OPENROUTER_MODEL","openai/gpt-6-luna")),
                   "plugins":[{"id":"web","engine":"exa","max_results":3}], "messages":[{"role":"system","content":prompt},{"role":"user","content":role}],
                   "response_format":{"type":"json_object"},"reasoning_effort":"none","max_completion_tokens":2600},timeout=(5,45))
         if not response.ok: raise HTTPException(502, "職位搜尋服務未完成；沒有將離線內容冒充即時搜尋。")

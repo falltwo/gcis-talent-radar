@@ -1,15 +1,38 @@
 """Prepare suggestions from the existing occupational templates, before browser filling."""
 import re
+import logging
 from types import SimpleNamespace
+from typing import Annotated
 from pydantic import Field
-from .ai import ModelOutput
+from .ai import ModelOutput, AIError
 from recruitment.taiwan_salary import get_reference
 
 
 class JobSuggestion(ModelOutput):
     description:str=Field(min_length=10,max_length=1500)
-    required_skills:list[str]=Field(min_length=1,max_length=8)
-    trainable_skills:list[str]=Field(max_length=5)
+    required_skills:list[Annotated[str,Field(min_length=1,max_length=80)]]=Field(min_length=1,max_length=8)
+    trainable_skills:list[Annotated[str,Field(min_length=1,max_length=80)]]=Field(max_length=5)
+
+
+def suggest_content(ai,role,scoped):
+    fallback={'description':f'負責{role}相關工作，依企業流程執行任務、記錄進度並協助團隊完成工作。',
+              'required_skills':['職務相關知識','溝通協調'],'trainable_skills':['公司內部作業流程']}
+    if ai.enabled:
+        for _ in range(2):
+            try:
+                proposal=ai.structured(JobSuggestion,
+                    '根據使用者的職稱與需求，擬定繁體中文企業招募表的工作內容及技能建議。這是待確認建議，不是已核准條件。'
+                    '不能編造公司事實、薪資、證照或必須學歷。不以個人特徵篩選。技能每項最多80字。只輸出指定schema。',
+                    {'role':role,'requirements':scoped})
+                return proposal.model_dump(),'AI_SUGGESTION',['工作內容與技能為AI建議，填完後請確認。']
+            except AIError as exc:
+                # Retry only drafting failures. Validation and HR-input errors
+                # elsewhere must still reach the caller rather than be replaced.
+                reason=str(exc) if str(exc) in {'timeout','network_error','provider_http_error','provider_error','incomplete_response','invalid_response'} else 'unavailable'
+                logging.getLogger(__name__).warning('Recruitment suggestion attempt failed: reason=%s',reason)
+        logging.getLogger(__name__).warning('Recruitment suggestion unavailable after two attempts; using explicitly labeled general template')
+        return fallback,'GENERAL_TEMPLATE',['AI擬稿暫時未完成，已先套用通用職務範本；這不是即時查證內容，請檢查工作內容與技能後再送審。']
+    return fallback,'GENERAL_TEMPLATE',['工作內容與技能為通用範本建議，填完後請確認。']
 
 
 class EmployerName(ModelOutput):
@@ -61,18 +84,11 @@ def prepare_execution(ai,batch,company,district):
             result=draft_job(SimpleNamespace(role=role,needs=scoped,company_name=company,company_intro='',district=location))
             job=result['job'];source=result['source'];sources=result['sources'];notes=result['review_notes']
         else:
-            if ai.enabled:
-                proposal=ai.structured(JobSuggestion,
-                    '根據使用者的職稱與需求，擬定繁體中文企業招募表的工作內容及技能建議。這是待確認建議，不是已核准條件。'
-                    '不能編造公司事實、薪資、證照或必須學歷。不以個人特徵篩選。技能每項最多80字。只輸出指定schema。',
-                    {'role':role,'requirements':scoped})
-                generated=proposal.model_dump();source='AI_SUGGESTION'
-            else:
-                generated={'description':f'負責{role}相關工作，依企業流程執行任務、記錄進度並協助團隊完成工作。', 'required_skills':['職務相關知識','溝通協調'],'trainable_skills':['公司內部作業流程']};source='GENERAL_TEMPLATE'
+            generated,source,notes=suggest_content(ai,role,scoped)
             job={'title':role,'company_name':company,'company_intro':'','district':location,'headcount':item['quantity'],
                  'salary_mode':'NEGOTIABLE','salary_min':None,'salary_max':None,'employment_type':'全職','shift':'日班',
                  'schedule_system':'固定班制','work_hours':'09:00–18:00','min_experience_months':0,**generated}
-            sources=[];notes=['工作內容與技能為AI或通用範本建議，填完後請確認。']
+            sources=[]
         # Prefer conditions scoped to this role over general suggested defaults.
         scope=original
         if len(items)>1:

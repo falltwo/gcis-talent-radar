@@ -100,6 +100,27 @@ class ChatLog(Base):
     role = Column(String(20), nullable=False)
     content = Column(Text, nullable=False)
     created_at = Column(DateTime(timezone=True), default=now)
+class AssistantMemory(Base):
+    __tablename__ = 'assistant_memories'
+    id = Column(Integer, primary_key=True)
+    company_id = Column(Integer, ForeignKey('companies.id'), nullable=False)
+    user_id = Column(Integer, ForeignKey('users.id'), nullable=False)
+    conversation_id = Column(String(80), nullable=False)
+    state = Column(JSON, nullable=False, default=dict)
+    expires_at = Column(DateTime(timezone=True), nullable=False)
+    __table_args__ = (UniqueConstraint('company_id','user_id','conversation_id'),)
+class AssistantTurn(Base):
+    __tablename__ = 'assistant_turns'
+    id = Column(Integer, primary_key=True)
+    company_id = Column(Integer, ForeignKey('companies.id'), nullable=False)
+    user_id = Column(Integer, ForeignKey('users.id'), nullable=False)
+    conversation_id = Column(String(80), nullable=False)
+    request_id = Column(String(80), nullable=False)
+    fingerprint = Column(String(64), nullable=False)
+    result = Column(JSON, nullable=False)
+    __table_args__ = (UniqueConstraint('company_id','user_id','conversation_id','request_id'),)
+
+
 class AuditLog(Base):
     __tablename__ = 'audit_logs'
     id = Column(Integer, primary_key=True)

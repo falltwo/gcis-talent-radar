@@ -1,7 +1,7 @@
 {
  "academic_year": "113",
  "radius_km": 10,
- "distance": "school to district boundary; 0 when inside",
+ "distance": "school to district boundary; 0 when inside. Job postings: neighbour label point to boundary",
  "jobs_snapshot": "2026-10-05",
  "department_rule": "機械|機電|精密|自動化|模具|電機|工業工程|智慧製造|材料|車輛|動力|製造",
  "job_families": [
@@ -9,7 +9,7 @@
   "工程／研發／生技",
   "技術／維修／操作"
  ],
- "job_location_rule": "只納入最新快照、工作地點明確位於查詢區的職缺，依 URL 去重；此為職類篩選而非雇主行業分類",
+ "job_location_rule": "只納入最新快照、工作地點明確的職缺，依 URL 去重；鄰區職缺依距離打折計入；此為職類篩選而非雇主行業分類",
  "jobs_coverage": {
   "snapshot_date": "2026-10-05",
   "capped": [],
@@ -101,6 +101,70 @@
    ],
    "postings": 36,
    "openings": 209,
+   "postings_nearby": 318,
+   "openings_nearby": 1710,
+   "demand_districts": [
+    {
+     "district": "龍井區",
+     "km": 0.0,
+     "weight": 1.0
+    },
+    {
+     "district": "梧棲區",
+     "km": 2.4,
+     "weight": 0.76
+    },
+    {
+     "district": "沙鹿區",
+     "km": 2.5,
+     "weight": 0.75
+    },
+    {
+     "district": "西屯區",
+     "km": 2.6,
+     "weight": 0.74
+    },
+    {
+     "district": "大肚區",
+     "km": 2.9,
+     "weight": 0.71
+    },
+    {
+     "district": "大雅區",
+     "km": 5.6,
+     "weight": 0.44
+    },
+    {
+     "district": "南屯區",
+     "km": 6.5,
+     "weight": 0.35
+    },
+    {
+     "district": "西區",
+     "km": 8.6,
+     "weight": 0.14
+    },
+    {
+     "district": "清水區",
+     "km": 8.7,
+     "weight": 0.13
+    },
+    {
+     "district": "北區",
+     "km": 8.9,
+     "weight": 0.11
+    },
+    {
+     "district": "南區",
+     "km": 9.5,
+     "weight": 0.05
+    },
+    {
+     "district": "中區",
+     "km": 9.7,
+     "weight": 0.03
+    }
+   ],
    "salary_floor_median": 31904,
    "salary_samples": 36,
    "salary_ceiling_median": 36540,
@@ -176,6 +240,105 @@
    ],
    "postings": 97,
    "openings": 623,
+   "postings_nearby": 425,
+   "openings_nearby": 2207,
+   "demand_districts": [
+    {
+     "district": "大雅區",
+     "km": 0.0,
+     "weight": 1.0
+    },
+    {
+     "district": "神岡區",
+     "km": 2.3,
+     "weight": 0.77
+    },
+    {
+     "district": "沙鹿區",
+     "km": 2.5,
+     "weight": 0.75
+    },
+    {
+     "district": "西屯區",
+     "km": 2.5,
+     "weight": 0.75
+    },
+    {
+     "district": "潭子區",
+     "km": 4.4,
+     "weight": 0.56
+    },
+    {
+     "district": "北區",
+     "km": 4.9,
+     "weight": 0.51
+    },
+    {
+     "district": "豐原區",
+     "km": 6.0,
+     "weight": 0.4
+    },
+    {
+     "district": "中區",
+     "km": 6.6,
+     "weight": 0.34
+    },
+    {
+     "district": "西區",
+     "km": 6.8,
+     "weight": 0.32
+    },
+    {
+     "district": "龍井區",
+     "km": 6.9,
+     "weight": 0.31
+    },
+    {
+     "district": "南屯區",
+     "km": 7.4,
+     "weight": 0.26
+    },
+    {
+     "district": "清水區",
+     "km": 7.8,
+     "weight": 0.22
+    },
+    {
+     "district": "東區",
+     "km": 8.0,
+     "weight": 0.2
+    },
+    {
+     "district": "梧棲區",
+     "km": 8.9,
+     "weight": 0.11
+    },
+    {
+     "district": "南區",
+     "km": 8.9,
+     "weight": 0.11
+    },
+    {
+     "district": "大肚區",
+     "km": 9.0,
+     "weight": 0.1
+    },
+    {
+     "district": "后里區",
+     "km": 9.2,
+     "weight": 0.08
+    },
+    {
+     "district": "外埔區",
+     "km": 9.4,
+     "weight": 0.06
+    },
+    {
+     "district": "北屯區",
+     "km": 9.8,
+     "weight": 0.02
+    }
+   ],
    "salary_floor_median": 33000,
    "salary_samples": 86,
    "salary_ceiling_median": 38441,
@@ -227,6 +390,75 @@
    ],
    "postings": 13,
    "openings": 35,
+   "postings_nearby": 381,
+   "openings_nearby": 1939,
+   "demand_districts": [
+    {
+     "district": "沙鹿區",
+     "km": 0.0,
+     "weight": 1.0
+    },
+    {
+     "district": "大雅區",
+     "km": 2.2,
+     "weight": 0.78
+    },
+    {
+     "district": "龍井區",
+     "km": 2.5,
+     "weight": 0.75
+    },
+    {
+     "district": "西屯區",
+     "km": 3.6,
+     "weight": 0.64
+    },
+    {
+     "district": "清水區",
+     "km": 3.8,
+     "weight": 0.62
+    },
+    {
+     "district": "梧棲區",
+     "km": 3.9,
+     "weight": 0.61
+    },
+    {
+     "district": "神岡區",
+     "km": 4.9,
+     "weight": 0.51
+    },
+    {
+     "district": "大肚區",
+     "km": 5.9,
+     "weight": 0.41
+    },
+    {
+     "district": "南屯區",
+     "km": 7.8,
+     "weight": 0.22
+    },
+    {
+     "district": "外埔區",
+     "km": 9.4,
+     "weight": 0.06
+    },
+    {
+     "district": "大安區",
+     "km": 9.7,
+     "weight": 0.03
+    },
+    {
+     "district": "西區",
+     "km": 9.7,
+     "weight": 0.03
+    },
+    {
+     "district": "北區",
+     "km": 9.9,
+     "weight": 0.01
+    }
+   ],
    "salary_floor_median": 33500,
    "salary_samples": 12,
    "salary_ceiling_median": 40000,
@@ -255,6 +487,45 @@
    ],
    "postings": 68,
    "openings": 365,
+   "postings_nearby": 177,
+   "openings_nearby": 908,
+   "demand_districts": [
+    {
+     "district": "梧棲區",
+     "km": 0.0,
+     "weight": 1.0
+    },
+    {
+     "district": "龍井區",
+     "km": 2.5,
+     "weight": 0.75
+    },
+    {
+     "district": "沙鹿區",
+     "km": 2.5,
+     "weight": 0.75
+    },
+    {
+     "district": "清水區",
+     "km": 3.9,
+     "weight": 0.61
+    },
+    {
+     "district": "大肚區",
+     "km": 8.1,
+     "weight": 0.19
+    },
+    {
+     "district": "大雅區",
+     "km": 8.2,
+     "weight": 0.18
+    },
+    {
+     "district": "西屯區",
+     "km": 8.6,
+     "weight": 0.14
+    }
+   ],
    "salary_floor_median": 32394,
    "salary_samples": 49,
    "salary_ceiling_median": 37000,
@@ -306,6 +577,80 @@
    ],
    "postings": 33,
    "openings": 132,
+   "postings_nearby": 303,
+   "openings_nearby": 1533,
+   "demand_districts": [
+    {
+     "district": "豐原區",
+     "km": 0.0,
+     "weight": 1.0
+    },
+    {
+     "district": "石岡區",
+     "km": 1.2,
+     "weight": 0.88
+    },
+    {
+     "district": "潭子區",
+     "km": 1.6,
+     "weight": 0.84
+    },
+    {
+     "district": "神岡區",
+     "km": 2.5,
+     "weight": 0.75
+    },
+    {
+     "district": "后里區",
+     "km": 3.0,
+     "weight": 0.7
+    },
+    {
+     "district": "北屯區",
+     "km": 3.0,
+     "weight": 0.7
+    },
+    {
+     "district": "新社區",
+     "km": 3.1,
+     "weight": 0.69
+    },
+    {
+     "district": "大雅區",
+     "km": 6.0,
+     "weight": 0.4
+    },
+    {
+     "district": "北區",
+     "km": 7.4,
+     "weight": 0.26
+    },
+    {
+     "district": "外埔區",
+     "km": 7.7,
+     "weight": 0.23
+    },
+    {
+     "district": "西屯區",
+     "km": 9.0,
+     "weight": 0.1
+    },
+    {
+     "district": "中區",
+     "km": 9.2,
+     "weight": 0.08
+    },
+    {
+     "district": "東區",
+     "km": 9.7,
+     "weight": 0.03
+    },
+    {
+     "district": "西區",
+     "km": 10.0,
+     "weight": 0.0
+    }
+   ],
    "salary_floor_median": 31500,
    "salary_samples": 30,
    "salary_ceiling_median": 38430,
@@ -321,6 +666,55 @@
    "schools": [],
    "postings": 0,
    "openings": 0,
+   "postings_nearby": 142,
+   "openings_nearby": 681,
+   "demand_districts": [
+    {
+     "district": "石岡區",
+     "km": 1.2,
+     "weight": 0.88
+    },
+    {
+     "district": "新社區",
+     "km": 2.4,
+     "weight": 0.76
+    },
+    {
+     "district": "后里區",
+     "km": 3.0,
+     "weight": 0.7
+    },
+    {
+     "district": "豐原區",
+     "km": 3.5,
+     "weight": 0.65
+    },
+    {
+     "district": "北屯區",
+     "km": 6.2,
+     "weight": 0.38
+    },
+    {
+     "district": "神岡區",
+     "km": 7.1,
+     "weight": 0.29
+    },
+    {
+     "district": "太平區",
+     "km": 8.4,
+     "weight": 0.16
+    },
+    {
+     "district": "潭子區",
+     "km": 8.7,
+     "weight": 0.13
+    },
+    {
+     "district": "外埔區",
+     "km": 9.5,
+     "weight": 0.05
+    }
+   ],
    "salary_floor_median": null,
    "salary_samples": 0,
    "salary_ceiling_median": null,
@@ -336,6 +730,60 @@
    "schools": [],
    "postings": 70,
    "openings": 425,
+   "postings_nearby": 254,
+   "openings_nearby": 1218,
+   "demand_districts": [
+    {
+     "district": "后里區",
+     "km": 0.0,
+     "weight": 1.0
+    },
+    {
+     "district": "神岡區",
+     "km": 2.3,
+     "weight": 0.77
+    },
+    {
+     "district": "石岡區",
+     "km": 2.5,
+     "weight": 0.75
+    },
+    {
+     "district": "外埔區",
+     "km": 2.5,
+     "weight": 0.75
+    },
+    {
+     "district": "豐原區",
+     "km": 3.5,
+     "weight": 0.65
+    },
+    {
+     "district": "大雅區",
+     "km": 7.7,
+     "weight": 0.23
+    },
+    {
+     "district": "大安區",
+     "km": 8.2,
+     "weight": 0.18
+    },
+    {
+     "district": "新社區",
+     "km": 8.3,
+     "weight": 0.17
+    },
+    {
+     "district": "潭子區",
+     "km": 8.4,
+     "weight": 0.16
+    },
+    {
+     "district": "清水區",
+     "km": 8.7,
+     "weight": 0.13
+    }
+   ],
    "salary_floor_median": 33000,
    "salary_samples": 57,
    "salary_ceiling_median": 38215,
@@ -387,6 +835,85 @@
    ],
    "postings": 127,
    "openings": 473,
+   "postings_nearby": 386,
+   "openings_nearby": 1959,
+   "demand_districts": [
+    {
+     "district": "神岡區",
+     "km": 0.0,
+     "weight": 1.0
+    },
+    {
+     "district": "大雅區",
+     "km": 2.1,
+     "weight": 0.79
+    },
+    {
+     "district": "豐原區",
+     "km": 2.7,
+     "weight": 0.73
+    },
+    {
+     "district": "后里區",
+     "km": 3.4,
+     "weight": 0.66
+    },
+    {
+     "district": "潭子區",
+     "km": 3.6,
+     "weight": 0.64
+    },
+    {
+     "district": "外埔區",
+     "km": 4.8,
+     "weight": 0.52
+    },
+    {
+     "district": "石岡區",
+     "km": 6.7,
+     "weight": 0.33
+    },
+    {
+     "district": "沙鹿區",
+     "km": 6.9,
+     "weight": 0.31
+    },
+    {
+     "district": "西屯區",
+     "km": 7.0,
+     "weight": 0.3
+    },
+    {
+     "district": "清水區",
+     "km": 7.7,
+     "weight": 0.23
+    },
+    {
+     "district": "北區",
+     "km": 7.7,
+     "weight": 0.23
+    },
+    {
+     "district": "北屯區",
+     "km": 8.7,
+     "weight": 0.13
+    },
+    {
+     "district": "大安區",
+     "km": 8.8,
+     "weight": 0.12
+    },
+    {
+     "district": "中區",
+     "km": 9.5,
+     "weight": 0.05
+    },
+    {
+     "district": "新社區",
+     "km": 9.7,
+     "weight": 0.03
+    }
+   ],
    "salary_floor_median": 31654,
    "salary_samples": 116,
    "salary_ceiling_median": 36500,
@@ -415,6 +942,50 @@
    ],
    "postings": 4,
    "openings": 6,
+   "postings_nearby": 133,
+   "openings_nearby": 689,
+   "demand_districts": [
+    {
+     "district": "新社區",
+     "km": 0.0,
+     "weight": 1.0
+    },
+    {
+     "district": "石岡區",
+     "km": 1.3,
+     "weight": 0.87
+    },
+    {
+     "district": "北屯區",
+     "km": 2.6,
+     "weight": 0.74
+    },
+    {
+     "district": "豐原區",
+     "km": 3.0,
+     "weight": 0.7
+    },
+    {
+     "district": "太平區",
+     "km": 4.8,
+     "weight": 0.52
+    },
+    {
+     "district": "潭子區",
+     "km": 5.0,
+     "weight": 0.5
+    },
+    {
+     "district": "后里區",
+     "km": 7.4,
+     "weight": 0.26
+    },
+    {
+     "district": "神岡區",
+     "km": 9.2,
+     "weight": 0.08
+    }
+   ],
    "salary_floor_median": 34750,
    "salary_samples": 4,
    "salary_ceiling_median": 42000,
@@ -430,6 +1001,45 @@
    "schools": [],
    "postings": 9,
    "openings": 30,
+   "postings_nearby": 118,
+   "openings_nearby": 586,
+   "demand_districts": [
+    {
+     "district": "石岡區",
+     "km": 0.0,
+     "weight": 1.0
+    },
+    {
+     "district": "新社區",
+     "km": 2.4,
+     "weight": 0.76
+    },
+    {
+     "district": "豐原區",
+     "km": 2.9,
+     "weight": 0.71
+    },
+    {
+     "district": "后里區",
+     "km": 4.3,
+     "weight": 0.57
+    },
+    {
+     "district": "北屯區",
+     "km": 5.8,
+     "weight": 0.42
+    },
+    {
+     "district": "潭子區",
+     "km": 6.9,
+     "weight": 0.31
+    },
+    {
+     "district": "神岡區",
+     "km": 8.3,
+     "weight": 0.17
+    }
+   ],
    "salary_floor_median": 32000,
    "salary_samples": 9,
    "salary_ceiling_median": null,
@@ -445,6 +1055,55 @@
    "schools": [],
    "postings": 27,
    "openings": 116,
+   "postings_nearby": 202,
+   "openings_nearby": 942,
+   "demand_districts": [
+    {
+     "district": "外埔區",
+     "km": 0.0,
+     "weight": 1.0
+    },
+    {
+     "district": "后里區",
+     "km": 3.0,
+     "weight": 0.7
+    },
+    {
+     "district": "大安區",
+     "km": 4.1,
+     "weight": 0.59
+    },
+    {
+     "district": "神岡區",
+     "km": 5.2,
+     "weight": 0.48
+    },
+    {
+     "district": "清水區",
+     "km": 5.3,
+     "weight": 0.47
+    },
+    {
+     "district": "大甲區",
+     "km": 6.0,
+     "weight": 0.4
+    },
+    {
+     "district": "大雅區",
+     "km": 8.3,
+     "weight": 0.17
+    },
+    {
+     "district": "石岡區",
+     "km": 9.1,
+     "weight": 0.09
+    },
+    {
+     "district": "豐原區",
+     "km": 9.3,
+     "weight": 0.07
+    }
+   ],
    "salary_floor_median": 32500,
    "salary_samples": 24,
    "salary_ceiling_median": 38430,
@@ -508,6 +1167,70 @@
    ],
    "postings": 47,
    "openings": 240,
+   "postings_nearby": 269,
+   "openings_nearby": 1399,
+   "demand_districts": [
+    {
+     "district": "大肚區",
+     "km": 0.0,
+     "weight": 1.0
+    },
+    {
+     "district": "龍井區",
+     "km": 2.3,
+     "weight": 0.77
+    },
+    {
+     "district": "西屯區",
+     "km": 4.0,
+     "weight": 0.6
+    },
+    {
+     "district": "南屯區",
+     "km": 4.6,
+     "weight": 0.54
+    },
+    {
+     "district": "烏日區",
+     "km": 5.2,
+     "weight": 0.48
+    },
+    {
+     "district": "沙鹿區",
+     "km": 5.4,
+     "weight": 0.46
+    },
+    {
+     "district": "南區",
+     "km": 7.4,
+     "weight": 0.26
+    },
+    {
+     "district": "大雅區",
+     "km": 7.8,
+     "weight": 0.22
+    },
+    {
+     "district": "西區",
+     "km": 7.8,
+     "weight": 0.22
+    },
+    {
+     "district": "梧棲區",
+     "km": 8.2,
+     "weight": 0.18
+    },
+    {
+     "district": "中區",
+     "km": 9.3,
+     "weight": 0.07
+    },
+    {
+     "district": "北區",
+     "km": 9.6,
+     "weight": 0.04
+    }
+   ],
    "salary_floor_median": 33000,
    "salary_samples": 45,
    "salary_ceiling_median": 37500,
@@ -523,6 +1246,40 @@
    "schools": [],
    "postings": 60,
    "openings": 241,
+   "postings_nearby": 147,
+   "openings_nearby": 650,
+   "demand_districts": [
+    {
+     "district": "大甲區",
+     "km": 0.0,
+     "weight": 1.0
+    },
+    {
+     "district": "大安區",
+     "km": 1.9,
+     "weight": 0.81
+    },
+    {
+     "district": "外埔區",
+     "km": 2.4,
+     "weight": 0.76
+    },
+    {
+     "district": "清水區",
+     "km": 3.9,
+     "weight": 0.61
+    },
+    {
+     "district": "后里區",
+     "km": 5.9,
+     "weight": 0.41
+    },
+    {
+     "district": "神岡區",
+     "km": 9.3,
+     "weight": 0.07
+    }
+   ],
    "salary_floor_median": 31500,
    "salary_samples": 56,
    "salary_ceiling_median": 35000,
@@ -538,6 +1295,35 @@
    "schools": [],
    "postings": 5,
    "openings": 30,
+   "postings_nearby": 94,
+   "openings_nearby": 387,
+   "demand_districts": [
+    {
+     "district": "大安區",
+     "km": 0.0,
+     "weight": 1.0
+    },
+    {
+     "district": "大甲區",
+     "km": 1.9,
+     "weight": 0.81
+    },
+    {
+     "district": "清水區",
+     "km": 4.0,
+     "weight": 0.6
+    },
+    {
+     "district": "外埔區",
+     "km": 5.2,
+     "weight": 0.48
+    },
+    {
+     "district": "梧棲區",
+     "km": 9.5,
+     "weight": 0.05
+    }
+   ],
    "salary_floor_median": 31500,
    "salary_samples": 5,
    "salary_ceiling_median": 34500,
@@ -589,6 +1375,70 @@
    ],
    "postings": 40,
    "openings": 145,
+   "postings_nearby": 302,
+   "openings_nearby": 1453,
+   "demand_districts": [
+    {
+     "district": "清水區",
+     "km": 0.0,
+     "weight": 1.0
+    },
+    {
+     "district": "梧棲區",
+     "km": 2.4,
+     "weight": 0.76
+    },
+    {
+     "district": "大安區",
+     "km": 2.8,
+     "weight": 0.72
+    },
+    {
+     "district": "神岡區",
+     "km": 3.7,
+     "weight": 0.63
+    },
+    {
+     "district": "沙鹿區",
+     "km": 3.8,
+     "weight": 0.62
+    },
+    {
+     "district": "大雅區",
+     "km": 3.9,
+     "weight": 0.61
+    },
+    {
+     "district": "外埔區",
+     "km": 4.7,
+     "weight": 0.53
+    },
+    {
+     "district": "龍井區",
+     "km": 7.2,
+     "weight": 0.28
+    },
+    {
+     "district": "西屯區",
+     "km": 8.5,
+     "weight": 0.15
+    },
+    {
+     "district": "后里區",
+     "km": 8.7,
+     "weight": 0.13
+    },
+    {
+     "district": "大甲區",
+     "km": 9.7,
+     "weight": 0.03
+    },
+    {
+     "district": "豐原區",
+     "km": 9.8,
+     "weight": 0.02
+    }
+   ],
    "salary_floor_median": 31500,
    "salary_samples": 38,
    "salary_ceiling_median": 35000,
@@ -665,6 +1515,60 @@
    ],
    "postings": 50,
    "openings": 173,
+   "postings_nearby": 244,
+   "openings_nearby": 1102,
+   "demand_districts": [
+    {
+     "district": "霧峰區",
+     "km": 0.0,
+     "weight": 1.0
+    },
+    {
+     "district": "烏日區",
+     "km": 1.8,
+     "weight": 0.82
+    },
+    {
+     "district": "大里區",
+     "km": 2.2,
+     "weight": 0.78
+    },
+    {
+     "district": "南區",
+     "km": 3.4,
+     "weight": 0.66
+    },
+    {
+     "district": "太平區",
+     "km": 4.8,
+     "weight": 0.52
+    },
+    {
+     "district": "南屯區",
+     "km": 5.1,
+     "weight": 0.49
+    },
+    {
+     "district": "西區",
+     "km": 5.6,
+     "weight": 0.44
+    },
+    {
+     "district": "東區",
+     "km": 6.0,
+     "weight": 0.4
+    },
+    {
+     "district": "中區",
+     "km": 6.5,
+     "weight": 0.35
+    },
+    {
+     "district": "北區",
+     "km": 8.1,
+     "weight": 0.19
+    }
+   ],
    "salary_floor_median": 31500,
    "salary_samples": 43,
    "salary_ceiling_median": 35000,
@@ -764,6 +1668,75 @@
    ],
    "postings": 93,
    "openings": 459,
+   "postings_nearby": 285,
+   "openings_nearby": 1330,
+   "demand_districts": [
+    {
+     "district": "大里區",
+     "km": 0.0,
+     "weight": 1.0
+    },
+    {
+     "district": "南區",
+     "km": 1.0,
+     "weight": 0.9
+    },
+    {
+     "district": "東區",
+     "km": 1.2,
+     "weight": 0.88
+    },
+    {
+     "district": "烏日區",
+     "km": 2.3,
+     "weight": 0.77
+    },
+    {
+     "district": "中區",
+     "km": 2.3,
+     "weight": 0.77
+    },
+    {
+     "district": "西區",
+     "km": 2.7,
+     "weight": 0.73
+    },
+    {
+     "district": "霧峰區",
+     "km": 3.8,
+     "weight": 0.62
+    },
+    {
+     "district": "南屯區",
+     "km": 4.0,
+     "weight": 0.6
+    },
+    {
+     "district": "北區",
+     "km": 4.0,
+     "weight": 0.6
+    },
+    {
+     "district": "太平區",
+     "km": 4.6,
+     "weight": 0.54
+    },
+    {
+     "district": "西屯區",
+     "km": 8.9,
+     "weight": 0.11
+    },
+    {
+     "district": "潭子區",
+     "km": 9.2,
+     "weight": 0.08
+    },
+    {
+     "district": "北屯區",
+     "km": 9.8,
+     "weight": 0.02
+    }
+   ],
    "salary_floor_median": 31500,
    "salary_samples": 82,
    "salary_ceiling_median": 34965,
@@ -863,6 +1836,75 @@
    ],
    "postings": 8,
    "openings": 31,
+   "postings_nearby": 264,
+   "openings_nearby": 1258,
+   "demand_districts": [
+    {
+     "district": "南區",
+     "km": 0.0,
+     "weight": 1.0
+    },
+    {
+     "district": "西區",
+     "km": 0.9,
+     "weight": 0.91
+    },
+    {
+     "district": "中區",
+     "km": 1.0,
+     "weight": 0.9
+    },
+    {
+     "district": "東區",
+     "km": 1.4,
+     "weight": 0.86
+    },
+    {
+     "district": "南屯區",
+     "km": 2.0,
+     "weight": 0.8
+    },
+    {
+     "district": "大里區",
+     "km": 2.2,
+     "weight": 0.78
+    },
+    {
+     "district": "烏日區",
+     "km": 2.3,
+     "weight": 0.77
+    },
+    {
+     "district": "北區",
+     "km": 2.7,
+     "weight": 0.73
+    },
+    {
+     "district": "西屯區",
+     "km": 6.2,
+     "weight": 0.38
+    },
+    {
+     "district": "霧峰區",
+     "km": 8.5,
+     "weight": 0.15
+    },
+    {
+     "district": "潭子區",
+     "km": 8.8,
+     "weight": 0.12
+    },
+    {
+     "district": "大肚區",
+     "km": 9.9,
+     "weight": 0.01
+    },
+    {
+     "district": "太平區",
+     "km": 9.9,
+     "weight": 0.01
+    }
+   ],
    "salary_floor_median": 35000,
    "salary_samples": 8,
    "salary_ceiling_median": 40000,
@@ -962,6 +2004,75 @@
    ],
    "postings": 43,
    "openings": 170,
+   "postings_nearby": 314,
+   "openings_nearby": 1483,
+   "demand_districts": [
+    {
+     "district": "烏日區",
+     "km": 0.0,
+     "weight": 1.0
+    },
+    {
+     "district": "南區",
+     "km": 1.4,
+     "weight": 0.86
+    },
+    {
+     "district": "南屯區",
+     "km": 1.9,
+     "weight": 0.81
+    },
+    {
+     "district": "大里區",
+     "km": 2.3,
+     "weight": 0.77
+    },
+    {
+     "district": "西區",
+     "km": 3.0,
+     "weight": 0.7
+    },
+    {
+     "district": "大肚區",
+     "km": 3.7,
+     "weight": 0.63
+    },
+    {
+     "district": "中區",
+     "km": 4.2,
+     "weight": 0.58
+    },
+    {
+     "district": "東區",
+     "km": 5.1,
+     "weight": 0.49
+    },
+    {
+     "district": "霧峰區",
+     "km": 5.5,
+     "weight": 0.45
+    },
+    {
+     "district": "北區",
+     "km": 5.6,
+     "weight": 0.44
+    },
+    {
+     "district": "西屯區",
+     "km": 5.9,
+     "weight": 0.41
+    },
+    {
+     "district": "龍井區",
+     "km": 8.7,
+     "weight": 0.13
+    },
+    {
+     "district": "沙鹿區",
+     "km": 9.7,
+     "weight": 0.03
+    }
+   ],
    "salary_floor_median": 32000,
    "salary_samples": 40,
    "salary_ceiling_median": 36300,
@@ -1061,6 +2172,70 @@
    ],
    "postings": 2,
    "openings": 25,
+   "postings_nearby": 199,
+   "openings_nearby": 985,
+   "demand_districts": [
+    {
+     "district": "中區",
+     "km": 0.0,
+     "weight": 1.0
+    },
+    {
+     "district": "西區",
+     "km": 1.0,
+     "weight": 0.9
+    },
+    {
+     "district": "東區",
+     "km": 1.2,
+     "weight": 0.88
+    },
+    {
+     "district": "北區",
+     "km": 1.3,
+     "weight": 0.87
+    },
+    {
+     "district": "南區",
+     "km": 2.7,
+     "weight": 0.73
+    },
+    {
+     "district": "南屯區",
+     "km": 4.2,
+     "weight": 0.58
+    },
+    {
+     "district": "大里區",
+     "km": 4.4,
+     "weight": 0.56
+    },
+    {
+     "district": "西屯區",
+     "km": 6.8,
+     "weight": 0.32
+    },
+    {
+     "district": "烏日區",
+     "km": 7.0,
+     "weight": 0.3
+    },
+    {
+     "district": "潭子區",
+     "km": 7.7,
+     "weight": 0.23
+    },
+    {
+     "district": "大雅區",
+     "km": 9.5,
+     "weight": 0.05
+    },
+    {
+     "district": "北屯區",
+     "km": 10.0,
+     "weight": 0.0
+    }
+   ],
    "salary_floor_median": 41000,
    "salary_samples": 2,
    "salary_ceiling_median": null,
@@ -1160,6 +2335,65 @@
    ],
    "postings": 3,
    "openings": 3,
+   "postings_nearby": 287,
+   "openings_nearby": 1463,
+   "demand_districts": [
+    {
+     "district": "西區",
+     "km": 0.0,
+     "weight": 1.0
+    },
+    {
+     "district": "中區",
+     "km": 0.4,
+     "weight": 0.96
+    },
+    {
+     "district": "南區",
+     "km": 1.0,
+     "weight": 0.9
+    },
+    {
+     "district": "北區",
+     "km": 1.0,
+     "weight": 0.9
+    },
+    {
+     "district": "東區",
+     "km": 1.5,
+     "weight": 0.85
+    },
+    {
+     "district": "南屯區",
+     "km": 2.0,
+     "weight": 0.8
+    },
+    {
+     "district": "大里區",
+     "km": 4.1,
+     "weight": 0.59
+    },
+    {
+     "district": "西屯區",
+     "km": 4.4,
+     "weight": 0.56
+    },
+    {
+     "district": "烏日區",
+     "km": 5.1,
+     "weight": 0.49
+    },
+    {
+     "district": "大雅區",
+     "km": 7.2,
+     "weight": 0.28
+    },
+    {
+     "district": "潭子區",
+     "km": 7.5,
+     "weight": 0.25
+    }
+   ],
    "salary_floor_median": 31000,
    "salary_samples": 3,
    "salary_ceiling_median": 34000,
@@ -1259,6 +2493,80 @@
    ],
    "postings": 76,
    "openings": 382,
+   "postings_nearby": 382,
+   "openings_nearby": 1928,
+   "demand_districts": [
+    {
+     "district": "南屯區",
+     "km": 0.0,
+     "weight": 1.0
+    },
+    {
+     "district": "南區",
+     "km": 1.0,
+     "weight": 0.9
+    },
+    {
+     "district": "西區",
+     "km": 1.0,
+     "weight": 0.9
+    },
+    {
+     "district": "烏日區",
+     "km": 1.7,
+     "weight": 0.83
+    },
+    {
+     "district": "中區",
+     "km": 2.4,
+     "weight": 0.76
+    },
+    {
+     "district": "大肚區",
+     "km": 2.5,
+     "weight": 0.75
+    },
+    {
+     "district": "北區",
+     "km": 2.6,
+     "weight": 0.74
+    },
+    {
+     "district": "西屯區",
+     "km": 2.6,
+     "weight": 0.74
+    },
+    {
+     "district": "東區",
+     "km": 4.3,
+     "weight": 0.57
+    },
+    {
+     "district": "大里區",
+     "km": 4.7,
+     "weight": 0.53
+    },
+    {
+     "district": "沙鹿區",
+     "km": 6.1,
+     "weight": 0.39
+    },
+    {
+     "district": "龍井區",
+     "km": 6.2,
+     "weight": 0.38
+    },
+    {
+     "district": "大雅區",
+     "km": 7.2,
+     "weight": 0.28
+    },
+    {
+     "district": "潭子區",
+     "km": 8.8,
+     "weight": 0.12
+    }
+   ],
    "salary_floor_median": 35000,
    "salary_samples": 63,
    "salary_ceiling_median": 39060,
@@ -1358,6 +2666,80 @@
    ],
    "postings": 3,
    "openings": 4,
+   "postings_nearby": 275,
+   "openings_nearby": 1440,
+   "demand_districts": [
+    {
+     "district": "北區",
+     "km": 0.0,
+     "weight": 1.0
+    },
+    {
+     "district": "中區",
+     "km": 0.3,
+     "weight": 0.97
+    },
+    {
+     "district": "西區",
+     "km": 0.9,
+     "weight": 0.91
+    },
+    {
+     "district": "東區",
+     "km": 1.4,
+     "weight": 0.86
+    },
+    {
+     "district": "南區",
+     "km": 2.8,
+     "weight": 0.72
+    },
+    {
+     "district": "南屯區",
+     "km": 3.8,
+     "weight": 0.62
+    },
+    {
+     "district": "西屯區",
+     "km": 4.7,
+     "weight": 0.53
+    },
+    {
+     "district": "大里區",
+     "km": 5.1,
+     "weight": 0.49
+    },
+    {
+     "district": "潭子區",
+     "km": 5.5,
+     "weight": 0.45
+    },
+    {
+     "district": "大雅區",
+     "km": 6.5,
+     "weight": 0.35
+    },
+    {
+     "district": "烏日區",
+     "km": 7.0,
+     "weight": 0.3
+    },
+    {
+     "district": "北屯區",
+     "km": 7.5,
+     "weight": 0.25
+    },
+    {
+     "district": "太平區",
+     "km": 9.5,
+     "weight": 0.05
+    },
+    {
+     "district": "神岡區",
+     "km": 10.0,
+     "weight": 0.0
+    }
+   ],
    "salary_floor_median": 33000,
    "salary_samples": 1,
    "salary_ceiling_median": 38000,
@@ -1445,6 +2827,100 @@
    ],
    "postings": 150,
    "openings": 803,
+   "postings_nearby": 473,
+   "openings_nearby": 2466,
+   "demand_districts": [
+    {
+     "district": "西屯區",
+     "km": 0.0,
+     "weight": 1.0
+    },
+    {
+     "district": "北區",
+     "km": 1.6,
+     "weight": 0.84
+    },
+    {
+     "district": "西區",
+     "km": 2.0,
+     "weight": 0.8
+    },
+    {
+     "district": "大雅區",
+     "km": 2.2,
+     "weight": 0.78
+    },
+    {
+     "district": "南屯區",
+     "km": 2.2,
+     "weight": 0.78
+    },
+    {
+     "district": "沙鹿區",
+     "km": 2.5,
+     "weight": 0.75
+    },
+    {
+     "district": "中區",
+     "km": 2.7,
+     "weight": 0.73
+    },
+    {
+     "district": "南區",
+     "km": 3.9,
+     "weight": 0.61
+    },
+    {
+     "district": "大肚區",
+     "km": 4.5,
+     "weight": 0.55
+    },
+    {
+     "district": "東區",
+     "km": 4.6,
+     "weight": 0.54
+    },
+    {
+     "district": "潭子區",
+     "km": 5.6,
+     "weight": 0.44
+    },
+    {
+     "district": "龍井區",
+     "km": 5.8,
+     "weight": 0.42
+    },
+    {
+     "district": "神岡區",
+     "km": 6.5,
+     "weight": 0.35
+    },
+    {
+     "district": "烏日區",
+     "km": 6.7,
+     "weight": 0.33
+    },
+    {
+     "district": "大里區",
+     "km": 7.3,
+     "weight": 0.27
+    },
+    {
+     "district": "豐原區",
+     "km": 8.9,
+     "weight": 0.11
+    },
+    {
+     "district": "梧棲區",
+     "km": 9.0,
+     "weight": 0.1
+    },
+    {
+     "district": "清水區",
+     "km": 9.8,
+     "weight": 0.02
+    }
+   ],
    "salary_floor_median": 34500,
    "salary_samples": 113,
    "salary_ceiling_median": 38441,
@@ -1544,6 +3020,100 @@
    ],
    "postings": 12,
    "openings": 27,
+   "postings_nearby": 399,
+   "openings_nearby": 2078,
+   "demand_districts": [
+    {
+     "district": "北屯區",
+     "km": 0.0,
+     "weight": 1.0
+    },
+    {
+     "district": "北區",
+     "km": 1.0,
+     "weight": 0.9
+    },
+    {
+     "district": "潭子區",
+     "km": 1.5,
+     "weight": 0.85
+    },
+    {
+     "district": "新社區",
+     "km": 2.3,
+     "weight": 0.77
+    },
+    {
+     "district": "中區",
+     "km": 2.3,
+     "weight": 0.77
+    },
+    {
+     "district": "東區",
+     "km": 2.7,
+     "weight": 0.73
+    },
+    {
+     "district": "西區",
+     "km": 3.5,
+     "weight": 0.65
+    },
+    {
+     "district": "西屯區",
+     "km": 3.6,
+     "weight": 0.64
+    },
+    {
+     "district": "大雅區",
+     "km": 3.7,
+     "weight": 0.63
+    },
+    {
+     "district": "豐原區",
+     "km": 3.7,
+     "weight": 0.63
+    },
+    {
+     "district": "南屯區",
+     "km": 5.3,
+     "weight": 0.47
+    },
+    {
+     "district": "南區",
+     "km": 5.4,
+     "weight": 0.46
+    },
+    {
+     "district": "太平區",
+     "km": 5.5,
+     "weight": 0.45
+    },
+    {
+     "district": "石岡區",
+     "km": 6.2,
+     "weight": 0.38
+    },
+    {
+     "district": "神岡區",
+     "km": 6.5,
+     "weight": 0.35
+    },
+    {
+     "district": "大里區",
+     "km": 7.2,
+     "weight": 0.28
+    },
+    {
+     "district": "沙鹿區",
+     "km": 9.3,
+     "weight": 0.07
+    },
+    {
+     "district": "烏日區",
+     "km": 9.5,
+     "weight": 0.05
+    }
+   ],
    "salary_floor_median": 35500,
    "salary_samples": 8,
    "salary_ceiling_median": 38430,
@@ -1619,6 +3189,90 @@
    ],
    "postings": 52,
    "openings": 393,
+   "postings_nearby": 341,
+   "openings_nearby": 1771,
+   "demand_districts": [
+    {
+     "district": "潭子區",
+     "km": 0.0,
+     "weight": 1.0
+    },
+    {
+     "district": "北屯區",
+     "km": 2.6,
+     "weight": 0.74
+    },
+    {
+     "district": "豐原區",
+     "km": 2.8,
+     "weight": 0.72
+    },
+    {
+     "district": "神岡區",
+     "km": 3.3,
+     "weight": 0.67
+    },
+    {
+     "district": "大雅區",
+     "km": 3.7,
+     "weight": 0.63
+    },
+    {
+     "district": "北區",
+     "km": 3.7,
+     "weight": 0.63
+    },
+    {
+     "district": "新社區",
+     "km": 5.0,
+     "weight": 0.5
+    },
+    {
+     "district": "中區",
+     "km": 5.3,
+     "weight": 0.47
+    },
+    {
+     "district": "西屯區",
+     "km": 5.4,
+     "weight": 0.46
+    },
+    {
+     "district": "東區",
+     "km": 5.7,
+     "weight": 0.43
+    },
+    {
+     "district": "石岡區",
+     "km": 6.2,
+     "weight": 0.38
+    },
+    {
+     "district": "西區",
+     "km": 6.3,
+     "weight": 0.37
+    },
+    {
+     "district": "后里區",
+     "km": 8.3,
+     "weight": 0.17
+    },
+    {
+     "district": "南區",
+     "km": 8.4,
+     "weight": 0.16
+    },
+    {
+     "district": "南屯區",
+     "km": 8.4,
+     "weight": 0.16
+    },
+    {
+     "district": "沙鹿區",
+     "km": 9.9,
+     "weight": 0.01
+    }
+   ],
    "salary_floor_median": 32000,
    "salary_samples": 51,
    "salary_ceiling_median": 37085,
@@ -1718,6 +3372,80 @@
    ],
    "postings": 14,
    "openings": 28,
+   "postings_nearby": 226,
+   "openings_nearby": 1114,
+   "demand_districts": [
+    {
+     "district": "東區",
+     "km": 0.0,
+     "weight": 1.0
+    },
+    {
+     "district": "中區",
+     "km": 0.7,
+     "weight": 0.93
+    },
+    {
+     "district": "北區",
+     "km": 1.5,
+     "weight": 0.85
+    },
+    {
+     "district": "西區",
+     "km": 1.9,
+     "weight": 0.81
+    },
+    {
+     "district": "南區",
+     "km": 2.4,
+     "weight": 0.76
+    },
+    {
+     "district": "大里區",
+     "km": 2.8,
+     "weight": 0.72
+    },
+    {
+     "district": "南屯區",
+     "km": 5.0,
+     "weight": 0.5
+    },
+    {
+     "district": "烏日區",
+     "km": 6.3,
+     "weight": 0.37
+    },
+    {
+     "district": "潭子區",
+     "km": 6.4,
+     "weight": 0.36
+    },
+    {
+     "district": "北屯區",
+     "km": 7.5,
+     "weight": 0.25
+    },
+    {
+     "district": "西屯區",
+     "km": 7.7,
+     "weight": 0.23
+    },
+    {
+     "district": "太平區",
+     "km": 7.9,
+     "weight": 0.21
+    },
+    {
+     "district": "霧峰區",
+     "km": 8.9,
+     "weight": 0.11
+    },
+    {
+     "district": "大雅區",
+     "km": 9.7,
+     "weight": 0.03
+    }
+   ],
    "salary_floor_median": 33250,
    "salary_samples": 14,
    "salary_ceiling_median": 40000,
@@ -1805,6 +3533,90 @@
    ],
    "postings": 68,
    "openings": 387,
+   "postings_nearby": 288,
+   "openings_nearby": 1430,
+   "demand_districts": [
+    {
+     "district": "太平區",
+     "km": 0.0,
+     "weight": 1.0
+    },
+    {
+     "district": "東區",
+     "km": 1.2,
+     "weight": 0.88
+    },
+    {
+     "district": "中區",
+     "km": 2.2,
+     "weight": 0.78
+    },
+    {
+     "district": "大里區",
+     "km": 2.3,
+     "weight": 0.77
+    },
+    {
+     "district": "北區",
+     "km": 2.3,
+     "weight": 0.77
+    },
+    {
+     "district": "北屯區",
+     "km": 2.4,
+     "weight": 0.76
+    },
+    {
+     "district": "西區",
+     "km": 3.7,
+     "weight": 0.63
+    },
+    {
+     "district": "南區",
+     "km": 4.2,
+     "weight": 0.58
+    },
+    {
+     "district": "霧峰區",
+     "km": 4.4,
+     "weight": 0.56
+    },
+    {
+     "district": "潭子區",
+     "km": 5.0,
+     "weight": 0.5
+    },
+    {
+     "district": "新社區",
+     "km": 6.1,
+     "weight": 0.39
+    },
+    {
+     "district": "南屯區",
+     "km": 6.9,
+     "weight": 0.31
+    },
+    {
+     "district": "烏日區",
+     "km": 7.4,
+     "weight": 0.26
+    },
+    {
+     "district": "西屯區",
+     "km": 8.5,
+     "weight": 0.15
+    },
+    {
+     "district": "大雅區",
+     "km": 9.6,
+     "weight": 0.04
+    },
+    {
+     "district": "豐原區",
+     "km": 9.8,
+     "weight": 0.02
+    }
+   ],
    "salary_floor_median": 31500,
    "salary_samples": 63,
    "salary_ceiling_median": 34965,
@@ -1820,6 +3632,20 @@
    "schools": [],
    "postings": 0,
    "openings": 0,
+   "postings_nearby": 1,
+   "openings_nearby": 2,
+   "demand_districts": [
+    {
+     "district": "新社區",
+     "km": 8.0,
+     "weight": 0.2
+    },
+    {
+     "district": "北屯區",
+     "km": 9.8,
+     "weight": 0.02
+    }
+   ],
    "salary_floor_median": null,
    "salary_samples": 0,
    "salary_ceiling_median": null,

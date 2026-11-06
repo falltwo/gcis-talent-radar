@@ -203,6 +203,10 @@
       if(!text&&!preference){intentError.textContent='請描述需求，或選一個偏好';start.focus();return;}
       // Kept for the analysis steps that come after the location picker.
       window.radarIntent={text,preference};
+      // Parsing runs during the lock-and-burst transition; the site scan waits briefly for it, then falls back to keywords.
+      const abort=new AbortController();setTimeout(()=>abort.abort(),6000);
+      window.radarIntentParse=fetch('/api/site-intent',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text,preference}),signal:abort.signal})
+        .then(response=>response.ok?response.json():null).catch(()=>null);
       unlockAudio();playBoot();
       intro.dispatchEvent(new CustomEvent('radar:analyze'));
     });

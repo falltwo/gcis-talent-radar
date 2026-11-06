@@ -113,26 +113,22 @@ def test_worker_records_actual_failure_and_releases_slot(monkeypatch,caplog,fail
     if failure_at!='launch': assert '已安裝' not in run['message']
 
 
-@pytest.mark.parametrize('content',['not JSON','[]','{"note":"操作網站"}','{"actions":null}'])
-def test_malformed_model_response_reports_model_error(monkeypatch,content):
-    import recruitment.computer_use as worker
-    monkeypatch.setenv('OPENROUTER_API_KEY','test-only')
-    monkeypatch.setattr(worker.requests,'post',lambda *a,**kw:SimpleNamespace(ok=True,json=lambda:{'choices':[{'message':{'content':content}}]}))
-    with pytest.raises(RuntimeError,match='模型回傳的操作格式不完整'):
-        worker.decide(b'screenshot',{'title':'會計'},'fill','')
+@pytest.mark.parametrize('choice',['unknown','',None])
+def test_unreliable_operation_intent_stops_without_falling_back_to_luna(choice):
+    from recruitment.action_router import decide_operation
+    page=SimpleNamespace(url='http://127.0.0.1:8088/mock104',evaluate=lambda *a:{'controls':[],'editor':False})
+    client=SimpleNamespace(system_one=lambda **kw:SimpleNamespace(answers={'operation':SimpleNamespace(choice=choice,confidence=1)}))
+    with pytest.raises(RuntimeError,match='Jev'):
+        decide_operation(page,{},'fill','',client=client)
 
 
-def test_truncated_decision_retries_before_any_action(monkeypatch):
-    import recruitment.computer_use as worker
-    monkeypatch.setenv('OPENROUTER_API_KEY','test-only')
-    calls=[]
-    def post(*args,**kwargs):
-        calls.append(kwargs['json'])
-        choice={'finish_reason':'length','message':{'content':'{"actions":['}} if len(calls)==1 else {'finish_reason':'stop','message':{'content':'{"note":"填寫","actions":[{"type":"click","x":10,"y":10}]}'}}
-        return SimpleNamespace(ok=True,json=lambda:{'choices':[choice]})
-    monkeypatch.setattr(worker.requests,'post',post)
-    assert worker.decide(b'screenshot',{'title':'會計'},'fill','')['actions'][0]['type']=='click'
-    assert len(calls)==2 and calls[0]['max_completion_tokens']==4000
+def test_router_transport_failure_stops_without_generating_freeform_actions():
+    from recruitment.action_router import decide_operation
+    page=SimpleNamespace(url='http://127.0.0.1:8088/mock104',evaluate=lambda *a:{'controls':[],'editor':False})
+    def failed(**kwargs):raise EOFError('truncated classifier response')
+    with pytest.raises(RuntimeError,match='Jev 操作分流失敗'):
+        decide_operation(page,{},'fill','',client=SimpleNamespace(system_one=failed))
+
 
 def test_skill_action_replaces_exact_list_and_clears_empty_training(monkeypatch):
     import recruitment.computer_use as worker
