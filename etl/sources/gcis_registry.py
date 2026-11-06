@@ -72,6 +72,11 @@ def fetch_lists():
             time.sleep(0.3)
 
 
+def taichung_district(addresses: pd.Series) -> pd.Series:
+    """地址 → 臺中市行政區（不是臺中市回 NaN）。稅籍的兩字行政區中間有全形空白（「南　區」），先去掉空白再比對。"""
+    return addresses.str.replace(r"[\s\u3000]", "", regex=True).str.extract(DISTRICT_RE)[0]
+
+
 TAX_MAX_AGE_DAYS = 30  # 稅籍每天更新；超過這麼多天就重新下載
 
 
@@ -79,13 +84,14 @@ def tax_registry_fresh() -> bool:
     dest = TAX / "bgmopen1_industry.csv"
     if not dest.exists():
         return False
-    if "臺中行政區" not in pd.read_csv(dest, dtype=str, nrows=0, encoding="utf-8-sig").columns:
-        return False  # 舊版檔案沒有行政區欄
+    columns = pd.read_csv(dest, dtype=str, nrows=0, encoding="utf-8-sig").columns
+    if "臺中行政區" not in columns or "組織別名稱" not in columns:
+        return False  # 舊版檔案沒有行政區或組織別欄
     return (time.time() - dest.stat().st_mtime) / 86400 < TAX_MAX_AGE_DAYS
 
 
 def fetch_tax_registry(force: bool = False):
-    """稅籍檔 300 MB：只留統編、行業代號、設立日期，以及由地址推出的臺中行政區（不留名稱、地址）"""
+    """稅籍檔 300 MB：只留統編、組織別、行業代號、設立日期，以及由地址推出的臺中行政區（不留名稱、地址）"""
     dest = TAX / "bgmopen1_industry.csv"
     if not force and tax_registry_fresh():
         return
@@ -95,11 +101,11 @@ def fetch_tax_registry(force: bool = False):
     with zipfile.ZipFile(io.BytesIO(r.content)) as z:
         name = next(n for n in z.namelist() if n.lower().endswith(".csv"))
         df = pd.read_csv(z.open(name), dtype=str, skiprows=[1], encoding="utf-8-sig",
-                         usecols=["營業地址", "統一編號", "總機構統一編號", "設立日期", "行業代號", "行業代號1",
-                                  "行業代號2", "行業代號3"])
+                         usecols=["營業地址", "統一編號", "總機構統一編號", "組織別名稱", "設立日期", "行業代號",
+                                  "行業代號1", "行業代號2", "行業代號3"])
     df = df.dropna(subset=["統一編號"])
     # 每日更新要知道哪些公司在臺中（變更登記只查臺中的公司）；只留行政區，地址不存
-    df["臺中行政區"] = df["營業地址"].str.extract(DISTRICT_RE)[0]
+    df["臺中行政區"] = taichung_district(df["營業地址"])
     df = df.drop(columns=["營業地址"])
     TAX.mkdir(parents=True, exist_ok=True)
     df.to_csv(dest, index=False, encoding="utf-8-sig")

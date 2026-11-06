@@ -6,16 +6,20 @@
   // ponytail: keyword rules stand in for the AI parser; first match wins. Swap for the real parser when it exists.
   const INDUSTRY_WORDS = [['機械','機械設備業'],['金屬','金屬製品業'],['加工','金屬製品業'],['塑膠','塑膠製品業'],['半導體','電子零組件業'],['電子','電子零組件業'],['光學','電腦電子產品及光學製品業'],['食品','食品及飼品業'],['飲料','飲料及菸草業'],['汽車','汽車及其零件業'],['自行車','其他運輸工具及其零件業'],['家具','家具業'],['紡織','紡織業'],['成衣','成衣及服飾品業'],['化學','其他化學製品業'],['橡膠','橡膠製品業'],['印刷','印刷及資料儲存媒體複製業']];
   const CRITERIA = [
-    {id:'vitality', label:'市場活力', hint:'全產業公司近一年新設減解散（名冊沒有行業欄）', unit:'家', better:1, words:['活力','成長','新創']},
-    {id:'stability', label:'經營穩定', hint:'解散家數 ÷ 新設家數，越低越好', unit:'', better:-1, words:['穩定','風險']},
-    {id:'cluster', label:'同業群聚', hint:'同業工廠家數', unit:'家', better:1, words:['供應鏈','上下游','群聚','聚落']},
+    {id:'vitality', label:'市場活力', hint:'近一年（新設−解散）÷ 現有公司家數＝淨增率，全產業（名冊沒有行業欄）', unit:'%', better:1, words:['活力','成長','新創']},
+    {id:'stability', label:'經營穩定', hint:'近一年解散 ÷ 現有公司家數＝退出率，越低越好', unit:'%', better:-1, words:['穩定','風險']},
+    {id:'cluster', label:'同業群聚', hint:'同業員工數（規模）與區位商數 LQ（集中度，>1 代表比全市集中）各占一半；LQ 所需總數有缺值時僅依已公布規模', unit:'人', better:1, words:['供應鏈','上下游','群聚','聚落']},
+    {id:'transport', label:'交通便利', hint:'區公所到最近國道或快速公路交流道的距離，越近越好（不含系統交流道）', unit:'公里', better:-1, words:['交流道','國道','交通','物流','運輸'], optional:true},
+    {id:'port', label:'靠近港口', hint:'區公所到臺中港的距離，越近越好（出口、海運）', unit:'公里', better:-1, words:['港口','臺中港','台中港','海運','出口'], optional:true},
+    {id:'airport', label:'靠近機場', hint:'區公所到臺中國際機場的距離，越近越好（空運）', unit:'公里', better:-1, words:['機場','空運'], optional:true},
+    {id:'rail', label:'靠近高鐵', hint:'區公所到高鐵臺中站的距離，越近越好（出差、人員往來）', unit:'公里', better:-1, words:['高鐵'], optional:true},
     {id:'competition', label:'避開競爭', hint:'每百家工廠的製造類職缺，越少越好（職缺與工廠年份不同）', unit:'筆', better:-1, words:['競爭','搶人']},
   ];
   // ponytail: fixed gate; districts with few factories are not realistic sites and would win "low competition" by default.
-  const MIN_FACTORIES = 100, MIN_SETUPS = 30;
-  const PREFERENCE = {'上下游群聚優先':'cluster','避開激烈競爭':'competition','靠近交通樞紐':null};
-  const NO_DATA_WORDS = ['交流道','國道','交通','港口','機場','高鐵'];
-  let map, geo, activity, stats, talent, intent, industry, checked = {}, boosted = {}, ranking = [], frame = 0, started = false;
+  const MIN_FACTORIES = 100;
+  const PREFERENCE = {'上下游群聚優先':'cluster','避開激烈競爭':'competition','靠近交通樞紐':'transport'};
+  const NO_DATA_WORDS = [];  // 交流道、港口、機場、高鐵都有資料了；之後再有沒資料的條件就加在這裡
+  let map, geo, activity, stats, transport, talent, intent, industry, checked = {}, boosted = {}, ranking = [], frame = 0, started = false;
   let revealed = false, located = false, step = 'intro', navigationEpoch = 0, intentKey = null;
   let comparedDistricts = [], selectedDistrict = null;
 
@@ -84,14 +88,15 @@
   function parseIntent(raw) {
     const text = raw?.text || '', preference = raw?.preference || '';
     industry = INDUSTRY_WORDS.find(([word]) => text.includes(word))?.[1] || null;
-    checked = Object.fromEntries(CRITERIA.map(c => [c.id, true]));
     boosted = Object.fromEntries(CRITERIA.map(c => [c.id, c.words.some(word => text.includes(word))]));
     if (PREFERENCE[preference]) boosted[PREFERENCE[preference]] = true;
+    // Optional criteria (transport) only count when the demand asks for them, so other rankings stay as they were.
+    checked = Object.fromEntries(CRITERIA.map(c => [c.id, !c.optional || boosted[c.id]]));
     const tags = [];
     tags.push(industry ? ['產業', industry] : ['產業', '未判斷，看全部製造業']);
     if (preference) tags.push(['偏好', preference]);
     CRITERIA.filter(c => boosted[c.id]).forEach(c => tags.push(['加重', c.label]));
-    const missing = NO_DATA_WORDS.filter(word => text.includes(word)).concat(preference === '靠近交通樞紐' ? ['交通樞紐'] : []);
+    const missing = NO_DATA_WORDS.filter(word => text.includes(word));
     $('scan-tags').replaceChildren(...tags.map(([kind, value]) => {
       const tag = document.createElement('span');tag.className = 'scan-tag';
       tag.innerHTML = '<small></small><b></b>';tag.firstChild.textContent = kind;tag.lastChild.textContent = value;
@@ -105,21 +110,48 @@
     const known = Object.values(stats.factories.districts[name] || {}).filter(count => count !== null);
     return known.reduce((sum, count) => sum + count, 0);
   }
+  // Business demography (Census BDS, Eurostat, ONS) divides births and deaths by the active firms.
   function value(name, id) {
     const row = activity.districts[name] || {setup:0, dissolved:0};
-    if (id === 'vitality') return row.setup - row.dissolved;
-    if (id === 'stability') return row.setup >= MIN_SETUPS ? row.dissolved / row.setup : null;
-    if (id === 'cluster') {
-      const factories = stats.factories.districts[name];
-      if (!factories) return null;
-      if (industry) return factories[industry] ?? null;
-      const known = Object.values(factories).filter(count => count !== null);
-      return known.length ? known.reduce((sum, count) => sum + count, 0) : null;
-    }
+    if (id === 'vitality') return row.companies ? (row.setup - row.dissolved) / row.companies : null;
+    if (id === 'stability') return row.companies ? row.dissolved / row.companies : null;
+    if (id === 'transport') return transport.districts[name]?.nearest_km ?? null;
+    if (id === 'port') return transport.districts[name]?.port_km ?? null;
+    if (id === 'airport') return transport.districts[name]?.airport_km ?? null;
+    if (id === 'rail') return transport.districts[name]?.hsr_km ?? null;
+    if (id === 'cluster') return clusterParts(name);
     if (stats.jobs.capped.includes(name)) return null;
     const postings = stats.jobs.metrics.manufacturing_postings[name];
-    return postings === undefined ? null : postings / factoryTotal(name) * 100;
+    return postings == null ? null : postings / factoryTotal(name) * 100;
   }
+  // Cluster = size and specialisation, as the EU Cluster Observatory and US Cluster Mapping do: employees in the
+  // industry, and the location quotient (its share of the district's factory jobs over its share city-wide).
+  // A suppressed cell is unknown, never zero. LQ requires complete district and city totals.
+  const completeTotal = row => {
+    const values = Object.values(row || {});
+    return values.length && values.every(v => Number.isFinite(v) && v >= 0)
+      ? values.reduce((sum, v) => sum + v, 0) : null;
+  };
+  function clusterParts(name) {
+    const employees = stats.factories.employees, staff = employees?.[name];
+    if (!staff) return null;
+    const total = completeTotal(staff);
+    if (!industry) return total === null ? null : {size:total, lq:null};
+    const size = staff[industry];
+    if (!Number.isFinite(size) || size < 0) return null;
+    // Published industry size remains useful even when LQ cannot be computed.
+    const unknown = {size, lq:null};
+    if (total === null || total <= 0) return unknown;
+    const city = Object.keys(stats.factories.districts).map(district => employees[district]);
+    const totals = city.map(completeTotal), sizes = city.map(row => row?.[industry]);
+    if (totals.some(v => v === null) || sizes.some(v => !Number.isFinite(v) || v < 0)) return unknown;
+    const cityTotal = totals.reduce((sum, v) => sum + v, 0), cityIndustry = sizes.reduce((sum, v) => sum + v, 0);
+    return {size, lq: cityTotal > 0 && cityIndustry > 0 ? (size / total) / (cityIndustry / cityTotal) : null};
+  }
+  const minMax = values => {
+    const known = Object.values(values).filter(v => v !== null && v !== undefined), low = Math.min(...known), high = Math.max(...known);
+    return Object.fromEntries(Object.entries(values).map(([name, v]) => [name, v === null || v === undefined || high === low ? null : (v - low) / (high - low)]));
+  };
   // Each criterion is rescaled to 0–1 across the candidate districts; a missing value drops that criterion for that district only.
   let candidates = [];
   function rank() {
@@ -127,6 +159,14 @@
     const raw = Object.fromEntries(CRITERIA.map(c => [c.id, Object.fromEntries(names.map(name => [name, value(name, c.id)]))]));
     const scaled = {};
     for (const c of CRITERIA) {
+      if (c.id === 'cluster') {
+        // Size and LQ are rescaled separately, then averaged; without a named industry there is no LQ, so size alone.
+        const size = minMax(Object.fromEntries(names.map(name => [name, raw.cluster[name]?.size ?? null])));
+        const lq = minMax(Object.fromEntries(names.map(name => [name, raw.cluster[name]?.lq ?? null])));
+        scaled.cluster = Object.fromEntries(names.map(name => [name,
+          size[name] === null ? null : lq[name] === null ? size[name] : (size[name] + lq[name]) / 2]));
+        continue;
+      }
       const known = Object.values(raw[c.id]).filter(v => v !== null), low = Math.min(...known), high = Math.max(...known);
       scaled[c.id] = Object.fromEntries(names.map(name => {
         const v = raw[c.id][name];
@@ -164,8 +204,13 @@
   }
   function describe(c, v) {
     if (v === null || v === undefined) return '無資料';
-    if (c.id === 'stability') return `每新設 100 家解散 ${Math.round(v * 100)} 家`;
-    if (c.id === 'vitality') return `${v >= 0 ? '+' : ''}${v.toLocaleString()} 家`;
+    if (c.id === 'stability') return `退出率 ${(v * 100).toFixed(1)}%`;
+    if (c.id === 'transport') return `最近交流道 ${v.toFixed(1)} 公里`;
+    if (c.id === 'port') return `到臺中港 ${v.toFixed(1)} 公里`;
+    if (c.id === 'airport') return `到機場 ${v.toFixed(1)} 公里`;
+    if (c.id === 'rail') return `到高鐵站 ${v.toFixed(1)} 公里`;
+    if (c.id === 'vitality') return `淨增 ${v >= 0 ? '+' : ''}${(v * 100).toFixed(1)}%`;
+    if (c.id === 'cluster') return `${v.size.toLocaleString()} 人${v.lq === null ? (industry ? '・LQ 無資料（僅依規模）' : '') : `・LQ ${v.lq.toFixed(2)}`}`;
     if (c.id === 'competition') return `每百家工廠 ${Math.round(v)} 筆`;
     return `${v.toLocaleString()} ${c.unit}`;
   }
@@ -216,7 +261,7 @@
       row.textContent = `${run.label}：${run.top3.join('、')}`;
       return row;
     }));
-    $('scan-source').textContent = `分數 0–100 是 ${candidates.length} 個候選區互相比較的相對值，不是預測或匹配率；製造業工廠不到 ${MIN_FACTORIES} 家的 ${geo.features.length - candidates.length} 區不列入。資料：商工登記 ${activity.window.join(' 至 ')}${activity.missing_months.length ? `（缺 ${activity.missing_months.join('、')}）` : ''}、工廠校正 ${stats.factories.year} 年、就業通職缺 ${stats.jobs.snapshot_date}。`;
+    $('scan-source').textContent = `分數 0–100 是 ${candidates.length} 個候選區互相比較的相對值，不是預測或匹配率；製造業工廠不到 ${MIN_FACTORIES} 家的 ${geo.features.length - candidates.length} 區不列入。資料：商工登記 ${activity.window.join(' 至 ')}${activity.missing_months.length ? `（缺 ${activity.missing_months.join('、')}）` : ''}、稅籍現有公司 ${activity.companies_as_of}、工廠校正 ${stats.factories.year} 年（家數與員工數）、就業通職缺 ${stats.jobs.snapshot_date}、OpenStreetMap 交流道與港口、機場、高鐵站 ${transport.fetched_at.slice(0, 10)}。市場活力、經營穩定與同業群聚的算法依美國普查局 BDS、歐盟統計局企業人口統計與產業群聚觀測站。`;
   }
 
   function bounds(feature) {
@@ -443,22 +488,11 @@
       salary: talent.districts[name].salary_floor_median,
     };
   }
-  // Each feature resets its own fields when it opens, so the values go in on the next frame.
-  function fill(key, carry) {
-    const set = (id, value) => {const el = $(id);if (!el || !value) return;el.value = value;el.dispatchEvent(new Event('input', {bubbles:true}));};
-    if (key === 'campus') {set('campus-query', carry.department);return;}
-    requestAnimationFrame(() => {
-      if (key === 'posting') {
-        set('posting-role', carry.role);set('posting-address', carry.place);
-        set('posting-brief', `在${carry.district}設廠，想招${carry.role || '現場技術人員'}${carry.salary ? `；當地製造類職缺起薪中位數 ${carry.salary.toLocaleString()} 元，薪資請參考` : ''}`);
-      } else {
-        // The agent checks for live mode after it opens and then writes its own sample query, so
-        // re-apply ours for two seconds unless the user has started typing something else.
-        const defaults = ['CNC 技術員', '找會 Python 的軟體工程師，在台中'];
-        const apply = () => {if (defaults.includes($('hunter-job').value) || $('hunter-job').value === carry.senior) {set('hunter-job', carry.senior);$('hunter-tag').textContent = carry.senior;}};
-        apply();[300, 800, 1500, 2200].forEach(delay => setTimeout(apply, delay));
-      }
-    });
+  // Each feature takes its values through its own open() entry point, so the site scan never touches their field ids.
+  function openFeature(key, carry) {
+    if (key === 'campus') return window.campusMatching?.open({query: carry.department});
+    if (key === 'posting') return window.recruitment?.open({note: `在${carry.place}設廠，想招${carry.role || '現場技術人員'}${carry.salary ? `；當地製造類職缺起薪中位數 ${carry.salary.toLocaleString()} 元，薪資請參考` : ''}`});
+    return window.headhunter?.open({job: carry.senior});
   }
   function channels(name) {
     const row = talent.districts[name], ratio = row.graduates_nearby ? row.openings / row.graduates_nearby : null;
@@ -508,11 +542,7 @@
       card.querySelector('button').textContent = `開啟${FEATURES[item.key]} →`;
       card.querySelector('button').addEventListener('click', () => {
         setStep('feature');
-        const carry = carryOver(name);
-        // Campus matching searches as soon as it opens, so its query has to be set first.
-        if (item.key === 'campus') fill('campus', carry);
-        document.querySelector(`.primary-feature-button[data-feature="${FEATURES[item.key]}"]`)?.click();
-        if (item.key !== 'campus') fill(item.key, carry);
+        openFeature(item.key, carryOver(name));
       });
       return card;
     }));
@@ -534,8 +564,8 @@
     map = window.streetMap.getMap();
     if (!map) {started = false;return;}
     try {
-      if (!geo) [geo, activity, stats] = await Promise.all(['/static/taichung-districts.geojson','/static/gcis-district-activity.json?v=20261105-road1','/static/district-stats.json'].map(async url => {
-        const response = await fetch(url);
+      if (!geo) [geo, activity, stats, transport] = await Promise.all(['/static/taichung-districts.geojson','/static/gcis-district-activity.json?v=20261106-rate1','/static/district-stats.json?v=20261106-lq1','/static/district-transport.json?v=20261106-hubs1'].map(async url => {
+        const response = await fetch(url, {cache:'no-cache'});
         if (!response.ok) throw Error(url);
         return response.json();
       }));

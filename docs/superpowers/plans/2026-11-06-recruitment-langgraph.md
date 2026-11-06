@@ -83,3 +83,6 @@
 - Scope limits: workflow locking currently supports one service process. Browser job IDs/reconciliation/diff-only updates and interactive human takeover remain subsequent plans, not completed by conversation checkpoints.
 
 - Final local full suite: 1033 passed, 1 skipped, 60 subtests passed; one unrelated Windows SQLite cleanup failure in `EducationDirectoryTests.test_scope_cleanup_publishes_new_snapshot_and_preserves_original`. Reproduced on unchanged original feature branch `506ca80` as well; no education files changed. Linux CI will verify repository-wide behavior.
+
+- Synced origin/main `54a4de8` into the feature branch because the existing PR had a homepage asset-version conflict and GitHub would not schedule PR CI. Resolved only the asset-version conflict, retaining main feature entry points and new recruitment assets; did not merge the PR into main.
+- After synchronization: local Python suite 1053 passed, 1 skipped, 60 subtests passed, same pre-existing Windows education cleanup failure; frontend full suite 81 passed, 1 skipped. Real Luna restart/replay smoke passed again.

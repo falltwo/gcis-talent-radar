@@ -99,5 +99,7 @@
  }
  function activate(){active=true;collapsedByUs=!workspace.classList.contains('sidebar-collapsed');sidebar(true);window.streetMap.closeCompany(false);workspace.classList.add('posting-active');panel.hidden=false;window.radarFeatures.select('刊登召募');reset();defaultDistrict=$('city-district').value||'臺中市';$('posting-default-location').textContent='工作地點先暫定為雷達選取的'+defaultDistrict+'；如有不同地點，請直接告訴我。';restoreTask().catch(showError);$('posting-brief').focus({preventScroll:true});}
  async function deactivate(){if(!active||busy&&phase==='complete')return;generation++;executionEpoch++;executionBusy=false;active=false;live.stop().catch(()=>{});panel.hidden=true;workspace.classList.remove('posting-active');if(collapsedByUs)sidebar(false);window.radarFeatures.select(null);}
- $('posting-exit').addEventListener('click',deactivate);window.recruitment={toggle(){active?deactivate():activate();},deactivate};renderArchive();
+ // Entry point for other features (the site scan): open the panel with a drafted request the user can still edit.
+ function open({note}={}){window.radarFeatures.closeOthers?.('刊登召募');if(!active)activate();if(note)$('posting-brief').value=note;$('posting-brief').focus({preventScroll:true});}
+ $('posting-exit').addEventListener('click',deactivate);window.recruitment={toggle(){active?deactivate():activate();},open,deactivate};renderArchive();
 })();
