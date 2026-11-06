@@ -158,3 +158,21 @@ def test_api_serves_cache_hits_without_spending_the_budget(monkeypatch):
     model_budget.reset()
     site_advice.clear_cache()
     assert codes == [200, 200, 200]
+
+
+def test_chinese_quantities_count_as_the_models_own_numbers(monkeypatch):
+    # Review on #49: 十萬元 and 兩成 are not in the facts, so the answer must fall back, not be shown or cached.
+    monkeypatch.setenv("OPENROUTER_API_KEY", "test")
+    site_advice.clear_cache()
+    only = {**REQUEST, "facts": [{**FACTS[0], "required": True}]}
+    monkeypatch.setattr(llm, "chat_json", lambda *a, **k: {"sentences": [
+        "太平區附近畢業生為 {f1}，每月起薪應開到十萬元，比其他區多兩成。"]})
+    assert site_advice.advise(only)["reason"] == "nothing_valid"
+    assert site_advice.lookup(only) is None
+    for claim in ["約一半的職缺在南區。", "大里區薪資高出三成。", "職缺是太平區的兩倍。", "五分之一的工廠在招人。", "缺工約一萬人。"]:
+        assert site_advice._sentence(claim, {}) is None, claim
+
+
+def test_ordinary_words_with_numeral_characters_are_kept():
+    for plain in ["三區之中，太平區比較適合一起找學校合作。", "南區資料不足，一般建議先進一步確認。", "每百家工廠的職缺偏少，十分適合從學校招人。"]:
+        assert site_advice._sentence(plain, {}) == plain

@@ -35,6 +35,11 @@ PLACEHOLDER_DUMP = re.compile(r"[（(]\s*(?:\{f\d{1,3}\}\s*[、,，]?\s*){2,}[�
 PLACEHOLDER = re.compile(r"\{(f\d{1,3})\}")
 # Arabic digits in either width, and percent signs, may only come from a placeholder.
 OWN_NUMBER = re.compile(r"[0-9０-９%％]")
+# Chinese quantities are claims too (十萬元, 兩成, 一半, 三倍). Any numeral other than 一 counts; 一 counts only
+# before a unit or fraction word, so 一起、一樣、進一步 stay. Fixed words that only look numeric are removed first.
+# ponytail: a word list, not a parser; a false hit drops the sentence and the page keeps the rule-based advice.
+NOT_A_NUMBER = re.compile(r"[三兩二]區|每百家|十分|萬一|千萬|一致|統一|唯一|一定|一般|一樣|一起|一些|一直|一旦|之一|第一")
+CN_NUMBER = re.compile(r"[〇零二兩三四五六七八九十百千萬億]|半數|一(?:半|成|倍|萬|千|百|元|塊|人|名|位|家|所|筆|個|間|年|月|週|天|點)|分之|[幾數]成")
 
 CACHE_SIZE = 200
 CACHE_TTL = 24 * 3600
@@ -52,7 +57,7 @@ SCHEMA = {
 }
 SYSTEM = (
     "你是臺中製造業的招募顧問，把系統算好的三區比較寫成最多四句白話建議。"
-    "只能根據使用者訊息裡的 facts；提到任何數字時一律寫成 {編號}，例如 {f2}，不可以自己寫出阿拉伯數字或百分比。"
+    "只能根據使用者訊息裡的 facts；提到任何數字時一律寫成 {編號}，例如 {f2}，不可以自己寫出阿拉伯數字、百分比或中文數字（例如十萬、兩成、一半）。"
     "每句最多用三個 {編號}，數字直接寫在它說明的詞旁邊，不要把一串編號放進括號。"
     "範例：「太平區附近相關科系畢業生約 {f1}，每位畢業生只對應 {f3} 個職缺需求，找學校合作比較划算。」"
     "「必須提到」列出的每個編號都要出現在句子裡，其餘 facts 可以挑重要的講。"
@@ -67,7 +72,8 @@ def _sentence(raw: Any, values: dict[str, str]) -> str | None:
         return None
     text = raw.strip()
     ids = PLACEHOLDER.findall(text)
-    if not text or len(text) > MAX_SENTENCE or OWN_NUMBER.search(PLACEHOLDER.sub("", text)):
+    prose = PLACEHOLDER.sub("", text)
+    if not text or len(text) > MAX_SENTENCE or OWN_NUMBER.search(prose) or CN_NUMBER.search(NOT_A_NUMBER.sub("", prose)):
         return None
     if len(ids) > MAX_PLACEHOLDERS or PLACEHOLDER_DUMP.search(text):
         return None

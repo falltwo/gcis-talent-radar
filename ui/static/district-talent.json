@@ -9,6 +9,46 @@
   "工程／研發／生技",
   "技術／維修／操作"
  ],
+ "job_location_rule": "只納入最新快照、工作地點明確的職缺，依 URL 去重；鄰區職缺依距離打折計入；此為職類篩選而非雇主行業分類",
+ "jobs_coverage": {
+  "snapshot_date": "2026-10-05",
+  "capped": [],
+  "missing_districts": [],
+  "raw_rows_by_district": {
+   "中區": 20,
+   "東區": 52,
+   "南區": 55,
+   "西區": 59,
+   "北區": 60,
+   "北屯區": 140,
+   "西屯區": 379,
+   "南屯區": 215,
+   "太平區": 137,
+   "大里區": 203,
+   "霧峰區": 94,
+   "烏日區": 107,
+   "豐原區": 101,
+   "后里區": 122,
+   "石岡區": 22,
+   "東勢區": 19,
+   "和平區": 17,
+   "新社區": 19,
+   "潭子區": 89,
+   "大雅區": 163,
+   "神岡區": 209,
+   "大肚區": 75,
+   "沙鹿區": 61,
+   "龍井區": 65,
+   "梧棲區": 130,
+   "清水區": 80,
+   "大甲區": 114,
+   "外埔區": 43,
+   "大安區": 6
+  },
+  "excluded_location_rows": 34,
+  "duplicate_rows": 0,
+  "query_limit": 1000
+ },
  "sources": {
   "graduates": "教育部大專校院各校科系別學生數（畢業生數）",
   "campuses": "教育部校區名冊座標（本專案整理，只含大專校院）",
@@ -201,7 +241,7 @@
    "postings": 97,
    "openings": 623,
    "postings_nearby": 425,
-   "openings_nearby": 2209,
+   "openings_nearby": 2207,
    "demand_districts": [
     {
      "district": "大雅區",
@@ -537,8 +577,8 @@
    ],
    "postings": 33,
    "openings": 132,
-   "postings_nearby": 304,
-   "openings_nearby": 1537,
+   "postings_nearby": 303,
+   "openings_nearby": 1533,
    "demand_districts": [
     {
      "district": "豐原區",
@@ -627,7 +667,7 @@
    "postings": 0,
    "openings": 0,
    "postings_nearby": 142,
-   "openings_nearby": 685,
+   "openings_nearby": 681,
    "demand_districts": [
     {
      "district": "石岡區",
@@ -688,10 +728,10 @@
    "graduates_nearby": 0,
    "graduates_in_district": 0,
    "schools": [],
-   "postings": 71,
-   "openings": 430,
-   "postings_nearby": 255,
-   "openings_nearby": 1223,
+   "postings": 70,
+   "openings": 425,
+   "postings_nearby": 254,
+   "openings_nearby": 1218,
    "demand_districts": [
     {
      "district": "后里區",
@@ -745,9 +785,9 @@
     }
    ],
    "salary_floor_median": 33000,
-   "salary_samples": 58,
-   "salary_ceiling_median": 38000,
-   "salary_ceiling_samples": 27
+   "salary_samples": 57,
+   "salary_ceiling_median": 38215,
+   "salary_ceiling_samples": 26
   },
   "神岡區": {
    "label_point": [
@@ -796,7 +836,7 @@
    "postings": 127,
    "openings": 473,
    "postings_nearby": 386,
-   "openings_nearby": 1963,
+   "openings_nearby": 1959,
    "demand_districts": [
     {
      "district": "神岡區",
@@ -902,8 +942,8 @@
    ],
    "postings": 4,
    "openings": 6,
-   "postings_nearby": 134,
-   "openings_nearby": 691,
+   "postings_nearby": 133,
+   "openings_nearby": 689,
    "demand_districts": [
     {
      "district": "新社區",
@@ -961,8 +1001,8 @@
    "schools": [],
    "postings": 9,
    "openings": 30,
-   "postings_nearby": 119,
-   "openings_nearby": 589,
+   "postings_nearby": 118,
+   "openings_nearby": 586,
    "demand_districts": [
     {
      "district": "石岡區",
@@ -1015,8 +1055,8 @@
    "schools": [],
    "postings": 27,
    "openings": 116,
-   "postings_nearby": 203,
-   "openings_nearby": 945,
+   "postings_nearby": 202,
+   "openings_nearby": 942,
    "demand_districts": [
     {
      "district": "外埔區",
@@ -1127,8 +1167,8 @@
    ],
    "postings": 47,
    "openings": 240,
-   "postings_nearby": 271,
-   "openings_nearby": 1408,
+   "postings_nearby": 269,
+   "openings_nearby": 1399,
    "demand_districts": [
     {
      "district": "大肚區",
@@ -1207,7 +1247,7 @@
    "postings": 60,
    "openings": 241,
    "postings_nearby": 147,
-   "openings_nearby": 652,
+   "openings_nearby": 650,
    "demand_districts": [
     {
      "district": "大甲區",
@@ -1475,8 +1515,8 @@
    ],
    "postings": 50,
    "openings": 173,
-   "postings_nearby": 248,
-   "openings_nearby": 1118,
+   "postings_nearby": 244,
+   "openings_nearby": 1102,
    "demand_districts": [
     {
      "district": "霧峰區",
@@ -1628,8 +1668,8 @@
    ],
    "postings": 93,
    "openings": 459,
-   "postings_nearby": 289,
-   "openings_nearby": 1347,
+   "postings_nearby": 285,
+   "openings_nearby": 1330,
    "demand_districts": [
     {
      "district": "大里區",
@@ -1796,8 +1836,8 @@
    ],
    "postings": 8,
    "openings": 31,
-   "postings_nearby": 268,
-   "openings_nearby": 1276,
+   "postings_nearby": 264,
+   "openings_nearby": 1258,
    "demand_districts": [
     {
      "district": "南區",
@@ -1962,10 +2002,10 @@
      ]
     }
    ],
-   "postings": 47,
-   "openings": 187,
-   "postings_nearby": 319,
-   "openings_nearby": 1502,
+   "postings": 43,
+   "openings": 170,
+   "postings_nearby": 314,
+   "openings_nearby": 1483,
    "demand_districts": [
     {
      "district": "烏日區",
@@ -2034,9 +2074,9 @@
     }
    ],
    "salary_floor_median": 32000,
-   "salary_samples": 44,
+   "salary_samples": 40,
    "salary_ceiling_median": 36300,
-   "salary_ceiling_samples": 39
+   "salary_ceiling_samples": 37
   },
   "中區": {
    "label_point": [
@@ -2130,10 +2170,10 @@
      ]
     }
    ],
-   "postings": 3,
-   "openings": 30,
-   "postings_nearby": 201,
-   "openings_nearby": 995,
+   "postings": 2,
+   "openings": 25,
+   "postings_nearby": 199,
+   "openings_nearby": 985,
    "demand_districts": [
     {
      "district": "中區",
@@ -2197,9 +2237,9 @@
     }
    ],
    "salary_floor_median": 41000,
-   "salary_samples": 3,
-   "salary_ceiling_median": 40000,
-   "salary_ceiling_samples": 1
+   "salary_samples": 2,
+   "salary_ceiling_median": null,
+   "salary_ceiling_samples": 0
   },
   "西區": {
    "label_point": [
@@ -2295,8 +2335,8 @@
    ],
    "postings": 3,
    "openings": 3,
-   "postings_nearby": 290,
-   "openings_nearby": 1476,
+   "postings_nearby": 287,
+   "openings_nearby": 1463,
    "demand_districts": [
     {
      "district": "西區",
@@ -2453,8 +2493,8 @@
    ],
    "postings": 76,
    "openings": 382,
-   "postings_nearby": 386,
-   "openings_nearby": 1946,
+   "postings_nearby": 382,
+   "openings_nearby": 1928,
    "demand_districts": [
     {
      "district": "南屯區",
@@ -2626,8 +2666,8 @@
    ],
    "postings": 3,
    "openings": 4,
-   "postings_nearby": 277,
-   "openings_nearby": 1449,
+   "postings_nearby": 275,
+   "openings_nearby": 1440,
    "demand_districts": [
     {
      "district": "北區",
@@ -2787,8 +2827,8 @@
    ],
    "postings": 150,
    "openings": 803,
-   "postings_nearby": 475,
-   "openings_nearby": 2475,
+   "postings_nearby": 473,
+   "openings_nearby": 2466,
    "demand_districts": [
     {
      "district": "西屯區",
@@ -2980,8 +3020,8 @@
    ],
    "postings": 12,
    "openings": 27,
-   "postings_nearby": 400,
-   "openings_nearby": 2083,
+   "postings_nearby": 399,
+   "openings_nearby": 2078,
    "demand_districts": [
     {
      "district": "北屯區",
@@ -3149,8 +3189,8 @@
    ],
    "postings": 52,
    "openings": 393,
-   "postings_nearby": 342,
-   "openings_nearby": 1774,
+   "postings_nearby": 341,
+   "openings_nearby": 1771,
    "demand_districts": [
     {
      "district": "潭子區",
@@ -3332,8 +3372,8 @@
    ],
    "postings": 14,
    "openings": 28,
-   "postings_nearby": 228,
-   "openings_nearby": 1125,
+   "postings_nearby": 226,
+   "openings_nearby": 1114,
    "demand_districts": [
     {
      "district": "東區",
@@ -3493,8 +3533,8 @@
    ],
    "postings": 68,
    "openings": 387,
-   "postings_nearby": 290,
-   "openings_nearby": 1439,
+   "postings_nearby": 288,
+   "openings_nearby": 1430,
    "demand_districts": [
     {
      "district": "太平區",

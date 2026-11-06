@@ -31,24 +31,24 @@ def test_valid_answer_is_kept(monkeypatch):
     monkeypatch.setenv("OPENROUTER_API_KEY", "test")
     monkeypatch.setattr(llm, "chat_json", lambda *a, **k: answer(
         industry="機械設備業", related_industries=["金屬製品業"], role="CNC 技術員", hires=20,
-        emphasis=["cluster"], unsupported=["transport"], unsupported_phrases=["近交流道"]))
-    result = site_intent.parse("精密機械加工廠與模具沖壓線，招 20 位 CNC 技術員，要供應鏈完整、近交流道", "")
+        emphasis=["cluster", "transport"], unsupported=["land"], unsupported_phrases=["地價便宜"]))
+    result = site_intent.parse("精密機械加工廠與模具沖壓線，招 20 位 CNC 技術員，要供應鏈完整、近交流道、地價便宜", "")
     assert result["source"] == "llm"
     assert result["intent"] == answer(industry="機械設備業", related_industries=["金屬製品業"], role="CNC 技術員",
-                                      hires=20, emphasis=["cluster"], unsupported=["transport"],
-                                      unsupported_phrases=["近交流道"])
+                                      hires=20, emphasis=["cluster", "transport"], unsupported=["land"],
+                                      unsupported_phrases=["地價便宜"])
 
 
 def test_values_outside_the_options_are_dropped(monkeypatch):
     monkeypatch.setenv("OPENROUTER_API_KEY", "test")
     monkeypatch.setattr(llm, "chat_json", lambda *a, **k: answer(
         industry="半導體業", related_industries=["半導體業", "塑膠製品業"], role="x" * 40, senior_role="廠長", hires=50,
-        emphasis=["cluster", "cheap_land", "cluster"], unsupported=["transport", "moon"]))
+        emphasis=["cluster", "cheap_land", "cluster"], unsupported=["land", "moon"]))
     result = site_intent.parse("想在台中設廠，需要廠長", "")
     assert result["source"] == "llm"
     # 半導體業 is not an EE520 category, the role is too long, and 50 never appears in the text.
     assert result["intent"] == answer(related_industries=["塑膠製品業"], senior_role="廠長",
-                                      emphasis=["cluster"], unsupported=["transport"])
+                                      emphasis=["cluster"], unsupported=["land"])
 
 
 def test_model_failure_reports_unavailable(monkeypatch):
@@ -107,7 +107,9 @@ def test_preference_chip_is_applied_by_code_not_the_model(monkeypatch):
     monkeypatch.setenv("OPENROUTER_API_KEY", "test")
     monkeypatch.setattr(llm, "chat_json", lambda *a, **k: answer(emphasis=["vitality"]))
     assert site_intent.parse("食品工廠", "避開激烈競爭")["intent"]["emphasis"] == ["vitality", "competition"]
-    assert site_intent.parse("食品工廠", "靠近交通樞紐")["intent"]["unsupported"] == ["transport"]
+    # Transport has distance data since #48, so the chip weights it instead of reporting a gap.
+    intent = site_intent.parse("食品工廠", "靠近交通樞紐")["intent"]
+    assert intent["emphasis"] == ["vitality", "transport"] and intent["unsupported"] == []
 
 
 def test_a_role_the_user_never_wrote_is_dropped(monkeypatch):
@@ -135,9 +137,15 @@ def test_follow_up_question_only_when_the_industry_is_unknown(monkeypatch):
 def test_unsupported_phrases_must_be_the_users_words(monkeypatch):
     monkeypatch.setenv("OPENROUTER_API_KEY", "test")
     monkeypatch.setattr(llm, "chat_json", lambda *a, **k: answer(
-        unsupported=["transport"], unsupported_phrases=["台74線", "大貨車進出方便", "靠近港口", "台74線"]))
-    intent = site_intent.parse("大貨車進出方便，不要離國道交流道或台74線太遠", "")["intent"]
-    assert intent["unsupported_phrases"] == ["台74線", "大貨車進出方便"]
+        unsupported=["land"], unsupported_phrases=["地價", "廠房要大", "靠近港口", "地價"]))
+    intent = site_intent.parse("地價不要太高，廠房要大", "")["intent"]
+    assert intent["unsupported_phrases"] == ["地價", "廠房要大"]
+
+
+def test_transport_criteria_match_the_page():
+    # #48 added these distances; the model must be able to weight them, and no longer report them as missing.
+    assert {"transport", "port", "airport", "rail"} <= set(site_intent.CRITERIA)
+    assert "transport" not in site_intent.UNSUPPORTED
 
 
 def test_reference_file_covers_every_ee520_category():

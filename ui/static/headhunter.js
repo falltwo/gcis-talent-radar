@@ -34,6 +34,7 @@
     <section class="hunter-pane"><h3>1. 任務發起面板</h3><div class="hunter-body">
       <label class="hunter-field">職缺<input type="text" id="hunter-job" value="CNC 技術員"></label>
       <span class="hunter-tag" id="hunter-tag">CNC 技術員</span>
+      <p class="hunter-scope" id="hunter-scope" hidden><strong>適用職缺：</strong>軟體、AI／資料、設計、研究等會在網路上公開作品的職類。製程、設備、品保、生管、CNC 等製造業職缺在這些網站上很少有公開作品，通常找不到人；請改用「校園人才媒合」找相關科系，或用「刊登召募」刊登職缺。</p>
       <label class="hunter-field" id="hunter-max-field" hidden>要找幾位（1～20，每位約 4 秒）<input type="number" id="hunter-max" min="1" max="20" step="1" value="10" inputmode="numeric"></label>
       <details class="hunter-field hunter-sites-details"><summary>目標網站<span>展開／收合</span></summary><div class="hunter-sites">${['104','1111','LinkedIn','CakeResume'].map(name => siteChip(name,true)).join('')}${['GitHub','國科會'].map(name => siteChip(name,false)).join('')}</div></details>
       <p class="hunter-progress"><span>進度</span><span id="hunter-percent">0%</span></p>
@@ -545,6 +546,7 @@
       sites = chips;
       left.querySelector('.hunter-mode').textContent = '即時模式・公開作品網站';
       $('hunter-max-field').hidden = false;
+      $('hunter-scope').hidden = false;
       right.querySelector('.hunter-note').textContent = '公開作品網站沒有住址，候選人不標在地圖上。';
       right.querySelector('.hunter-sim').textContent = 'Computer Use 即時畫面';
       $('hunter-job').value = '找會 Python 的軟體工程師，在台中';$('hunter-tag').textContent = $('hunter-job').value;

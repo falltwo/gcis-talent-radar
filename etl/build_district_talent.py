@@ -16,21 +16,25 @@ import json
 import math
 import re
 import statistics
+import sys
 from collections import defaultdict
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+from etl.site_data_sources import latest_jobs, TALENT_JOB_FAMILIES
+
 PROCESSED = ROOT / "data/processed"
 OUT = ROOT / "ui/static/district-talent.json"
 RADIUS_KM = 10
 # ponytail: name rule for "manufacturing-related" departments; review with the team before quoting counts.
 DEPT = re.compile(r"機械|機電|精密|自動化|模具|電機|工業工程|智慧製造|材料|車輛|動力|製造")
 NOT_DEPT = re.compile(r"牙|醫|護|藥|食品")
-JOB_FAMILIES = {"技術／維修／操作", "品管／製造／環衛", "工程／研發／生技"}
+JOB_FAMILIES = TALENT_JOB_FAMILIES
 
 
-def rows(name):
-    with open(PROCESSED / f"{name}.csv", encoding="utf-8-sig", newline="") as handle:
+def rows(name, processed_dir=None):
+    with open(Path(processed_dir or PROCESSED) / f"{name}.csv", encoding="utf-8-sig", newline="") as handle:
         return list(csv.DictReader(handle))
 
 
@@ -96,8 +100,8 @@ def km(a, b):
     return math.hypot((a[0] - b[0]) * 111.32 * math.cos(lat), (a[1] - b[1]) * 110.57)
 
 
-def build():
-    depts = rows("tc_udb_dept_annual")
+def build(processed_dir=None, raw_dir=None):
+    depts = rows("tc_udb_dept_annual",processed_dir)
     # The newest year lists enrolment before graduates are published, so take the newest year that has graduates.
     year = max(row["academic_year"] for row in depts if row["graduates"])
     graduates = defaultdict(lambda: defaultdict(float))
@@ -105,7 +109,7 @@ def build():
         if row["academic_year"] == year and DEPT.search(row["dept"] or "") and not NOT_DEPT.search(row["dept"] or "") and row["graduates"]:
             graduates[row["school"]][row["dept"]] += float(row["graduates"])
     schools = {}
-    for row in rows("education_campus_coordinates"):
+    for row in rows("education_campus_coordinates",processed_dir):
         name = row["institution_name"]
         if name in schools:
             continue  # one point per school; departments are reported per school, not per campus
@@ -117,9 +121,9 @@ def build():
             "top_departments": [d for d, _ in sorted(by_dept.items(), key=lambda item: -item[1])[:3]],
         }
     jobs = defaultdict(lambda: {"postings": 0, "openings": 0, "salaries": [], "ceilings": []})
-    snapshot = None
-    for row in rows("tc_taiwanjobs_snapshot"):
-        snapshot = row["snapshot_date"]
+    observations = latest_jobs(processed_dir or PROCESSED,raw_dir)
+    snapshot = observations["snapshot_date"]
+    for row in observations["rows"]:
         if row["job_major"] not in JOB_FAMILIES:
             continue
         item = jobs[row["query_district"]]
@@ -141,6 +145,8 @@ def build():
                 near.append({**school, "km": round(distance, 1), "weight": round(1 - distance / RADIUS_KM, 2)})
         near.sort(key=lambda school: (school["km"], -school["graduates"]))
         job = jobs.get(name, {"postings": 0, "openings": 0, "salaries": [], "ceilings": []})
+        if name in observations["capped"] or name in observations["missing_districts"]:
+            raise ValueError(f"{name}: talent report requires an audited, uncapped job snapshot")
         # Demand uses the same commuting ring as supply. Postings only name a district, so a
         # neighbour's postings sit at its label point and fade to zero 10 km from this boundary.
         demand = []
@@ -165,6 +171,8 @@ def build():
     return {
         "academic_year": year, "radius_km": RADIUS_KM, "distance": "school to district boundary; 0 when inside. Job postings: neighbour label point to boundary", "jobs_snapshot": snapshot,
         "department_rule": DEPT.pattern, "job_families": sorted(JOB_FAMILIES),
+        "job_location_rule": "只納入最新快照、工作地點明確的職缺，依 URL 去重；鄰區職缺依距離打折計入；此為職類篩選而非雇主行業分類",
+        "jobs_coverage": {key:value for key,value in observations.items() if key != "rows"},
         "sources": {
             "graduates": "教育部大專校院各校科系別學生數（畢業生數）",
             "campuses": "教育部校區名冊座標（本專案整理，只含大專校院）",
@@ -176,7 +184,8 @@ def build():
 
 if __name__ == "__main__":
     data = build()
-    OUT.write_text(json.dumps(data, ensure_ascii=False, indent=1), encoding="utf-8")
+    from etl.build_site_data import write_artifact
+    write_artifact(OUT,data)
     sample = {k: data["districts"][k] for k in ("太平區", "大里區", "豐原區")}
     print(data["academic_year"], data["jobs_snapshot"])
     print(json.dumps(sample, ensure_ascii=False, indent=1))

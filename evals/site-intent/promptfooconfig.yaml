@@ -21,7 +21,7 @@ tests:
         value: |
           const o = JSON.parse(output);
           return ['機械設備業','金屬製品業'].includes(o.industry) && /CNC/i.test(o.role || '') && o.hires === 20
-            && o.emphasis.includes('cluster') && o.unsupported.includes('transport');
+            && o.emphasis.includes('cluster') && o.emphasis.includes('transport') && !o.unsupported.includes('transport');
   - description: car parts, avoid competition, plant manager
     vars: {text: 我們做汽車零件，想找競爭不要太激烈的地方，需要一位廠長}
     assert:
@@ -68,7 +68,7 @@ tests:
           // 半導體業 is not an option, but semiconductors fall under division 26 in the official text,
           // so 電子零組件業 is a correct reading of what the user typed; anything else must stay null.
           return [null, '電子零組件業'].includes(o.industry);
-  - description: two lines plus outsourced processes, transport in the user's words
+  - description: two lines plus outsourced processes, trucks and interchanges weight transport
     vars: {text: 我想在台中設立一個中型的精密機械加工廠與模具沖壓線。希望周邊有完整的上下游供應鏈（如熱處理、表面處理外包），且大貨車進出方便，交通上不要離國道交流道或台74線太遠。}
     assert:
       - type: javascript
@@ -77,7 +77,7 @@ tests:
           // division 25, and contract machining is closer to 25 than to building machines (29).
           const o = JSON.parse(output), both = [o.industry, ...o.related_industries];
           return both.includes('金屬製品業') && o.emphasis.includes('cluster')
-            && o.unsupported.includes('transport') && o.unsupported_phrases.some(p => p.includes('74'));
+            && o.emphasis.includes('transport');
   - description: printed circuit boards
     vars: {text: PCB 印刷電路板廠，招 30 位作業員}
     assert:

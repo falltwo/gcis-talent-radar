@@ -35,9 +35,13 @@ CRITERIA = {
     "stability": "經營穩定：倒閉、解散少",
     "cluster": "同業群聚：上下游、供應鏈、同業聚落",
     "competition": "避開競爭：不想跟同業搶人",
+    # Distances from #48 (ui/static/district-transport.json); ids match the page's CRITERIA.
+    "transport": "交通便利：靠近國道或快速公路交流道、物流、大貨車進出",
+    "port": "靠近港口：臺中港、海運、出口",
+    "airport": "靠近機場：臺中國際機場、空運",
+    "rail": "靠近高鐵：高鐵臺中站、出差、人員往來",
 }
 UNSUPPORTED = {
-    "transport": "交通：交流道、國道、港口、機場、高鐵",
     "land": "土地：地價、租金、廠房坪數",
     "utilities": "水電與環評",
     "other": "其他系統沒有資料的條件",

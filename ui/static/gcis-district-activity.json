@@ -1,167 +1,196 @@
 {
  "window": [
-  "2025-09",
-  "2026-08"
+  "2025-10",
+  "2026-09"
  ],
- "missing_months": [
-  "2025-09"
- ],
+ "missing_months": [],
  "source": "經濟部商工行政資料開放平台：公司設立登記、解散登記清冊（臺中市）",
  "source_url": "https://data.gcis.nat.gov.tw/",
+ "companies_source": "財政部全國營業（稅籍）登記資料 BGMOPEN1：組織別為公司（不含分公司）、營業地址在該區",
+ "companies_as_of": "2026-11-06",
  "coverage": {
   "setup": {
-   "rows": 5996,
+   "rows": 6512,
    "unparsed": 0
   },
   "dissolved": {
-   "rows": 3434,
+   "rows": 3759,
    "unparsed": 0
   }
  },
  "districts": {
   "中區": {
-   "setup": 81,
-   "dissolved": 45,
+   "setup": 87,
+   "dissolved": 50,
+   "companies": 1182,
    "top_road": "民族路"
   },
   "北區": {
-   "setup": 540,
-   "dissolved": 301,
+   "setup": 595,
+   "dissolved": 327,
+   "companies": 7524,
    "top_road": "中清路一段"
   },
   "北屯區": {
-   "setup": 675,
-   "dissolved": 364,
+   "setup": 739,
+   "dissolved": 406,
+   "companies": 11085,
    "top_road": "文心路四段"
   },
   "南區": {
-   "setup": 318,
-   "dissolved": 154,
+   "setup": 341,
+   "dissolved": 168,
+   "companies": 4986,
    "top_road": "忠明南路"
   },
   "南屯區": {
-   "setup": 568,
-   "dissolved": 323,
+   "setup": 620,
+   "dissolved": 354,
+   "companies": 10224,
    "top_road": "文心路一段"
   },
   "后里區": {
-   "setup": 54,
-   "dissolved": 27,
+   "setup": 58,
+   "dissolved": 32,
+   "companies": 1171,
    "top_road": "甲后路一段"
   },
   "和平區": {
    "setup": 1,
    "dissolved": 2,
+   "companies": 49,
    "top_road": "東關路三段"
   },
   "外埔區": {
-   "setup": 33,
-   "dissolved": 17,
+   "setup": 36,
+   "dissolved": 21,
+   "companies": 655,
    "top_road": "大馬路"
   },
   "大安區": {
    "setup": 3,
-   "dissolved": 10,
+   "dissolved": 11,
+   "companies": 382,
    "top_road": "東西三路"
   },
   "大甲區": {
-   "setup": 56,
-   "dissolved": 44,
+   "setup": 61,
+   "dissolved": 48,
+   "companies": 1906,
    "top_road": "水源路"
   },
   "大肚區": {
    "setup": 62,
-   "dissolved": 31,
+   "dissolved": 35,
+   "companies": 1498,
    "top_road": "沙田路一段"
   },
   "大里區": {
-   "setup": 243,
-   "dissolved": 187,
+   "setup": 262,
+   "dissolved": 202,
+   "companies": 7350,
    "top_road": "中興路二段"
   },
   "大雅區": {
-   "setup": 134,
-   "dissolved": 87,
-   "top_road": "民生路三段"
+   "setup": 149,
+   "dissolved": 91,
+   "companies": 3382,
+   "top_road": "中清路三段"
   },
   "太平區": {
-   "setup": 220,
-   "dissolved": 163,
+   "setup": 241,
+   "dissolved": 177,
+   "companies": 6181,
    "top_road": "光興路"
   },
   "新社區": {
    "setup": 8,
-   "dissolved": 7,
+   "dissolved": 8,
+   "companies": 230,
    "top_road": "東山街"
   },
   "東勢區": {
-   "setup": 31,
-   "dissolved": 14,
+   "setup": 35,
+   "dissolved": 18,
+   "companies": 524,
    "top_road": "豐勢路"
   },
   "東區": {
-   "setup": 149,
-   "dissolved": 103,
+   "setup": 159,
+   "dissolved": 110,
+   "companies": 3014,
    "top_road": "公園東路"
   },
   "梧棲區": {
-   "setup": 99,
-   "dissolved": 43,
+   "setup": 106,
+   "dissolved": 47,
+   "companies": 2194,
    "top_road": "四維中路"
   },
   "沙鹿區": {
-   "setup": 120,
-   "dissolved": 65,
-   "top_road": "沙田路"
+   "setup": 125,
+   "dissolved": 70,
+   "companies": 2606,
+   "top_road": "中山路"
   },
   "清水區": {
-   "setup": 83,
-   "dissolved": 52,
+   "setup": 87,
+   "dissolved": 55,
+   "companies": 1912,
    "top_road": "忠孝二街"
   },
   "潭子區": {
-   "setup": 105,
-   "dissolved": 89,
+   "setup": 114,
+   "dissolved": 95,
+   "companies": 3206,
    "top_road": "圓通南路"
   },
   "烏日區": {
-   "setup": 132,
-   "dissolved": 78,
+   "setup": 154,
+   "dissolved": 86,
+   "companies": 3608,
    "top_road": "高鐵一路"
   },
   "石岡區": {
    "setup": 15,
    "dissolved": 5,
+   "companies": 201,
    "top_road": "豐勢路"
   },
   "神岡區": {
-   "setup": 77,
-   "dissolved": 76,
+   "setup": 82,
+   "dissolved": 84,
+   "companies": 3012,
    "top_road": "中山路"
   },
   "西區": {
-   "setup": 707,
-   "dissolved": 350,
+   "setup": 775,
+   "dissolved": 393,
+   "companies": 9308,
    "top_road": "臺灣大道二段"
   },
   "西屯區": {
-   "setup": 1149,
-   "dissolved": 555,
+   "setup": 1245,
+   "dissolved": 597,
+   "companies": 15990,
    "top_road": "市政北七路"
   },
   "豐原區": {
-   "setup": 186,
-   "dissolved": 153,
+   "setup": 197,
+   "dissolved": 170,
+   "companies": 4812,
    "top_road": "水源路"
   },
   "霧峰區": {
-   "setup": 67,
-   "dissolved": 42,
+   "setup": 72,
+   "dissolved": 47,
+   "companies": 1924,
    "top_road": "民生路"
   },
   "龍井區": {
-   "setup": 80,
-   "dissolved": 47,
+   "setup": 83,
+   "dissolved": 50,
+   "companies": 2151,
    "top_road": "沙田路五段"
   }
  }
