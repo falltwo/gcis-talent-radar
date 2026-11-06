@@ -126,6 +126,16 @@ function completeEmployees(stats){
  const names=Object.keys(stats.factories.districts);
  stats.factories.districts=Object.fromEntries(names.map(name=>[name,{'機械設備業':['太平區','西屯區'].includes(name)?100:0,'其他':0}]));
  stats.factories.employees=Object.fromEntries(names.map(name=>[name,{'機械設備業':['太平區','西屯區'].includes(name)?100:0,'其他':['太平區','西屯區'].includes(name)?900:0}]));
+ delete stats.factories.totals;  // these cases test the fallback that sums the cells
+ return stats;
+}
+function officialTotals(stats){
+ completeEmployees(stats);
+ const names=Object.keys(stats.factories.districts);
+ // A suppressed cell (其他 = null) no longer blocks LQ: the census publishes the district total itself.
+ names.forEach(name=>{stats.factories.employees[name]['其他']=null;});
+ stats.factories.totals={year:2024,district_employees:Object.fromEntries(names.map(name=>[name,['太平區','西屯區'].includes(name)?1000:0])),
+  city_employees:{'機械設備業':200,'其他':1800},city_total_employees:2000};
  return stats;
 }
 const clusterText=e=>e.ids.get('scan-podium').querySelectorAll('small').map(s=>s.textContent).join('\n');
@@ -174,4 +184,39 @@ test('related industries join the cluster as one group, sized by summed employee
  const staff=JSON.parse(fs.readFileSync(path.join(__dirname,'../../ui/static/district-stats.json'),'utf8')).factories.employees['大里區'];
  const card=e.ids.get('scan-podium').children.concat(e.ids.get('scan-grid').children).find(li=>li.textContent.includes('大里區'));
  assert.match(card.textContent,new RegExp((staff['機械設備業']+staff['金屬製品業']).toLocaleString()+' 人'));
+});
+test('official census totals give a location quotient even when every district has a suppressed cell',async()=>{
+ const e=setup(officialTotals);
+ const loading=e.window.siteScan.start();await e.resolveAll();await loading;await e.tick();
+ assert.match(clusterText(e),/同業群聚：100 人・LQ 1\.00/);
+});
+test('a suppressed official district total leaves that district without LQ but keeps its size',async()=>{
+ const e=setup(stats=>{officialTotals(stats);stats.factories.totals.district_employees['太平區']=null;return stats;});
+ const loading=e.window.siteScan.start();await e.resolveAll();await loading;await e.tick();
+ assert.match(clusterText(e),/同業群聚：100 人・LQ 無資料/);
+ assert.match(clusterText(e),/同業群聚：100 人・LQ 1\.00/,'西屯區 still has its LQ');
+});
+test('the shipped data now yields location quotients, and size without a named industry',async()=>{
+ const e=setup();e.window.radarIntent={text:'機械工廠，要供應鏈完整',preference:''};
+ let loading=e.window.siteScan.start();await e.resolveAll();await loading;await e.tick();
+ assert.match(clusterText(e),/同業群聚：[\d,]+ 人・LQ \d+\.\d\d/);
+ assert.doesNotMatch(clusterText(e),/LQ 無資料/);
+ const plain=setup();plain.window.radarIntent={text:'要供應鏈完整',preference:''};
+ loading=plain.window.siteScan.start();await plain.resolveAll();await loading;await plain.tick();
+ assert.match(clusterText(plain),/同業群聚：[\d,]+ 人/,'without an industry the district total is the size');
+ assert.doesNotMatch(clusterText(plain),/同業群聚：無資料/);
+});
+test('with related industries the city share uses the same group as the district share',async()=>{
+ // #49 sums the main and related industries; #55's official city figures must be summed over that same group.
+ const e=setup(stats=>{officialTotals(stats);
+  for(const name of Object.keys(stats.factories.districts)){const on=['太平區','西屯區'].includes(name);
+   stats.factories.districts[name]['金屬製品業']=on?10:0;stats.factories.employees[name]['金屬製品業']=on?100:0;}
+  stats.factories.totals.city_employees['金屬製品業']=200;return stats;});
+ e.window.radarIntent={text:'機械加工與模具沖壓',preference:''};
+ e.window.radarIntentParse=Promise.resolve({source:'llm',intent:{industry:'機械設備業',related_industries:['金屬製品業'],uncodable_question:null,
+  role:null,senior_role:null,hires:null,emphasis:['cluster'],unsupported:[],unsupported_phrases:[]}});
+ const loading=e.window.siteScan.start();await e.resolveAll();await loading;await e.tick();
+ // 太平區: (100+100)/1000 over (200+200)/2000 = 1.00; using only 機械設備業 city-wide would give 2.00
+ assert.match(clusterText(e),/同業群聚：200 人・LQ 1\.00/);
+ assert.doesNotMatch(clusterText(e),/LQ 2\.00/);
 });

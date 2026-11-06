@@ -30,6 +30,8 @@ python -m pytest tests/test_real_etl.py -q    # 驗收：數字對不對得上�
 | `tc_jobmarket_industry_q` | 臺中市 × 季 × 熱門行業求才 | 同上 | 製造業求才量 | 同上 |
 | `tc_jobmarket_top_jobs_q` | 臺中市 × 季 × 前 20 職類 | 同上 | 具體職類的求供倍數 | 同上 |
 | `tc_factory_district_industry_annual` | 臺中**行政區 × 製造業中類** × 年：工廠家數、從業員工 | 民國 86～113 年（普查年除外） | 「這區這產業有多少工人」（實測值） | `moea_ee520` |
+| `tc_factory_district_total_annual` | 臺中**行政區** × 年：製造業大類總計（工廠家數、從業員工），EE520 官方公布值 | 民國 86～113 年 | 區位商數 LQ 的區總數分母（細格有保密，加總湊不出總數） | `moea_ee520` |
+| `tc_factory_city_industry_annual` | 臺中**全市** ×（製造業大類＋中類）× 年，EE520 官方公布值 | 民國 86～113 年 | LQ 的全市分母 | `moea_ee520` |
 | `tc_factory_survey_city_annual` | 臺中全市 × 中類 × 年 | 2012～2024 | 交叉核對 EE520 | `taichung_opendata` |
 | `tc_factory_count_district_monthly` | 臺中行政區 × 工廠產業類別 × 月 | 2024-08～2026-07（18 期，不連續） | 最新的同業家數 | `taichung_opendata` |
 | `tc_labor_insurance_annual` | 臺中市 × 行業大類 × 單位類別 × 年（12 月） | 2018～2025 | 製造業總就業人數（控制總數） | `labor_insurance` |

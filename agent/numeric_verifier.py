@@ -1,7 +1,9 @@
 """Lexical numeric guardrail, with separate metadata and user assumptions.
 
 Exact quantity overlap is not semantic fact-checking. Display rounding is
-limited to named monetary fields with explicit units. User-attributed conditions
+limited to named monetary fields with explicit units; the model is told to
+copy tool figures verbatim instead of rounding them. A literal data period
+code (11412) counts only when it equals data_period and is written as a period. User-attributed conditions
 are not tool observations; without user_query their input provenance is unknown.
 """
 import re
@@ -46,12 +48,12 @@ _URL_FIELDS = {"source_url", "source_urls"}
 _INPUT_FIELDS = {"query", "user_query", "user_conditions"}
 _METRIC_EXCLUDED = _DATE_FIELDS | _DATE_COMPONENTS | _ID_FIELDS | _URL_FIELDS | _INPUT_FIELDS
 _ROUNDING_FIELDS = {
-    "average_insured_salary": ("平均投保薪資", "投保薪資平均值", "薪資基線"),
+    "average_insured_salary": ("平均投保薪資", "平均月投保薪資", "投保薪資平均值", "薪資基線"),
     "capital": ("資本總額", "資本額", "登記資本"),
 }
 _DISPLAY_CONNECTORS = (
     r"\s*(?:[：:=]|為|是|約|大約|約合|折合|取整|四捨五入|後"
-    r"|新臺幣|新台幣|NT\$|TWD|\s)*$"
+    r"|新臺幣|新台幣|NT\$|TWD|[（(](?:非|不是|不等於)[^（()）\d]{0,10}[）)]|\s)*$"
 )
 _USER_PREFIX_RE = re.compile(
     r"(?:"
@@ -239,10 +241,82 @@ def _matches_rounding(text, number, fields):
     return False
 
 
+# 期別代碼要明寫是期別才算，前後都看：「資料期間 11412」「114 年 12 月（11412）」「11412 是資料期別」
+# 「每月為11412」「行業代碼11412」不算，不能拿來支持人數、單位數
+_MARKS = r"[\s*_「『」』\"'（）()]*"
+# 數字前面明寫期別：「資料期間 11412」「資料期別（11412）」「資料期別：**11412**」「114 年 12 月（11412）」
+_PERIOD_BEFORE_RE = re.compile(r"(?:(?:資料|統計)?期別|(?:資料|統計)期間|資料期)\s*(?:為|是|[:：])?" + _MARKS + "$"
+                               r"|\d\s*年\s*\d{1,2}\s*月\s*[（(]\s*$")
+# 數字後面主動說明它是期別：「11412 是資料期別」「11412 代表資料期間」「11412 表示民國114年12月」。
+# 說明要一路到這一小段結束：「11412 表示民國114年12月的人數」「11412 為資料期間內人數」不算。
+_PERIOD_CLAIM_RE = re.compile(_MARKS + r"(?:只是|就是|是|為|即|代表|表示|指)\s*" + _MARKS
+                              + r"(?:(?:資料|統計)?(?:期別|期間)(?:代碼)?|民國\s*\d{3}\s*年\s*\d{1,2}\s*月)" + _MARKS + "$")
+# 數字後面只附註年月：「11412（民國114年12月）」，比較弱，數字必須是整句開頭才算。
+_PERIOD_NOTE_RE = re.compile(_MARKS + r"[（(]\s*民國\s*\d{3}\s*年\s*\d{1,2}\s*月\s*[）)]")
+# 「不能把 11412 當成人數」：明說它不是數量
+_NOT_QUANTITY_BEFORE_RE = re.compile(r"[\s*_「『\"'（(>#-]*(?:所以|因此|但|但是)?\s*(?:不能|不應|不要|不可|不得|別|勿)\s*(?:直接)?\s*把" + _MARKS + "$")
+_NOT_QUANTITY_AFTER_RE = re.compile(_MARKS + r"(?:直接)?(?:當成|當作|視為|誤讀為|誤認為|解讀為)\s*"
+                                    r"(?:投保|製造業)?(?:人數|數量|單位數|家數|筆數|數字|總數)")
+# 句子開頭的標點、粗體、引號、列表符號、標題符號
+_LEAD_RE = re.compile(r"[\s*_「『」』\"'（(）)>#\-]*")
+# 數字前面同一句裡，只能有這些中性詞（以逗號、冒號、換行分段）。「投保人數：11412 是資料期別」「投保人數\n11412…」
+# 看起來都像「欄位：值」（Markdown 單一換行會併成同一行），所以前面出現欄位名就不承認後面的期別說明。
+_NEUTRAL_WORDS = {"", "答案", "結論", "說明", "回答", "不行", "不可以", "不能", "不是", "否", "注意", "重點",
+                  "所以", "因此", "也就是說", "換句話說", "其中", "查證結果", "查證後", "簡單說"}
+
+
+_NOT_QUANTITY_PART_RE = re.compile(
+    r"[\s*_「『\"'（(>#-]*(?:所以|因此|但|但是)?\s*(?:不能|不應|不要|不可|不得|別|勿)\s*(?:直接)?\s*把"
+    r"[\s*_「『」』\"']*\d{5}[\s*_「『」』\"']*(?:直接)?(?:當成|當作|視為|誤讀為|誤認為|解讀為)\s*"
+    r"(?:投保|製造業)?(?:人數|數量|單位數|家數|筆數|數字|總數)[\s*_」』\"'）)]*")
+
+
+def _neutral_lead(sentence):
+    # 「不應把 11412 當成數量，11412 是資料期別」：前一段明說它不是數量，也算中性
+    return all(_LEAD_RE.sub("", part) in _NEUTRAL_WORDS or _NOT_QUANTITY_PART_RE.fullmatch(part)
+               for part in re.split(r"[，,：:、；;\n]", sentence))
+
+
+def _is_period_code(text, number, period_codes):
+    if number.unit or str(number.display) not in period_codes:
+        return False
+    before = text[:number.start]
+    # 前後語境都只看到句號為止：換行、逗號、冒號後面的數字仍屬於前面的欄位
+    sentence = re.split(r"[。！？!?]", before)[-1]
+    if _PERIOD_BEFORE_RE.search(sentence):
+        return True
+    after = re.split(r"[，,。；;！？!?\n]", text[number.end:])[0]
+    clause = re.split(r"[，,、；;：:\n]", sentence)[-1]
+    if _PERIOD_CLAIM_RE.match(after) and _neutral_lead(sentence):
+        return True
+    if (_NOT_QUANTITY_BEFORE_RE.fullmatch(clause) and _NOT_QUANTITY_AFTER_RE.match(after)
+            and _neutral_lead(sentence[:len(sentence) - len(clause)])):
+        return True
+    # 「投保人數：\n11412（民國114年12月）」：只附註年月時，前面整句都不能有別的字
+    return _PERIOD_NOTE_RE.match(after) is not None and _LEAD_RE.fullmatch(sentence) is not None
+
+
+# 中文數量（兩萬人、三十六萬、兩成、一半、翻倍、③）無法對到工具欄位，一律當成未驗證的數字。
+# 模型被要求照抄工具的阿拉伯數字，寫成中文就是自己換算或編的。
+_CN_DIGIT = "一二兩三四五六七八九壹貳參肆伍陸柒捌玖廿卅"
+_CN_QUANTITY_RE = re.compile(
+    rf"[{_CN_DIGIT}十拾]+[十百千萬億拾佰仟]"                       # 兩萬、三十六、一百
+    rf"|(?<![前第後每單])[{_CN_DIGIT}十拾]+(?:人|名|家|間|所|筆|元|塊|%|％)"  # 三人、五家（「一家」除外，見下）
+    rf"|[{_CN_DIGIT}十拾幾數]+(?:成(?![功立為本果長員熟效交品分就不])|倍|分之)"
+    r"|一半|過半|大半|半數|翻倍|加倍|倍增|雙倍"
+    r"|[①-⑳㉑-㉟㊱-㊿]"
+)
+_GENERIC_ONE_RE = re.compile(r"^一(?:人|名|家|間|所|筆)$")  # 「每一家」「一筆職缺」這種泛稱不算數量
+
+
+def _chinese_quantities(text):
+    return [m.group() for m in _CN_QUANTITY_RE.finditer(text) if not _GENERIC_ONE_RE.match(m.group())]
+
+
 def verify_explanation_numbers(
     explanation_text: str,
     structured_data: Dict[str, Any],
-    tolerance: float = 0.05,
+    tolerance: float = 1e-9,
     *,
     user_query: Optional[str] = None,
 ) -> Dict[str, Any]:
@@ -256,6 +330,8 @@ def verify_explanation_numbers(
     truth_nums = flatten_structured_numbers(structured_data)
     dates, identifiers, urls = _structured_metadata(structured_data)
     fields = list(_fields(structured_data, excluded=_METRIC_EXCLUDED))
+    period_codes = {value for key, value, _ in _fields(structured_data)
+                    if key == "data_period" and isinstance(value, str) and re.fullmatch(r"\d{5}", value)}
     query_nums = list(_number_tokens(user_query, _metadata_tokens(user_query))) if user_query is not None else None
     conditions, matched, unmatched = [], 0, []
     unverified_conditions = []
@@ -268,7 +344,9 @@ def verify_explanation_numbers(
                 unverified_conditions.append(float(number.value))
                 unmatched.append(float(number.value))
             continue
-        if any(abs(float(number.value) - truth) <= tolerance for truth in truth_nums) or _matches_rounding(explanation_text, number, fields):
+        if (any(abs(float(number.value) - truth) <= tolerance for truth in truth_nums)
+                or _matches_rounding(explanation_text, number, fields)
+                or _is_period_code(explanation_text, number, period_codes)):
             matched += 1
         else:
             unmatched.append(float(number.value))
@@ -285,7 +363,9 @@ def verify_explanation_numbers(
         else:
             unmatched.append(value)
 
-    total = len(numbers) - len(conditions) + len(metadata)
+    chinese = _chinese_quantities(explanation_text)
+    unmatched.extend(chinese)
+    total = len(numbers) - len(conditions) + len(metadata) + len(chinese)
     matched += metadata_matched
     details = []
     if conditions:

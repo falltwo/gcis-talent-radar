@@ -6,6 +6,10 @@ ASP.NET 表單查詢，用 Scrapling FetcherSession（一般模式）每區送�
 勾選「營運中工廠家數、年底從業員工人數」× 全部製造業中類 ×（該區），年份取全部可選範圍。
 
 輸出 tc_factory_district_industry_annual
+
+另抓官方總計（fetch_totals，兩次查詢），給區位商數 LQ 當分母：各區細格有保密，自己加總湊不出總數。
+- tc_factory_district_total_annual：29 區 ×「(C)製造業」大類（區總計）
+- tc_factory_city_industry_annual：臺中市 ×（大類＋各中類）
 - 「*」＝未滿 4 家保密 → NaN，flag=suppressed_lt4；「-」＝無數值 → NaN，flag=no_value
 - 85、90、95、100、105、110 年為工商普查年，原站沒有資料（不補）
 - 科學園區、科技產業園區的工廠已併入所在行政區
@@ -23,6 +27,7 @@ from etl.sources.common import RAW_DATA_DIR, TAICHUNG_DISTRICTS, _record, write_
 
 URL = "https://service.moea.gov.tw/EE520/investigate/InvestigateG.aspx"
 RAW = RAW_DATA_DIR / "moea_ee520"
+TOTALS_RAW = RAW_DATA_DIR / "moea_ee520_totals"   # 另放一個資料夾，transform() 只讀逐區的 29 個檔
 ITEMS = ["營運中工廠家數", "年底從業員工人數"]
 SOURCE = "經濟部統計處 工廠校正統計調查（EE520 InvestigateG）"
 # 行業統計分類第 11 次修正 製造業中類（EE520 查詢頁行業樹的名稱與代碼）
@@ -58,6 +63,57 @@ def _year_range(t):
     return years[0], years[-1]
 
 
+def _query(s, t, item_nodes, industry_nodes, region_nodes):
+    """勾選項目、行業、地區，年份取全部可選範圍，送出查詢並回傳結果頁。"""
+    beg, end = _year_range(t)
+    data = _form(t)
+    data.update({"ctl00$ContentPlaceHolder1$ddlDateKind": "民國",
+                 "ctl00$ContentPlaceHolder1$ddlDateBeg": beg, "ctl00$ContentPlaceHolder1$ddlDateEnd": end,
+                 "ctl00$ContentPlaceHolder1$ddlQueryKind": "R", "ctl00$ContentPlaceHolder1$btnQuery": "查詢",
+                 "__EVENTTARGET": "", "__EVENTARGUMENT": ""})
+    for tree, nodes in (("tvItem1", item_nodes), ("tvItem2", industry_nodes), ("tvItem3", region_nodes)):
+        for n in nodes:
+            data[f"ContentPlaceHolder1_{tree}n{n}CheckBox"] = "on"
+    out = _text(s.post(URL, data=data, timeout=180))
+    if "ContentPlaceHolder1_tabResult" not in out:
+        raise RuntimeError("EE520 查詢沒有結果表")
+    return out, beg, end
+
+
+def _taichung(t):
+    """地區樹裡「台中市」節點，以及它之後的 29 個行政區節點（其他縣市也有「東區」「北區」…）。"""
+    region = _nodes(t, "tvItem3")
+    tc = next(i for i, (_, l) in enumerate(region) if l.strip() in ("台中市", "臺中市"))
+    # 兩字區名中間是全形空白（「中　區」），比對前去掉所有空白
+    districts = {re.sub(r"\s", "", l): n for n, l in region[tc + 1:tc + 30]}
+    return region[tc][0], districts
+
+
+def fetch_totals():
+    """兩次查詢：29 區 × 製造業大類（區總計），以及臺中市 ×（大類＋各中類）。"""
+    from scrapling.fetchers import FetcherSession
+
+    TOTALS_RAW.mkdir(parents=True, exist_ok=True)
+    with FetcherSession() as s:
+        for name in ("district_total", "city_industry"):
+            t = _text(s.get(URL, timeout=60))
+            items = [n for n, l in _nodes(t, "tvItem1") if l.strip() in ITEMS]
+            total = [n for n, l in _nodes(t, "tvItem2") if l.strip() == "(C)製造業"]
+            inds = [n for n, l in _nodes(t, "tvItem2") if re.match(r"^\((\d{2})\)", l.strip())]
+            city, districts = _taichung(t)
+            if len(total) != 1 or len(districts) != len(TAICHUNG_DISTRICTS):
+                raise RuntimeError(f"EE520 查詢頁結構變了：大類 {len(total)} 個、行政區 {len(districts)} 個")
+            if name == "district_total":
+                out, beg, end = _query(s, t, items, total, [districts[d] for d in TAICHUNG_DISTRICTS])
+            else:
+                out, beg, end = _query(s, t, items, total + inds, [city])
+            path = TOTALS_RAW / f"{name}.html"
+            path.write_text(out, encoding="utf-8")
+            _record("moea_ee520", f"{URL} [POST {name} 年={beg}-{end}]", path, out.encode("utf-8"))
+            print(f"  ↓ {name}（{beg}–{end} 年）")
+            time.sleep(2)
+
+
 def fetch_all(delay: float = 2.0):
     from scrapling.fetchers import FetcherSession
 
@@ -70,39 +126,23 @@ def fetch_all(delay: float = 2.0):
             t = _text(s.get(URL, timeout=60))
             items = [n for n, l in _nodes(t, "tvItem1") if l.strip() in ITEMS]
             inds = [n for n, l in _nodes(t, "tvItem2") if re.match(r"^\((\d{2})\)", l.strip())]
-            # 地區樹裡「台中市」之後的第一個同名行政區才是臺中的（其他縣市也有「東區」「北區」…）
-            region = _nodes(t, "tvItem3")
-            tc = next(i for i, (_, l) in enumerate(region) if l.strip() in ("台中市", "臺中市"))
-            # 兩字區名中間是全形空白（「中　區」），比對前去掉所有空白；只在臺中市之下的 29 個節點裡找
-            dnode = next(n for n, l in region[tc + 1:tc + 30] if re.sub(r"\s", "", l) == district)
-            beg, end = _year_range(t)
-            data = _form(t)
-            data.update({"ctl00$ContentPlaceHolder1$ddlDateKind": "民國",
-                         "ctl00$ContentPlaceHolder1$ddlDateBeg": beg, "ctl00$ContentPlaceHolder1$ddlDateEnd": end,
-                         "ctl00$ContentPlaceHolder1$ddlQueryKind": "R", "ctl00$ContentPlaceHolder1$btnQuery": "查詢",
-                         "__EVENTTARGET": "", "__EVENTARGUMENT": ""})
-            for n in items:
-                data[f"ContentPlaceHolder1_tvItem1n{n}CheckBox"] = "on"
-            for n in inds:
-                data[f"ContentPlaceHolder1_tvItem2n{n}CheckBox"] = "on"
-            data[f"ContentPlaceHolder1_tvItem3n{dnode}CheckBox"] = "on"
-            r = s.post(URL, data=data, timeout=180)
-            out = _text(r)
-            if "ContentPlaceHolder1_tabResult" not in out:
-                raise RuntimeError(f"{district} 查詢沒有結果表")
+            _, districts = _taichung(t)
+            out, beg, end = _query(s, t, items, inds, [districts[district]])
             path.write_text(out, encoding="utf-8")
             _record("moea_ee520", f"{URL} [POST 區={district} 年={beg}-{end} 中類={len(inds)}]", path, out.encode("utf-8"))
             print(f"  ↓ {district}（{len(inds)} 個中類，{beg}–{end} 年）")
             time.sleep(delay)
 
 
-def _parse(path):
+def _parse(path, levels=3):
+    """表頭 3 層：項目、中類、地區。勾了大類又勾中類時是 4 層：項目、大類、中類（大類總計欄空白）、地區。"""
     t = path.read_text(encoding="utf-8")
     table = re.search(r'<table id="ContentPlaceHolder1_tabResult".*?</table>', t, re.S).group(0)
-    df = pd.read_html(io.StringIO(table), header=[0, 1, 2], index_col=0, keep_default_na=False)[0]
+    df = pd.read_html(io.StringIO(table), header=list(range(levels)), index_col=0, keep_default_na=False)[0]
     df = df.loc[df.index.astype(str).str.match(r"^\d+年$")]
     rows = []
-    for (item, industry, district), col in df.items():
+    for (item, *groups, district), col in df.items():
+        industry = next((g for g in reversed(groups) if not str(g).startswith("Unnamed")), "")
         item = re.sub(r"\s*\(.*\)$", "", str(item))   # 「營運中工廠家數 (家)」→「營運中工廠家數」
         if item not in ITEMS:
             continue
@@ -117,12 +157,8 @@ def _parse(path):
     return rows
 
 
-def transform():
-    files = sorted(RAW.glob("*.html"))
-    if len(files) != len(TAICHUNG_DISTRICTS):
-        print(f"  ⚠ 只有 {len(files)}/{len(TAICHUNG_DISTRICTS)} 區的原始檔")
-    long = pd.DataFrame([r for p in files for r in _parse(p)])
-    key = ["roc_year", "district", "industry"]
+def _wide(long, key):
+    long = long.copy()
     long["metric"] = long["item"].map({"營運中工廠家數": "factories", "年底從業員工人數": "employees"})
     if long.duplicated(key + ["metric"]).any():
         raise ValueError("EE520 同一格出現兩次")
@@ -130,6 +166,38 @@ def transform():
     flag = long.pivot(index=key, columns="metric", values="flag").add_suffix("_flag")
     df = val.join(flag).reset_index()
     df.insert(1, "year", df["roc_year"] + 1911)
+    return df
+
+
+def transform_totals():
+    """官方總計：區總計只取製造業大類；全市取大類（industry_code C）與各中類。保密格照樣留 NaN。"""
+    district = pd.DataFrame(_parse(TOTALS_RAW / "district_total.html"))
+    district = district[(district.industry == "製造業") & district.district.isin(TAICHUNG_DISTRICTS)]
+    if set(district.district) != set(TAICHUNG_DISTRICTS):
+        raise ValueError(f"區總計缺區：{sorted(set(TAICHUNG_DISTRICTS) - set(district.district))}")
+    district = _wide(district, ["roc_year", "district"]).sort_values(["district", "roc_year"]).reset_index(drop=True)
+    city = pd.DataFrame(_parse(TOTALS_RAW / "city_industry.html", levels=4))
+    city = _wide(city[city.district.isin(["台中市", "臺中市"])], ["roc_year", "industry"])
+    city.insert(city.columns.get_loc("industry"), "industry_code", city["industry"].map({**INDUSTRY_CODES, "製造業": "C"}))
+    unknown = sorted(city.loc[city.industry_code.isna(), "industry"].unique())
+    if unknown:
+        raise ValueError(f"未知中類名稱：{unknown}")
+    city = city.sort_values(["industry_code", "roc_year"]).reset_index(drop=True)
+    notes = ["factories_flag／employees_flag：suppressed_lt4＝未滿 4 家保密；no_value＝原站無數值",
+             "區位商數 LQ 的分母：各區細格有保密，自己加總湊不出總數，所以另取官方總計"]
+    write_processed(district, "tc_factory_district_total_annual", sources=[SOURCE, URL],
+                    grain="臺中市行政區 × 年（民國），製造業大類總計", notes=notes)
+    write_processed(city, "tc_factory_city_industry_annual", sources=[SOURCE, URL],
+                    grain="臺中市 × 製造業大類與中類 × 年（民國）", notes=notes)
+    return district, city
+
+
+def transform():
+    files = sorted(RAW.glob("*.html"))
+    if len(files) != len(TAICHUNG_DISTRICTS):
+        print(f"  ⚠ 只有 {len(files)}/{len(TAICHUNG_DISTRICTS)} 區的原始檔")
+    long = pd.DataFrame([r for p in files for r in _parse(p)])
+    df = _wide(long, ["roc_year", "district", "industry"])
     df.insert(df.columns.get_loc("industry"), "industry_code", df["industry"].map(INDUSTRY_CODES))
     unknown = sorted(df.loc[df.industry_code.isna(), "industry"].unique())
     if unknown:
@@ -144,6 +212,15 @@ def transform():
     return df
 
 
-if __name__ == "__main__":
-    fetch_all()
+def run(fetch: bool = True):
+    """標準 ETL（run_real_etl --only moea_ee520）與直接執行都走這裡：逐區細格和 LQ 用的官方總計
+    一起抓、一起轉，年度更新時才不會只更新細格、總計還停在舊年份（LQ 又變回無資料）。"""
+    if fetch:
+        fetch_all()
+        fetch_totals()
     transform()
+    transform_totals()
+
+
+if __name__ == "__main__":
+    run()

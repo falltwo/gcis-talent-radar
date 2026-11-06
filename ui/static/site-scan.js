@@ -143,6 +143,8 @@
   // Cluster = size and specialisation, as the EU Cluster Observatory and US Cluster Mapping do: employees in the
   // industry, and the location quotient (its share of the district's factory jobs over its share city-wide).
   // A suppressed cell is unknown, never zero. LQ requires complete district and city totals.
+  // Every district has suppressed cells, so the totals come from the census's own published totals (factories.totals);
+  // summing the cells is only the fallback for data built before those totals were fetched.
   const completeTotal = row => {
     const values = Object.values(row || {});
     return values.length && values.every(v => Number.isFinite(v) && v >= 0)
@@ -158,10 +160,11 @@
     const related = (aiIntent?.related_industries || []).filter(name => name !== industry && rows.every(row => published(row?.[name])));
     return [industry, ...related];
   }
+  const count = v => Number.isFinite(v) && v >= 0 ? v : null;
   function clusterParts(name) {
-    const employees = stats.factories.employees, staff = employees?.[name];
+    const employees = stats.factories.employees, staff = employees?.[name], official = stats.factories.totals;
     if (!staff) return null;
-    const total = completeTotal(staff);
+    const total = official ? count(official.district_employees?.[name]) : completeTotal(staff);
     if (!industry) return total === null ? null : {size:total, lq:null};
     const group = clusterGroup(), groupSize = row => group.every(i => published(row?.[i])) ? group.reduce((sum, i) => sum + row[i], 0) : null;
     const size = groupSize(staff);
@@ -169,6 +172,13 @@
     // Published industry size remains useful even when LQ cannot be computed.
     const unknown = {size, lq:null};
     if (total === null || total <= 0) return unknown;
+    if (official) {
+      // The city share must cover the same group as the district share: sum the official city figure of every
+      // industry in the group, and give no LQ if any of them is unpublished.
+      const cityTotal = count(official.city_total_employees), citySizes = group.map(i => count(official.city_employees?.[i]));
+      const cityIndustry = citySizes.includes(null) ? null : citySizes.reduce((sum, v) => sum + v, 0);
+      return {size, lq: cityTotal > 0 && cityIndustry > 0 ? (size / total) / (cityIndustry / cityTotal) : null};
+    }
     const city = Object.keys(stats.factories.districts).map(district => employees[district]);
     const totals = city.map(completeTotal), sizes = city.map(groupSize);
     if (totals.some(v => v === null) || sizes.some(v => v === null)) return unknown;
@@ -642,7 +652,7 @@
     map = window.streetMap.getMap();
     if (!map) {started = false;return;}
     try {
-      if (!geo) [geo, activity, stats, transport] = await Promise.all(['/static/taichung-districts.geojson','/static/gcis-district-activity.json?v=20261106-rate1','/static/district-stats.json?v=20261106-lq1','/static/district-transport.json?v=20261106-hubs1'].map(async url => {
+      if (!geo) [geo, activity, stats, transport] = await Promise.all(['/static/taichung-districts.geojson','/static/gcis-district-activity.json?v=20261106-rate1','/static/district-stats.json?v=20261107-lq-totals1','/static/district-transport.json?v=20261106-hubs1'].map(async url => {
         const response = await fetch(url, {cache:'no-cache'});
         if (!response.ok) throw Error(url);
         return response.json();

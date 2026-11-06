@@ -12,7 +12,7 @@
 
 | 前端資料 | 產生程式 | 本地輸入 |
 | --- | --- | --- |
-| `ui/static/district-stats.json` | `etl/build_district_stats.py` | `tc_factory_district_industry_annual.csv`、`tc_taiwanjobs_snapshot.csv`、同日逐郵遞區號原始職缺 CSV |
+| `ui/static/district-stats.json` | `etl/build_district_stats.py` | `tc_factory_district_industry_annual.csv`、`tc_factory_district_total_annual.csv`、`tc_factory_city_industry_annual.csv`（LQ 分母，EE520 官方總計）、`tc_taiwanjobs_snapshot.csv`、同日逐郵遞區號原始職缺 CSV |
 | `ui/static/gcis-district-activity.json` | `etl/build_gcis_district_activity.py` | `data/raw/gcis_lists/setup`、`dissolved` 的月清冊與 `data/raw/tax_registry/bgmopen1_industry.csv` 公司存量；不把 daily 子目錄當完整月份 |
 | `ui/static/district-talent.json` | `etl/build_district_talent.py` | 各校系所畢業生、校區座標、行政區界線，以及同一份經驗證職缺快照 |
 
