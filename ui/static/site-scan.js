@@ -37,7 +37,7 @@
   right.className = 'scan-side scan-right';right.setAttribute('aria-label','推薦建廠熱區');right.inert = true;
   right.innerHTML = `
     <div class="scan-pane scan-report-only"><h3>3. 職缺開出的月薪</h3><div class="scan-body"><div id="report-salary"></div><p class="scan-note">雇主在就業通刊登的薪資，不是求職者的期望薪資。</p></div></div>
-    <div class="scan-pane scan-report-only"><h3>4. 招募建議 <span>系統依上面數字產生，非 AI</span></h3><div class="scan-body"><ul class="report-advice" id="report-advice"></ul>
+    <div class="scan-pane scan-report-only"><h3>4. 招募建議 <span id="report-advice-source">系統依上面數字產生，非 AI</span></h3><div class="scan-body"><ul class="report-advice" id="report-advice"></ul>
       <div class="report-actions"><button type="button" id="report-back">← 回到排名</button></div>
       <p class="scan-note" id="report-source"></p></div></div>
     <div class="scan-pane scan-rank-only"><h3>商工資料推薦熱區 <span>Top 12</span></h3>
@@ -85,10 +85,15 @@
   for(const id of ['campus-exit','posting-exit','hunter-exit'])$(id)?.addEventListener('click',()=>{if(step==='feature')back();});
   $('replay-intro').addEventListener('click',()=>{if(step!=='intro')stop();});
 
-  function parseIntent(raw) {
+  const GAP_LABELS = {land:'地價與廠房', utilities:'水電與環評', other:'部分條件'};
+  let aiIntent = null;
+  // `ai` is the /api/site-intent answer; without it (no key, timeout, error) the keyword rules below decide.
+  function parseIntent(raw, ai) {
     const text = raw?.text || '', preference = raw?.preference || '';
-    industry = INDUSTRY_WORDS.find(([word]) => text.includes(word))?.[1] || null;
-    boosted = Object.fromEntries(CRITERIA.map(c => [c.id, c.words.some(word => text.includes(word))]));
+    aiIntent = ai?.source === 'llm' ? ai.intent : null;
+    // A valid model answer of industry:null means "no category fits"; only a missing answer falls back to keywords.
+    industry = aiIntent ? aiIntent.industry || null : INDUSTRY_WORDS.find(([word]) => text.includes(word))?.[1] || null;
+    boosted = Object.fromEntries(CRITERIA.map(c => [c.id, aiIntent ? aiIntent.emphasis.includes(c.id) : c.words.some(word => text.includes(word))]));
     if (PREFERENCE[preference]) boosted[PREFERENCE[preference]] = true;
     // Optional criteria (transport) only count when the demand asks for them, so other rankings stay as they were.
     checked = Object.fromEntries(CRITERIA.map(c => [c.id, !c.optional || boosted[c.id]]));
@@ -96,14 +101,25 @@
     tags.push(industry ? ['產業', industry] : ['產業', '未判斷，看全部製造業']);
     if (preference) tags.push(['偏好', preference]);
     CRITERIA.filter(c => boosted[c.id]).forEach(c => tags.push(['加重', c.label]));
-    const missing = NO_DATA_WORDS.filter(word => text.includes(word));
+    if (aiIntent?.role) tags.push(['職務', aiIntent.role]);
+    if (aiIntent?.senior_role) tags.push(['關鍵職務', aiIntent.senior_role]);
+    if (aiIntent?.hires) tags.push(['人數', `${aiIntent.hires} 人`]);
+    (aiIntent?.related_industries || []).forEach(name => tags.push(['相關產業', name]));
+    // The user's own words come first, so the gap note shows exactly what was read but not used.
+    const missing = aiIntent ? (aiIntent.unsupported_phrases?.length ? aiIntent.unsupported_phrases : aiIntent.unsupported.map(key => GAP_LABELS[key] || key))
+      : NO_DATA_WORDS.filter(word => text.includes(word));
     $('scan-tags').replaceChildren(...tags.map(([kind, value]) => {
       const tag = document.createElement('span');tag.className = 'scan-tag';
       tag.innerHTML = '<small></small><b></b>';tag.firstChild.textContent = kind;tag.lastChild.textContent = value;
       return tag;
     }));
-    $('scan-intent-note').textContent = text ? `「${text}」・目前用關鍵字擷取，尚未接 AI 解析` : '沒有輸入文字，只依偏好按鈕設定。';
-    $('scan-gap').textContent = missing.length ? `沒有${[...new Set(missing)].join('、')}的資料，這次未納入排名。` : '';
+    $('scan-intent-note').textContent = !text ? '沒有輸入文字，只依偏好按鈕設定。'
+      : aiIntent?.uncodable_question ? `「${text}」・AI 判斷不出產業，先看全部製造業。${aiIntent.uncodable_question}`
+      : aiIntent ? `「${text}」・AI 依主計總處行業分類擷取，只從固定選項挑；排名數字由系統計算`
+      : `「${text}」・關鍵字擷取（AI 這次沒有回應）`;
+    $('scan-gap').textContent = !missing.length ? '' : aiIntent?.unsupported_phrases?.length
+      ? `「${[...new Set(missing)].join('」「')}」：沒有這方面的資料，這次未納入排名。`
+      : `沒有${[...new Set(missing)].join('、')}的資料，這次未納入排名。`;
   }
 
   function factoryTotal(name) {
@@ -127,24 +143,45 @@
   // Cluster = size and specialisation, as the EU Cluster Observatory and US Cluster Mapping do: employees in the
   // industry, and the location quotient (its share of the district's factory jobs over its share city-wide).
   // A suppressed cell is unknown, never zero. LQ requires complete district and city totals.
+  // Every district has suppressed cells, so the totals come from the census's own published totals (factories.totals);
+  // summing the cells is only the fallback for data built before those totals were fetched.
   const completeTotal = row => {
     const values = Object.values(row || {});
     return values.length && values.every(v => Number.isFinite(v) && v >= 0)
       ? values.reduce((sum, v) => sum + v, 0) : null;
   };
+  const published = v => Number.isFinite(v) && v >= 0;
+  // US Cluster Mapping (Delgado, Porter & Stern 2016) treats a cluster as a group of related industries: size and LQ
+  // use the group's summed employment. A related industry joins only when every candidate district (the factory
+  // gate) publishes it, so all ranked districts are scored on the same group and a suppressed cell is never zero.
+  function clusterGroup() {
+    const rows = Object.keys(stats.factories.districts).filter(district => factoryTotal(district) >= MIN_FACTORIES)
+      .map(district => stats.factories.employees?.[district]);
+    const related = (aiIntent?.related_industries || []).filter(name => name !== industry && rows.every(row => published(row?.[name])));
+    return [industry, ...related];
+  }
+  const count = v => Number.isFinite(v) && v >= 0 ? v : null;
   function clusterParts(name) {
-    const employees = stats.factories.employees, staff = employees?.[name];
+    const employees = stats.factories.employees, staff = employees?.[name], official = stats.factories.totals;
     if (!staff) return null;
-    const total = completeTotal(staff);
+    const total = official ? count(official.district_employees?.[name]) : completeTotal(staff);
     if (!industry) return total === null ? null : {size:total, lq:null};
-    const size = staff[industry];
-    if (!Number.isFinite(size) || size < 0) return null;
+    const group = clusterGroup(), groupSize = row => group.every(i => published(row?.[i])) ? group.reduce((sum, i) => sum + row[i], 0) : null;
+    const size = groupSize(staff);
+    if (size === null) return null;
     // Published industry size remains useful even when LQ cannot be computed.
     const unknown = {size, lq:null};
     if (total === null || total <= 0) return unknown;
+    if (official) {
+      // The city share must cover the same group as the district share: sum the official city figure of every
+      // industry in the group, and give no LQ if any of them is unpublished.
+      const cityTotal = count(official.city_total_employees), citySizes = group.map(i => count(official.city_employees?.[i]));
+      const cityIndustry = citySizes.includes(null) ? null : citySizes.reduce((sum, v) => sum + v, 0);
+      return {size, lq: cityTotal > 0 && cityIndustry > 0 ? (size / total) / (cityIndustry / cityTotal) : null};
+    }
     const city = Object.keys(stats.factories.districts).map(district => employees[district]);
-    const totals = city.map(completeTotal), sizes = city.map(row => row?.[industry]);
-    if (totals.some(v => v === null) || sizes.some(v => !Number.isFinite(v) || v < 0)) return unknown;
+    const totals = city.map(completeTotal), sizes = city.map(groupSize);
+    if (totals.some(v => v === null) || sizes.some(v => v === null)) return unknown;
     const cityTotal = totals.reduce((sum, v) => sum + v, 0), cityIndustry = sizes.reduce((sum, v) => sum + v, 0);
     return {size, lq: cityTotal > 0 && cityIndustry > 0 ? (size / total) / (cityIndustry / cityTotal) : null};
   }
@@ -220,7 +257,8 @@
       const row = document.createElement('label');row.className = 'scan-criterion';
       row.innerHTML = '<input type="checkbox"><span><b></b><small></small></span><em></em>';
       const box = row.querySelector('input');box.checked = checked[c.id];
-      row.querySelector('b').textContent = c.id === 'cluster' && industry ? `${c.label}（${industry}）` : c.label;
+      const clusterNames = industry ? clusterGroup() : [];
+      row.querySelector('b').textContent = c.id === 'cluster' && clusterNames.length ? `${c.label}（${clusterNames.join('＋')}）` : c.label;
       row.querySelector('small').textContent = c.hint;
       row.querySelector('em').textContent = boosted[c.id] ? '權重 ×2' : '';
       box.addEventListener('change', () => {
@@ -345,25 +383,31 @@
     const head = document.createElement('h4');head.textContent = name;box.append(head);
     return [box, head];
   }
+  // Small-number rule: health agencies suppress rates built on counts under ten (e.g. Washington DOH
+  // small-numbers guideline), so a district with fewer postings than this is not ranked on the ratio.
+  const MIN_POSTINGS = 10;
+  // Demand and supply share one commuting ring: both count the district plus neighbours fading to zero at 10 km.
+  const nearby = d => ({postings: d.postings_nearby ?? d.postings, openings: d.openings_nearby ?? d.openings});
+  const demandRatio = d => d.graduates_nearby && nearby(d).postings >= MIN_POSTINGS ? nearby(d).openings / d.graduates_nearby : null;
   function renderReport(three) {
-    const rows = three.map(name => ({name, ...talent.districts[name]}));
-    rows.forEach(row => {row.ratio = row.graduates_nearby ? row.openings / row.graduates_nearby : null;});
+    const rows = three.map(name => ({name, ...talent.districts[name], ...nearby(talent.districts[name])}));
+    rows.forEach(row => {row.thin = row.postings < MIN_POSTINGS;row.ratio = demandRatio(row);});
     const order = rows.filter(row => row.ratio !== null).sort((a, b) => a.ratio - b.ratio);
-    const level = row => row.ratio === null ? '附近沒有相關科系' : order.length < 2 ? '' : row === order[0] ? '三區中較容易' : row === order[order.length - 1] ? '三區中較難' : '居中';
+    const level = row => row.thin ? '職缺樣本太少' : row.ratio === null ? '附近沒有相關科系' : order.length < 2 ? '' : row === order[0] ? '三區中較容易' : row === order[order.length - 1] ? '三區中較難' : '居中';
     const maxGrad = Math.max(...rows.map(r => r.graduates_nearby)), maxOpen = Math.max(...rows.map(r => r.openings));
     $('report-supply').replaceChildren(...rows.map(row => {
       const [box, head] = section(row.name);
       const tag = document.createElement('span');tag.className = 'report-level' + (row === order[0] ? ' is-easy' : '');tag.textContent = level(row);head.append(tag);
       const ratio = document.createElement('p');ratio.className = 'report-ratio';
-      ratio.textContent = row.ratio === null ? `區內和離區界 ${talent.radius_km} 公里內都沒有大專相關科系` : `每位畢業生對應 ${row.ratio.toFixed(2)} 個職缺需求・區內學校 ${row.graduates_in_district.toLocaleString()} 人`;
+      ratio.textContent = row.thin ? `附近製造類職缺只有約 ${row.postings} 筆，樣本太少，不比較招募壓力` : row.ratio === null ? `區內和離區界 ${talent.radius_km} 公里內都沒有大專相關科系` : `每位畢業生對應 ${row.ratio.toFixed(2)} 個職缺需求・區內學校 ${row.graduates_in_district.toLocaleString()} 人`;
       const pick = document.createElement('button');pick.type = 'button';pick.className = 'report-pick';
       pick.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M1 12h4M19 12h4"/></svg><span></span>';
       pick.lastChild.textContent = `選定${row.name}設廠並招人`;
       pick.addEventListener('click', () => choose(row.name));
-      box.append(bar('相關科系畢業生（加權）', row.graduates_nearby, maxGrad, '人', 'is-supply'), bar('製造類職缺需求', row.openings, maxOpen, '人', 'is-demand'), ratio, pick);
+      box.append(bar('相關科系畢業生（加權）', row.graduates_nearby, maxGrad, '人', 'is-supply'), bar('製造類職缺需求（加權）', row.openings, maxOpen, '人', 'is-demand'), ratio, pick);
       return box;
     }));
-    $('report-supply-note').textContent = `畢業生：大專校院機械、電機等相關科系 ${talent.academic_year} 學年畢業生，不含高職。區內的學校全數計入；區外的學校依離區界的距離打折，${talent.radius_km / 2} 公里算一半，${talent.radius_km} 公里以外不算。職缺：就業通 ${talent.jobs_snapshot} 快照的技術、製造、工程類需求人數。沒有各區求職者人數的資料，所以這不是求職求才比。`;
+    $('report-supply-note').textContent = `畢業生：大專校院機械、電機等相關科系 ${talent.academic_year} 學年畢業生，不含高職。區內的學校全數計入；區外的學校依離區界的距離打折，${talent.radius_km / 2} 公里算一半，${talent.radius_km} 公里以外不算。職缺：就業通 ${talent.jobs_snapshot} 快照的技術、製造、工程類需求人數，跟畢業生用同一個通勤圈：鄰區職缺依該區代表點到區界的距離打折。沒有各區求職者人數的資料，所以這不是求職求才比。`;
     $('report-schools').replaceChildren(...rows.map(row => {
       const [box] = section(row.name);
       const list = document.createElement('ul');list.className = 'report-school-list';
@@ -387,7 +431,8 @@
     }));
     const advice = [];
     if (order.length) advice.push(`對照相關科系畢業生和職缺需求，${order[0].name}每位畢業生對應的職缺需求最少（${order[0].ratio.toFixed(2)}），新鮮人的招募壓力在三區中最低。`);
-    rows.filter(row => row.ratio === null).forEach(row => advice.push(`${row.name}區內和附近都沒有大專相關科系，新鮮人要從外區通勤，比較適合用刊登召募找有經驗的人。`));
+    rows.filter(row => row.thin).forEach(row => advice.push(`${row.name}附近的製造類職缺只有約 ${row.postings} 筆，樣本太少，看不出招募壓力；當地製造業需求可能不大，要另外確認。`));
+    rows.filter(row => !row.thin && row.ratio === null).forEach(row => advice.push(`${row.name}區內和附近都沒有大專相關科系，新鮮人要從外區通勤，比較適合用刊登召募找有經驗的人。`));
     // A school counts as shared only when it is in one district and close (weight >= .5) to the other.
     three.forEach((a, i) => three.slice(i + 1).forEach(b => {
       const own = (x, y) => talent.districts[x].schools.filter(s => s.km === 0 && talent.districts[y].schools.some(t => t.name === s.name && t.weight >= .5)).map(s => short(s.name));
@@ -398,9 +443,46 @@
     if (floors.length > 1) advice.push(new Set(floors).size === 1
       ? `三區開出的起薪中位數都是 ${floors[0].toLocaleString()} 元，起薪不是區分因素。`
       : `起薪中位數最高的是${rows.find(r => r.salary_floor_median === Math.max(...floors)).name}（${Math.max(...floors).toLocaleString()} 元），在那裡招人起薪要開得比較高。`);
-    advice.push('這只看新鮮人供給和公開職缺；沒有求職者人數、期望薪資和地價資料，最後仍要實地評估。');
-    $('report-advice').replaceChildren(...advice.map(text => {const li = document.createElement('li');li.textContent = text;return li;}));
+    const caveat = '這只看新鮮人供給和公開職缺；沒有求職者人數、期望薪資和地價資料，最後仍要實地評估。';
+    const showAdvice = (lines, source) => {
+      $('report-advice').replaceChildren(...[...lines, caveat].map(text => {const li = document.createElement('li');li.textContent = text;return li;}));
+      $('report-advice-source').textContent = source;
+    };
+    showAdvice(advice, '系統依上面數字產生，非 AI');
+    askAdvice(rows, three);
     $('report-source').textContent = `資料：${talent.sources.graduates}；${talent.sources.campuses}；${talent.sources.jobs}。`;
+  }
+  // The facts are the numbers already on screen; the model may only refer to them as {f1}, {f2}...
+  function adviceFacts(rows, three) {
+    // `required` facts are the comparison the report is about; the advice is discarded if any is left out.
+    const facts = [], add = (label, value, required = false) => facts.push({id:`f${facts.length + 1}`, label:label.slice(0, 40), value:String(value).slice(0, 40), required});
+    rows.forEach(row => {
+      add(`${row.name}相關科系畢業生（加權）`, `${row.graduates_nearby.toLocaleString()} 人`);
+      // A number is required where there is one; for a thin sample the head count itself is what must be said.
+      add(`${row.name}附近製造類職缺需求（加權）${row.thin ? '（樣本太少）' : ''}`, `${row.openings.toLocaleString()} 人（${row.postings} 筆）`, row.thin);
+      if (!row.thin) add(`${row.name}每位畢業生對應的職缺需求`, row.ratio === null ? '附近沒有相關科系' : row.ratio.toFixed(2), row.ratio !== null);
+      const schools = row.schools.filter(x => x.weight >= .5).sort((a, b) => b.graduates * b.weight - a.graduates * a.weight).slice(0, 2).map(x => short(x.name));
+      if (schools.length) add(`${row.name}附近主要學校`, schools.join('、'));
+      if (row.salary_floor_median) add(`${row.name}起薪中位數`, `${row.salary_floor_median.toLocaleString()} 元`);
+    });
+    three.forEach((a, i) => three.slice(i + 1).forEach(b => {
+      const own = (x, y) => talent.districts[x].schools.filter(t => t.km === 0 && talent.districts[y].schools.some(u => u.name === t.name && u.weight >= .5)).map(t => short(t.name));
+      const both = [...own(a, b), ...own(b, a)];
+      if (both.length) add(`${a}與${b}共同通勤範圍內的學校`, both.slice(0, 2).join('、'));
+    }));
+    return facts;
+  }
+  async function askAdvice(rows, three) {
+    const request = navigationEpoch;
+    try {
+      const response = await fetch('/api/site-advice', {method:'POST', headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({districts:three, industry:industry, role:aiIntent?.role || null, facts:adviceFacts(rows, three)})});
+      const result = response.ok ? await response.json() : null;
+      if (request !== navigationEpoch || result?.source !== 'llm') return;
+      const caveat = '這只看新鮮人供給和公開職缺；沒有求職者人數、期望薪資和地價資料，最後仍要實地評估。';
+      $('report-advice').replaceChildren(...[...result.sentences, caveat].map(text => {const li = document.createElement('li');li.textContent = text;return li;}));
+      $('report-advice-source').textContent = 'AI 依上面數字整理，數字由系統填入';
+    } catch {}
   }
   let pulse = 0;
   function showReportMap(three) {
@@ -455,7 +537,7 @@
     const request=navigationEpoch;$('scan-compare').disabled=true;
     try {
       if (!talent) {
-        const response = await fetch('/static/district-talent.json?v=20261105-edge1');
+        const response = await fetch('/static/district-talent.json?v=20261106-ring1');
         if (!response.ok) throw Error('talent');
         talent = await response.json();
       }
@@ -479,12 +561,12 @@
   function carryOver(name) {
     const text = intent?.text || '';
     const field = industry ? industry.replace(/業$/, '') : '';
-    const role = ROLE_WORDS.find(([word]) => text.toUpperCase().includes(word))?.[1] || '';
-    const senior = SENIOR_WORDS.find(([word]) => text.includes(word))?.[1];
+    const role = aiIntent?.role || ROLE_WORDS.find(([word]) => text.toUpperCase().includes(word))?.[1] || '';
+    const senior = aiIntent?.senior_role || SENIOR_WORDS.find(([word]) => text.includes(word))?.[1];
     return {
       district:name, place:`${name}${$('city-road').value}`, role,
       department: DEPT_FOR[industry] || (text.includes('電') ? '電機' : '機械'),
-      senior: senior ? (senior === '工程師' && field ? `${field.replace(/設備$/, '')}工程師` : senior) : (field ? `${field.replace(/設備$/, '')}工程師` : '製程工程師'),
+      senior: aiIntent?.senior_role ? senior : senior ? (senior === '工程師' && field ? `${field.replace(/設備$/, '')}工程師` : senior) : (field ? `${field.replace(/設備$/, '')}工程師` : '製程工程師'),
       salary: talent.districts[name].salary_floor_median,
     };
   }
@@ -494,14 +576,20 @@
     if (key === 'posting') return window.recruitment?.open({note: `在${carry.place}設廠，想招${carry.role || '現場技術人員'}${carry.salary ? `；當地製造類職缺起薪中位數 ${carry.salary.toLocaleString()} 元，薪資請參考` : ''}`});
     return window.headhunter?.open({job: carry.senior});
   }
+  // ponytail: relative cut-off (the city median ratio) so the order survives changes in how the ratio is counted;
+  // the rule itself is still open in issue #39.
+  function ratioMedian() {
+    const all = Object.values(talent.districts).map(demandRatio).filter(r => r !== null).sort((a, b) => a - b);
+    return all.length ? all[Math.floor(all.length / 2)] : null;
+  }
   function channels(name) {
-    const row = talent.districts[name], ratio = row.graduates_nearby ? row.openings / row.graduates_nearby : null;
+    const row = talent.districts[name], ratio = demandRatio(row);
     const schools = row.schools.filter(s => s.weight >= .5).sort((a, b) => b.graduates * b.weight - a.graduates * a.weight).slice(0, 2).map(s => short(s.name));
     const list = [
       {key:'campus', who:'新鮮人', big: row.graduates_nearby ? row.graduates_nearby.toLocaleString() + ' 人' : '0 人', label:'附近相關科系畢業生（加權）',
-        why: schools.length ? `主要來源：${schools.join('、')}` : '附近沒有大專相關科系，要從外區找', rank: ratio === null ? 2 : ratio < .3 ? 0 : 1},
-      {key:'posting', who:'一般求職者', big: row.openings.toLocaleString() + ' 人', label:'當地製造類職缺需求',
-        why: row.salary_floor_median ? `起薪中位數 ${row.salary_floor_median.toLocaleString()} 元，開薪可以參考` : '沒有月薪刊登可以參考', rank: ratio === null || ratio >= .3 ? 0 : 1},
+        why: schools.length ? `主要來源：${schools.join('、')}` : '附近沒有大專相關科系，要從外區找', rank: ratio === null ? 2 : ratio < ratioMedian() ? 0 : 1},
+      {key:'posting', who:'一般求職者', big: nearby(row).openings.toLocaleString() + ' 人', label:'附近製造類職缺需求（加權）',
+        why: row.salary_floor_median ? `起薪中位數 ${row.salary_floor_median.toLocaleString()} 元，開薪可以參考` : '沒有月薪刊登可以參考', rank: ratio === null || ratio >= ratioMedian() ? 0 : 1},
       {key:'hunter', who:'關鍵人才', big:'不分地點', label:'工程師、主管等難找的職位',
         why:'由獵頭 Agent 主動搜尋與接觸', rank:2},
     ];
@@ -546,7 +634,7 @@
       });
       return card;
     }));
-    $('hire-plan-note').textContent = `順序依「每位畢業生對應的職缺需求」${ratio === null ? '（附近沒有學校）' : `（${ratio.toFixed(2)}）`}排：0.3 以下先找學校，以上或附近沒有學校就先刊登。這是展示用的規則，不是預測招募成效。`;
+    $('hire-plan-note').textContent = `順序依「每位畢業生對應的職缺需求」${ratio === null ? (nearby(talent.districts[name]).postings < MIN_POSTINGS ? '（職缺樣本太少，無法計算）' : '（附近沒有學校）') : `（${ratio.toFixed(2)}）`}排：低於全市中位數（${ratioMedian()?.toFixed(2)}）先找學校；高於中位數、附近沒有學校或職缺樣本太少就先刊登。這是展示用的規則，不是預測招募成效。`;
     fadeHeat(() => {
       if(request!==navigationEpoch)return;
       stop({home:false,keepJourney:true});
@@ -564,7 +652,7 @@
     map = window.streetMap.getMap();
     if (!map) {started = false;return;}
     try {
-      if (!geo) [geo, activity, stats, transport] = await Promise.all(['/static/taichung-districts.geojson','/static/gcis-district-activity.json?v=20261106-rate1','/static/district-stats.json?v=20261106-lq1','/static/district-transport.json?v=20261106-hubs1'].map(async url => {
+      if (!geo) [geo, activity, stats, transport] = await Promise.all(['/static/taichung-districts.geojson','/static/gcis-district-activity.json?v=20261106-rate1','/static/district-stats.json?v=20261107-lq-totals1','/static/district-transport.json?v=20261106-hubs1'].map(async url => {
         const response = await fetch(url, {cache:'no-cache'});
         if (!response.ok) throw Error(url);
         return response.json();
@@ -575,7 +663,12 @@
     if(request!==navigationEpoch||!started)return;
     intent = window.radarIntent || {};
     const nextKey=JSON.stringify(intent);
-    if(nextKey!==intentKey){parseIntent(intent);intentKey=nextKey;comparedDistricts=[];selectedDistrict=null;}
+    if(nextKey!==intentKey){
+      // The parse started when the user pressed Analyze, so it has had the whole transition to finish.
+      const ai=await Promise.race([window.radarIntentParse||Promise.resolve(null),new Promise(done=>setTimeout(()=>done(null),1500))]);
+      if(request!==navigationEpoch||!started)return;
+      parseIntent(intent,ai);intentKey=nextKey;comparedDistricts=[];selectedDistrict=null;
+    }
     renderCriteria();rank();
     addLayers();setVisible(true);
     window.campusMatching?.deactivate();window.headhunter?.deactivate();window.recruitment?.deactivate();

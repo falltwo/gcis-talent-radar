@@ -45,6 +45,8 @@ from engine.official_labor_market import (
 from tests.test_etl_quality import run_data_quality_audit
 from benchmark.run_benchmark import run_benchmark_validation
 from api.education import router as education_router
+from api.site_intent import router as site_intent_router
+from api.site_advice import router as site_advice_router
 
 app = FastAPI(
     title="Regional Industry-Talent Structural Mismatch Early-Warning System",
@@ -67,6 +69,8 @@ install_recruitment(app)
 # Constructing this service does not initialise or mutate either database.
 comparison_report_service = ComparisonReportService()
 app.include_router(education_router)
+app.include_router(site_intent_router)
+app.include_router(site_advice_router)
 
 
 @app.exception_handler(ReportError)
