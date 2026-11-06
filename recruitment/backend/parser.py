@@ -16,11 +16,19 @@ def number(text):
 
 NUM = r'[0-9零一二三四五六七八九十百千萬兩]+'
 
+def strip_hiring_prefix(title):
+    """Remove the complete request phrase before parsing the occupation."""
+    # Match 想招/想招募 as one phrase; stripping 想 first leaves 招 in the title.
+    title=re.sub(r'^(?:(?:我(?:們)?(?:想要|需要|想|要)|想要|想|要)\s*(?:招募|招聘|徵才|徵求|招|找))\s*','',title)
+    return re.sub(r'^(?:(?:請問|可以|請|麻煩|幫我|協助我|我想|我要|我需要|想要|我們想|我們要|招募|招聘|徵求|徵才|找|建立|新增|聘請)\s*)+','',title).strip()
+
+
 def valid_title(title):
     """Reject instruction fragments and merged roles instead of treating them as jobs."""
     return bool(title and len(title)<=100
-                and not re.search(r'幫我|請幫|麻煩|我想|我要|幫忙|協助我|建立|新增|職缺表|履歷表|履歷範本|招募範本|表單範本',title)
+                and not re.search(r'幫我|請幫|麻煩|我想|我要|幫忙|協助我|建立|新增|改成|改為|改到|調整|職缺表|履歷表|履歷範本|招募範本|表單範本',title)
                 and not re.match(r'^(?:填寫|填表|套用|使用範本|送出|送審)',title)
+                and not re.match(r'^(?:想要|想|要)\s*招',title)
                 and title.count('工程師')<2
                 and not re.search(rf'{NUM}\s*(?:個|位|名|人)',title))
 
@@ -35,7 +43,7 @@ def shared_headcounts(text):
     rows=[];cursor=0
     for group in groups:
         names=text[cursor:group.start()].strip(' \t\r\n，,、；;。')
-        names=re.sub(r'^(?:(?:請|麻煩|幫我|協助我|我想|我要|我需要|想要|想|要|我們想|我們要|招募|招聘|徵求|找|建立|新增|聘請)\s*)+','',names)
+        names=strip_hiring_prefix(names)
         names=names.rsplit('：',1)[-1].strip()
         roles=[r.strip() for r in re.split(r'與|和|及|、|，|,',names) if r.strip()]
         if not roles or any(not valid_title(role) for role in roles):return None
@@ -47,6 +55,18 @@ def parse(text,include_salary=True):
     """Conservative deterministic parser: no invented titles, salaries, or LLM execution."""
     result=shared_headcounts(text)
     if result is None:
+        role_first=list(re.finditer(rf'(?:^|[、，,；;\n。])\s*(?P<title>[^0-9零一二三四五六七八九十百千萬兩、，,；;\n。]+?)\s*(?P<count>{NUM})\s*(?:位|人|名|個)',text))
+        if role_first and len(role_first)==len(list(re.finditer(rf'({NUM})\s*(?:個|位|名|人)',text))):
+            candidates=[]
+            for match in role_first:
+                title=re.sub(r'^(?:我要|我想|我們要|我們想|要|想)?(?:在|於)[^，,。；;\n]{1,30}?(?:設廠|開廠|擴廠)\s*(?:招募|招聘|徵求|徵才)?\s*','',match['title']).strip()
+                title=re.sub(r'^(?:(?:我要|我想|我們要|我們想)?(?:在|於)[^，,。；;\n]{1,20}區\s*(?:招募|招聘|徵求|徵才))\s*','',title)
+                title=strip_hiring_prefix(title)
+                title=re.sub(r'(?:需要|招募|招聘)\s*$','',title).strip()
+                if title in {'各','都','全部'} or not valid_title(title):break
+                candidates.append({'title':title,'quantity':number(match['count'])})
+            if len(candidates)==len(role_first):result=candidates
+    if result is None:
         markers=list(re.finditer(rf'({NUM})\s*(?:個|位|名|人)\s*',text))
         matches=[]
         for index,m in enumerate(markers):
@@ -55,11 +75,14 @@ def parse(text,include_salary=True):
             title=re.split(r'[、，,。；;\s]|月薪|時薪|年薪',segment)[0]
             if not valid_title(title):raise ValueError('職稱或人數歸屬不明確，請分別列出每個職位與人數；「幫我建立」不會當成職位。')
             matches.append((m[1],title))
-        if not matches: raise ValueError('請使用「三個工程師、兩個經理，經理月薪十萬元」格式；未解析內容請以招募資料編輯補齊。')
+        if not matches: raise ValueError('請補充要招募的職稱與人數，可以分次告訴我，不需要固定格式。')
         result = [dict(title=title,quantity=number(count)) for count,title in matches]
     if len({i['title'] for i in result}) != len(result): raise ValueError('重複職稱，請合併人數')
     if any(i['quantity'] < 1 or i['quantity'] > 10000 for i in result): raise ValueError('人數必須為 1–10000')
     from .salary import verified_salary
     salaries=verified_salary(text,[i['title'] for i in result]) if include_salary else {}
     for item in result:item.update(salaries.get(item['title'],{}))
+    if len(result)==1:
+        location=re.search(r'(?:在|於|工作地點\s*[:：])\s*((?:臺中市|台中市)?[\u4e00-\u9fff]{1,4}區)',text)
+        if location:result[0]['location']=location[1]
     return result

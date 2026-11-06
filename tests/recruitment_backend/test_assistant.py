@@ -81,6 +81,15 @@ def test_repeated_shared_salary_update_and_confirmation_do_not_ask_again(c,monke
     assert response.json()['kind']=='batch'
     assert [r['salary_min'] for r in response.json()['batch']['items']]==[60000,60000]
 
+
+def test_new_factory_intake_ignores_prior_jobs_without_calling_intent_model():
+    from types import SimpleNamespace
+    ai=SimpleNamespace(enabled=True,structured=lambda *a:(_ for _ in ()).throw(AssertionError('Complete intake must not ask unrelated salary questions')))
+    message='我要在南區設廠 招募品管員20位'
+    plan=plan_request(ai,[{'role':'user','content':'2位前端工程師、2位全端工程師，兩個職位各5萬'},{'role':'user','content':message}])
+    assert plan['action']=='draft' and plan['brief']==message
+    assert plan['salary_turns']==[message]
+
 def test_missing_local_salary_samples_continue_to_cited_city_search(monkeypatch):
     import recruitment.taiwan_salary as salary
     monkeypatch.setattr(salary,'salary_answer',lambda query:None)

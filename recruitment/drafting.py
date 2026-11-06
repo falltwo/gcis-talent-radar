@@ -20,7 +20,7 @@ def prepare_requirement(needs, extraction_model=ExtractedRequirement):
     # All fields must be present for strict structured output. Missing scalar values are null.
     schema["required"] = list(schema["properties"])
     payload = {
-        "model": os.environ.get("OPENROUTER_MODEL", "openai/gpt-6-luna"),
+        "model": os.environ.get("RECRUITMENT_THINKING_MODEL",os.environ.get("OPENROUTER_MODEL", "openai/gpt-6-luna")),
         "messages": [
             {"role": "system", "content": (
                 "Extract company recruitment requirements from the user text into the provided JSON schema. "

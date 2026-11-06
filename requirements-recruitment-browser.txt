@@ -1,2 +1,3 @@
-# Optional local headed browser for screenshot-based Computer Use.
+# Optional real Chrome + Jev intent routing; actions stream as screenshots.
 playwright>=1.50,<2
+typesafe-sdk==0.6.0
