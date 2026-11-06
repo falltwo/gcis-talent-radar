@@ -81,31 +81,31 @@ class NumericVerifierGuardrailTests(unittest.TestCase):
             with self.subTest(answer=answer):
                 self.assertEqual(verify_explanation_numbers(answer, data)["status"], expected)
 
-    def test_wage_answer_rounding_and_period_code(self):
+    def test_wage_answer_figures_are_copied_verbatim(self):
         data = {"data_period": "11412", "insured_units": 20056, "insured_people": 361509,
                 "average_insured_salary": 36201.78}
         for answer, expected in (
-            ("平均投保薪資約 3.6 萬元。", "VERIFIED"),
-            ("平均投保薪資約3.6萬。", "VERIFIED"),
-            ("平均投保薪資大約是36,200元。", "VERIFIED"),
-            ("製造業平均月投保薪資為 36,202 元。", "VERIFIED"),
-            ("投保人數約 36.2 萬人，投保單位 20,056 家。", "VERIFIED"),
+            # 照抄工具數字；取整只限緊接在薪資標籤後的金額；期別代碼要寫在期別位置
+            ("平均投保薪資為 36,201.78 元，投保人數 361,509 人，投保單位 20,056 家。", "VERIFIED"),
             ("資料期間 11412，平均投保薪資 36,201.78 元。", "VERIFIED"),
-            ("平均投保薪資約 3.7 萬元。", "FAILED"),
-            ("平均投保薪資約 3 萬元。", "FAILED"),
-            ("平均投保薪資 36,300 元。", "FAILED"),
-            ("平均投保薪資 36,201 元。", "FAILED"),
-            ("投保單位 20,060 家。", "FAILED"),
-            ("資料期間 11501。", "FAILED"),
             ("資料期間為 114 年 12 月（11412）。", "VERIFIED"),
-            ("投保單位約 2.0 萬家。", "VERIFIED"),
-            # 薪資取整不能支持別的單位，期別代碼不能冒充數量，寫出的小數位要照原樣比對
-            ("工廠總數為36,202家。", "FAILED"),
-            ("失業率為36,202%。", "FAILED"),
-            ("投保人數約 3.6 萬人。", "FAILED"),
-            ("投保單位數為11412。", "FAILED"),
+            ("平均投保薪資約 36,202 元。", "VERIFIED"),
+            ("製造業平均月投保薪資為 36,202 元。", "VERIFIED"),
+            ("平均投保薪資（非實領薪資）為 36,202 元。", "VERIFIED"),
+            # 模型自行換算或約略的寫法不再放行：檢查器分不出它來自哪個欄位
+            ("平均投保薪資約 3.6 萬元。", "FAILED"),
+            ("平均投保薪資大約是36,200元。", "FAILED"),
+            ("投保人數約 36.2 萬人。", "FAILED"),
+            ("投保單位約 2.0 萬家。", "FAILED"),
             ("平均投保薪資約3.60萬元。", "FAILED"),
             ("平均投保薪資約36,200.00元。", "FAILED"),
+            ("平均投保薪資 36,201 元。", "FAILED"),
+            ("資料期間 11501。", "FAILED"),
+            # 取整不能跨欄位、跨單位，期別代碼不能冒充數量
+            ("工廠總數為36,202家。", "FAILED"),
+            ("失業率為36,202%。", "FAILED"),
+            ("資本額為 36,202 元。", "FAILED"),
+            ("投保單位數為11412。", "FAILED"),
         ):
             with self.subTest(answer=answer):
                 self.assertEqual(verify_explanation_numbers(answer, data)["status"], expected)
@@ -202,11 +202,12 @@ class AgentResponseGuardrailTests(unittest.TestCase):
         self.assertEqual(response["verification"]["status"], "FAILED")
         self.assertNotIn("依勞動部統計", response["answer"])
 
-    def test_agent_wage_answer_rounding(self):
+    def test_agent_wage_answer_must_copy_figures(self):
         wage = {"available": True, "data_period": "11412", "insured_units": 20056,
                 "insured_people": 361509, "average_insured_salary": 36201.78}
         for content, expected in (
-            ("平均投保薪資約 3.6 萬元，資料期間 11412。", "SUCCESS"),
+            ("平均投保薪資為 36,201.78 元，資料期間 11412。", "SUCCESS"),
+            ("平均投保薪資約 3.6 萬元。", "FAILED"),
             ("工廠總數為36,202家。", "FAILED"),
             ("投保單位數為11412。", "FAILED"),
         ):
