@@ -62,7 +62,7 @@
 
 - [x] Run recruitment regression suite and an isolated real-Luna conversation using the screenshot case.
 - [x] Review ownership, transaction boundaries and request replay behavior.
-- [ ] Update PR and preview only after checks pass; do not merge main.
+- [x] Update PR and preview only after checks pass; do not merge main.
 
 ## Subsequent plans
 
@@ -86,3 +86,5 @@
 
 - Synced origin/main `54a4de8` into the feature branch because the existing PR had a homepage asset-version conflict and GitHub would not schedule PR CI. Resolved only the asset-version conflict, retaining main feature entry points and new recruitment assets; did not merge the PR into main.
 - After synchronization: local Python suite 1053 passed, 1 skipped, 60 subtests passed, same pre-existing Windows education cleanup failure; frontend full suite 81 passed, 1 skipped. Real Luna restart/replay smoke passed again.
+
+- Delivery: PR #46 updated, feature commit `8fa94b0`; Linux CI [run 42231187529](https://github.com/falltwo/gcis-talent-radar/actions/runs/42231187529) passed all backend and recruitment frontend checks. Preview HTTP200 with langgraph21 assets at http://127.0.0.1:8088/. PR remains open/unmerged; main unchanged.
